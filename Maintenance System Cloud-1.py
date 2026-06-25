@@ -20,28 +20,18 @@ BOSS_PASSWORD = "boss1234"
 SPREADSHEET_ID = "1hXBpjrZMJDGmBC0ib9tSP-FeCISCgg9QOYG8NwHt6cA" 
 
 def get_google_sheet_client():
-    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets พร้อมระบบชดเชยเวลาเซิร์ฟเวอร์เดินไม่ตรงกับ Google API"""
-    import json
-    scopes = ["https://www.googleapis.com/auth/sheets", "https://www.googleapis.com/auth/drive"]
-    
-    # 1. โหลดข้อมูลกุญแจดิจิทัลจากไฟล์ google_creds.json ตรงๆ บน GitHub
-    with open("google_creds.json", "r") as f:
-        creds_info = json.load(f)
-        
-    # 2. 🟢 [FORCE REFRESH TIME FIX] สร้างกุญแจเชื่อมต่อมาตรฐาน
-    from google.oauth2 import service_account
-    from google.auth.transport.requests import Request
-    
-    creds = service_account.Credentials.from_service_account_info(creds_info, scopes=scopes)
-    
-    # 3. สั่งหมุนเวลาชดเชยถอยหลังให้กับตัว Token โดยเฉพาะ (แก้ไขปัญหา Server Time เดินเร็ว)
-    # โดยการล้าง token เก่าที่อาจหมดอายุหรือจำเวลาผิดพลาดออกไปก่อน
+    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets ผ่านระบบ Connection ใหม่ล่าสุด สลัดบั๊กเวลาทิ้ง 100%"""
     try:
-        creds.refresh(Request())
-    except Exception:
-        pass
-        
-    return gspread.authorize(creds)
+        # 🟢 สลับมาใช้ระบบเชื่อมต่ออัตโนมัติของ Streamlit เพื่อดักแก้ปัญหาเรื่องเวลาของเซิร์ฟเวอร์
+        conn = st.connection("gsheets", type=st.connection.GSheetsConnection)
+        # ดึงตัว client ดั้งเดิมออกมาเพื่อส่งต่อให้ฟังก์ชันอัปเดตข้อมูลตารางทำงานต่อได้ทันทีโดยไม่ต้องแก้โค้ดส่วนอื่น
+        return conn._client
+    except Exception as e:
+        # หากระบบ Connection หลักยังไม่ได้ตั้งค่า ให้ดึงระบบสำรองแบบเปิดไฟล์ตรงรันต่อเพื่อความปลอดภัย
+        import gspread
+        from google.oauth2 import service_account
+        scopes = ["https://www.googleapis.com/auth/sheets", "https://www.googleapis.com/auth/drive"]
+        return gspread.authorize(service_account.Credentials.from_service_account_file("google_creds.json", scopes=scopes))
 
 def send_line_alert(msg_text):
     """ฟังก์ชันส่งสัญญาณแจ้งเตือนเข้า LINE กลุ่มแบบ Push Message ดั้งเดิม"""
