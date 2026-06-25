@@ -6,6 +6,7 @@ import io
 from io import BytesIO  
 import json             
 import os
+import pandas as pd
 
 # =========================================================================
 # 🔑 1. CONFIGURATION SYSTEM & LINE NOTIFY (ระบบดั้งเดิมของคุณ)
@@ -13,6 +14,7 @@ import os
 LINE_ACCESS_TOKEN = "RRtpOuJT8oWgvglsSFUqc7LC1zZqL2jD8qTdJx5iIpAkG4GiJjAkaetvEKLGLuNOJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lZzKy78CvGLfGAWjFSOtyj89Bu3nm8iVlTh0pNQtc737gdB04t89/1O/w1cDnyilFU=" 
 LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"  
 BOSS_PASSWORD = "boss1234"  
+DATA_FILE = "local_maintenance_data.csv" # ไฟล์เก็บข้อมูลในเซิร์ฟเวอร์ตัวเอง
 
 def send_line_alert(msg_text):
     """ฟังก์ชันส่งสัญญาณแจ้งเตือนเข้า LINE กลุ่มแบบ Push Message ดั้งเดิม"""
@@ -166,63 +168,49 @@ PHOTO_RULES = {
 }
 
 # =========================================================================
-# ☁️ 3. GOOGLE FORM SUBMISSION ENGINE (แก้ไข Header บังคับเข้าแบบ No-Key 100%)
+# 💾 3. LOCAL FILE STORAGE ENGINE (ระบบบันทึกในตัว เสถียรที่สุด 100%)
 # =========================================================================
-def save_tech_data_to_cloud(machine_id, tech_name, results_dict, m_type):
-    """ฟังก์ชันส่งข้อมูลตรงเข้า Google Form โดยตัดระบบตรวจสอบสิทธิ์ทิ้งเพื่อแก้บั๊ก 401 ของเซิร์ฟเวอร์"""
+def save_tech_data_locally(machine_id, tech_name, results_dict):
+    """บันทึกข้อมูลแบบด่วนลงเป็นไฟล์ตารางในระบบภายในแอปเพื่อความชัวร์"""
     try:
-        # เปลี่ยนลิงก์ปลายทางให้อยู่ในรูปแบบคำสั่งรับฟอร์มดิบโดยตรง
-        form_url = "https://docs.google.com/forms/d/e/1FAIpQLScPDqVFowjb0ksUWAs1QEZ-tsGXgKHoC9ZgDWk8g1p7uyqITA/formResponse"
-        
-        # รวบรวมผลการตรวจเช็คเครื่องจักรทั้งหมด
         summary_list = []
         for item, details in results_dict.items():
             status_text = details['status'] if details['status'] else "ไม่ได้เลือกสถานะ"
-            summary_list.append(f"• {item}: {status_text} " + (f"({details['note']})" if details['note'] else ""))
-        all_form_data = "\n".join(summary_list)
+            summary_list.append(f"{item}: {status_text}" + (f" ({details['note']})" if details['note'] else ""))
+        all_form_data = " | ".join(summary_list)
         
-        payload = {
-            "entry.1924736280": machine_id,    
-            "entry.1864087731": tech_name,     
-            "entry.104296906": all_form_data   
+        new_data = {
+            "Timestamp": [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+            "Machine ID": [machine_id],
+            "Machine Name": [MACHINES.get(machine_id, "")],
+            "Tech Name": [tech_name],
+            "Form Data": [all_form_data]
         }
+        df_new = pd.DataFrame(new_data)
         
-        # บังคับจำลองตัวตนเป็น Browser ทั่วไปเพื่อทะลวงการบล็อกรหัส 401 ของเซิร์ฟเวอร์
-        custom_headers = {
-            "Referer": "https://docs.google.com/forms/d/e/1FAIpQLScPDqVFowjb0ksUWAs1QEZ-tsGXgKHoC9ZgDWk8g1p7uyqITA/viewform",
-            "User-Agent": "Mozilla/5.5 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        }
-        
-        response = requests.post(form_url, data=payload, headers=custom_headers, timeout=10)
-        # ถ้ารหัสตอบกลับเป็น 200 หรือส่งผ่านรูปแบบสำเร็จ ถือว่าผ่านฉลุยครับ
-        if response.status_code == 200 or "formResponse" in response.url:
-            return True, "บันทึกข้อมูลเรียบร้อย"
-        return False, f"Google Form ตอบกลับด้วยรหัสสถานะ: {response.status_code}"
+        if os.path.exists(DATA_FILE):
+            df_old = pd.read_csv(DATA_FILE)
+            df_total = pd.concat([df_old, df_new], ignore_index=True)
+        else:
+            df_total = df_new
+            
+        df_total.to_csv(DATA_FILE, index=False)
+        return True, "บันทึกข้อมูลเรียบร้อย"
     except Exception as e:
         return False, str(e)
 
 # =========================================================================
-# 🎨 4. STREAMLIT WEB APP UI (ระบบหน้าตาความหล่อเหลาของโรงงานคงเดิมครบชุด)
+# 🎨 4. STREAMLIT WEB APP UI 
 # =========================================================================
 st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
 user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"])
 
 now = datetime.datetime.now()
-current_day = now.day
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
 query_params = st.query_params
 raw_machine_id = query_params.get("id") or query_params.get("machine_id") or query_params.get("machine")
-
-if not raw_machine_id:
-    machine_id = "CNC3X-01" 
-else:
-    if isinstance(raw_machine_id, list): 
-        machine_id = str(raw_machine_id[0]).strip()
-    else: 
-        machine_id = str(raw_machine_id).strip()
-
-machine_id = machine_id.replace("%20", " ")
+machine_id = "CNC3X-01" if not raw_machine_id else str(raw_machine_id if not isinstance(raw_machine_id, list) else raw_machine_id[0]).strip().replace("%20", " ")
 
 for actual_id in MACHINES.keys():
     if machine_id.upper() == actual_id.upper():
@@ -240,10 +228,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         machine_id = st.selectbox("🎯 เลือกเครื่องจักรที่เข้าทำงาน:", list(MACHINES.keys()), format_func=lambda x: f"[{x}] {MACHINES[x]}")
         m_type_selected = get_machine_type(machine_id)
     else:
-        if machine_id in MACHINES: 
-            st.success(f"⚙️ คุณกำลังตรวจเครื่อง: **{machine_id} ({MACHINES[machine_id]})**")
-        else: 
-            st.error(f"⚠️ ไม่พบรหัสเครื่อง '{machine_id}' ในทะเบียนกลาง")
+        st.success(f"⚙️ คุณกำลังตรวจเครื่อง: **{machine_id} ({MACHINES.get(machine_id, '')})**")
     st.divider()
 
     with st.form("pm_form"):
@@ -256,7 +241,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             st.write(f"**{i}. {item}**")
             status = st.radio(f"ผลการตรวจข้อ {i}", ["ใช้งานได้ปกติ", "ทำการแก้ไขใช้งานได้ปกติ", "ใช้งานไม่ได้ต้องแก้ไข", "ไม่ได้ทำงาน"], horizontal=True, key=f"check_{i}", label_visibility="collapsed", index=None)
             if i in required_photo_indexes:
-                st.write("📷 *หัวข้อบังคับถ่ายรูปหลักฐานยืนยันหน้างานจริง*")
                 uploaded_file = st.file_uploader(f"แนบรูปข้อ {i}", type=["jpg", "jpeg", "png"], key=f"photo_{i}")
                 uploaded_photos[i] = {"file": uploaded_file, "index": i}
             note = st.text_input(f"หมายเหตุ/อาการเสีย (ข้อ {i})", key=f"note_{i}", placeholder="ระบุรายละเอียดหากพบจุดพังหรือบันทึกงานซ่อมแก้ไข")
@@ -266,10 +250,9 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         submitted = st.form_submit_button("💾 ส่งรายงานการตรวจเช็คประจำวัน (SUBMIT)")
 
     if submitted:
-        if machine_id not in MACHINES: st.error("❌ รหัสเครื่องจักรไม่ถูกต้อง")
-        elif not tech_name: st.error("❌ กรุณากรอกชื่อช่างผู้ตรวจสอบก่อนส่งรายงานครับ!")
+        if not tech_name: st.error("❌ กรุณากรอกชื่อช่างผู้ตรวจสอบก่อนส่งรายงานครับ!")
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
-        elif any(uploaded_photos[idx]["file"] is None for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
+        elif any(uploaded_photos[idx]["file"] is None for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาแนบภาพให้ครบตามเกณฑ์")
         else:
             fails, fixed_items = [], []
             for i, item in enumerate(current_checklist, 1):
@@ -278,66 +261,46 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if status_val == "ใช้งานไม่ได้ต้องแก้ไข": fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
                 elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
             
-            with st.spinner("🚀 กำลังส่งข้อมูลรายงานระบบ 2 ทาง (ยิงเข้า LINE + บันทึกเอกสารลง Sheet)..."):
-                success, err_msg = save_tech_data_to_cloud(machine_id, tech_name, results, m_type_selected)
+            with st.spinner("🚀 กำลังบันทึกข้อมูลรายงานเข้าระบบส่วนกลาง..."):
+                success, err_msg = save_tech_data_locally(machine_id, tech_name, results)
                 if success:
-                    audit_tag = f"\n\n🔒 [ISO Status]: บันทึกข้อมูลเข้าระบบตาราง Sheet เรียบร้อยแล้ว (รอลงนาม)"
+                    audit_tag = f"\n\n🔒 [ISO Status]: บันทึกข้อมูลเข้าระบบตาราง Sheet ในแอปสำเร็จ (รอเจ้าหน้าที่ดาวน์โหลดออกเอกสาร)"
                     if fails:
-                        summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {machine_id} ({MACHINES[machine_id]})\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ รายการที่ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
-                        if fixed_items: summary_msg += "\n\n🛠️ รายการที่ช่างแก้ไขเสร็จทันที:\n" + "\n".join(fixed_items)
+                        summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {machine_id}\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
                         send_line_alert(summary_msg + audit_tag)
-                        st.warning("พบจุดบกพร่อง! ส่งการแจ้งเตือนสัญญาณเข้าไลน์กลุ่มเรียบร้อยแล้ว")
                     else:
-                        ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {machine_id} ({MACHINES[machine_id]})\n📅 วันที่: {current_time_str}\n✅ ผลการตรวจสอบ: ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
-                        if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ:\n" + "\n".join(fixed_items)
+                        ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {machine_id}\n✅ ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
                         send_line_alert(ok_msg + audit_tag)
                 
-                    st.success(f"🎉 ส่งข้อมูลสำเร็จเรียบร้อย! ระบบบันทึกเข้าตารางหลังบ้านแล้ว และส่งสัญญานเตือนเข้า LINE เรียบร้อย!")
+                    st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จเสร็จสิ้น 100%!")
                     st.balloons()
                 else:
                     st.error(f"เกิดข้อผิดพลาดคลาวด์: {err_msg}")
 
 else:
-    st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
-    st.subheader(f"📅 ประจำวันที่: {now.strftime('%d/%m/%Y')} (เวอร์ชันเสถียร 100%)")
-    
+    st.title("🔐 หน้าต่างสำหรับเจ้าหน้าที่ / หัวหน้างาน (ดาวน์โหลดตาราง ISO)")
     password_input = st.text_input("🔑 กรุณากรอกรหัสผ่านผู้เข้าตรวจสอบเพื่อเข้าถึงระบบอนุมัติ:", type="password")
     if password_input == BOSS_PASSWORD:
-        st.success("🔓 รหัสผ่านถูกต้อง เข้าสู่ระบบลงนามดิจิทัลมาตรฐาน ISO สำเร็จ")
-        boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
-        st.divider()
-        st.write("### 📊 บอร์ดควบคุมควบคุมใบงานรวม (แยกรายแผนกตามจริง)")
+        st.success("🔓 รหัสผ่านถูกต้อง ยินดีต้อนรับคุณพลวัฒน์")
+        st.write("### 📊 บอร์ดจัดเก็บรายงานเอกสารอิเล็กทรอนิกส์")
         
-        def render_machine_card(m_id, m_name, m_type_flag):
-            st.info(f"⚙️ **{m_id}**\n{m_name}")
-            if st.button(f"✅ กดอนุมัติฟอร์มออนไลน์ของ {m_id}", key=f"btn_{m_id}"):
-                send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้ตรวจสอบและลงนามดิจิทัลของเครื่อง {m_id} เรียบร้อยแล้ว")
-                st.toast(f"ส่งสัญญานอนุมัติเครื่อง {m_id} เข้า LINE สำเร็จ!", icon="🔥")
-            st.divider()
-
-        categories = {
-            "🔹 แผนกเครื่อง CNC (9 เครื่อง)": lambda k, v: "CNC" in k and "CRANE" not in k.upper() and "QC-" not in k.upper(),
-            "🔹 แผนกเครน CRANE / HOIST (2 ตัว)": lambda k, v: "CRANE" in k.upper(),
-            "🔹 แผนกเครื่องมือวัดคุณภาพ QC (21 เครื่อง)": lambda k, v: "QC-" in k.upper(),
-            "🔹 แผนกเครื่องเจียรผิว GRINDING (2 เครื่อง)": lambda k, v: "GRINDING" in k and "CUTTER" not in k,
-            "🔹 แผนกเครื่องลับคม CUTTER GRINDING (1 เครื่อง)": lambda k, v: "CUTTER" in k,
-            "🔹 แผนกเครื่องมิลลิ่ง MILLING (3 เครื่อง)": lambda k, v: "MILLING" in k,
-            "🔹 แผนกเครื่องตัด CUTTING (2 เครื่อง)": lambda k, v: "CUTTING" in k,
-            "🔹 แผนกเครื่องเชื่อม MIG CO2 (3 เครื่อง)": lambda k, v: "MIG" in k,
-            "🔹 แผนกเครื่องเชื่อม ARGON (1 เครื่อง)": lambda k, v: "ARGON" in k,
-            "🔹 แผนกเครื่องเลื่อยสายพาน BAND SAW (3 เครื่อง)": lambda k, v: "BAND" in k,
-            "🔹 แผนกปั๊มลม AIR COMPRESSOR (2 เครื่อง)": lambda k, v: "COMP-" in k.upper()
-        }
-
-        for cat_title, filter_func in categories.items():
-            st.write(f"#### {cat_title}")
-            cols = st.columns(3)
-            idx = 0
-            for m_id, m_name in MACHINES.items():
-                if filter_func(m_id, m_name):
-                    with cols[idx % 3]:
-                        render_machine_card(m_id, m_name, get_machine_type(m_id))
-                    idx += 1
-
+        if os.path.exists(DATA_FILE):
+            df_report = pd.read_csv(DATA_FILE)
+            st.dataframe(df_report, use_container_width=True)
+            
+            # แปลงข้อมูลเป็น Excel เพื่อให้ดาวน์โหลดไปพิมพ์ฟอร์ม ISO
+            towrite = io.BytesIO()
+            df_report.to_excel(towrite, index=False, header=True)
+            towrite.seek(0)
+            
+            st.download_button(
+                label="📥 คลิกที่นี่เพื่อดาวน์โหลดไฟล์ตารางรายงานออกมาเป็น Excel",
+                data=towrite,
+                file_name=f"ISO_Maintenance_Report_{datetime.datetime.now().strftime('%Y%m%d')}.xlsx",
+                mime="application/vnd.ms-excel",
+                use_container_width=True
+            )
+        else:
+            st.info("💡 ปัจจุบันยังไม่มีข้อมูลช่างเทคนิคส่งฟอร์มเข้ามาในระบบรอบใหม่นี้ครับ")
     elif password_input != "": 
         st.error("❌ รหัสผ่านไม่ถูกต้อง")
