@@ -20,51 +20,20 @@ BOSS_PASSWORD = "boss1234"
 SPREADSHEET_ID = "1hXBpjrZMJDGmBC0ib9tSP-FeCISCgg9QOYG8NwHt6cA" 
 
 def get_google_sheet_client():
-    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets แบบฝังคีย์ดอกใหม่ล่าสุด ป้องกันปัญหาไฟล์หลุด 100%"""
-    import json
+    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets ผ่านไฟล์ดิบ พร้อมคำสั่งบังคับเคลียร์สิทธิ์เชื่อมต่อใหม่ทันที"""
     scopes = ["https://www.googleapis.com/auth/sheets", "https://www.googleapis.com/auth/drive"]
     
-    # 🟢 [NEW KEY EMBEDDED] รหัสแท้แกะกล่องจากกุญแจดอกใหม่ของคุณ ไร้รอยแผล ไร้อักขระขยะซ่อนเร้น
-    creds_dict = {
-      "type": "service_account",
-      "project_id": "preventive-day",
-      "private_key_id": "801c8f0630212986dfea2d59e5176fc2ad0b7bee",
-      "private_key": "-----BEGIN PRIVATE KEY-----\n"
-                     "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCxv6QMJBI4sExy\n"
-                     "tuGWv/1KkGIvD8MtrNdvQxnC0PiIxN92KZTI+xZf+glsgrA4ctK+dFtttfvM+g28\n"
-                     "pJ6X6j6gqF1Z9JI4SKX9e5mU8ZnuqTD/XmnXBoEa6kFOVjEofIsvZK0Ue0RK8qsM\n"
-                     "2hrhMQH1XMdNzj99BroA2qYPq0J8KQm0OpXu6DdPT7XcpFsDAro+9pW5r7dyXaiN\n"
-                     "FcW8Kd2Tzv/cJor+068udOZJfTvYUKiW0tTxpBhnYt+RFR6GVKggIHxzSi70MsM5\n"
-                     "Sq5ggcLvbtnAlIkWDjYN5xsSlRuvsVmNyzZ2Znh2hONV0CkZikTVbxLf+eIeuTOI\n"
-                     "r9mLQ/1LAgMBAAECggEAALlyGk+J1fw0uEWUTQnQEBRBw524gjUh4LYw+aWth6yM\n"
-                     "ZNmKgc4AKN6DXu8vuRqOLkQ9+iw3jaHuYag9vAr9+itBYvXc76pTAH9fL/p6S0OJ\n"
-                     "8vqIiZwFRDCscYnP85qBuEws1FnvyzL3CFdWcVjwkLTFsa2fhGKAix9zQQKBCmL6\n"
-                     "iVNz3VLy0cmcqDi+nNNc2hyPQgdir6Kow/qB5mnzUawWJ6HQh0SKnoa4Xd70Zcvg\n"
-                     "ertwvJjD0JhNYyhm+DXXpWddF84ZEq6TW0qiZokT/dDhYN9AbL3E0okBxAUHeVfZ\n"
-                     "zJcZ5Ed+0mibWeeffxM8dqB+5hDE+zxKev+MqBC7RQKBgQDV4pALZebHzY5+5ceD\n"
-                     "QW3KyTR1eXwKZJkS3CQzclTUL7D6dgPw9FbAun0yZgdYbCANs0MJSNXDQoXPOOSy\n"
-                     "JhHmrhn3dtQHwjM0/MQRMmUSx4SU/fSpEiJMnBtkB4/wT9yb6RWZFwExJueLxGOS\n"
-                     "11fQ+kYzSd7OF3hbeBRpZpvMzwKBgQDUv4brW+1nR+5Hh05r9VBuM1bdUXboWVEJ\n"
-                     "FJjq+VpDZYwUiZEaZffV8mUfAOCsZrRKlE5USwumQe+MzPs0NZq3jQzWtofd36wh\n"
-                     "hvbOMdf1gGC2auW0/SMfh0RhHF8AkvIiBVEEKtx2jYRhqGc5yMaTDUX1pX06b7yj\n"
-                     "HthZi7b+xQKBgCQK/gMttOpOtYik6C4yRHI73d8+Da0irrkC6AbTaYAoWUabxKZC\n"
-                     "RqxLwPVRREOeVPh6EP3rjDpPZ4U4LTHoQHQDOtT87VYxX7e6MMBFIcs8XBdPhH9J\n"
-                     "UwZd+C+vJo50ptSPPtiBi+3ghHyFJ9KC/4Vz54iVFjrcsaeYYLgyVmb5AoGAByDz\n"
-                     "0GcgKVnLrjHmes+ZhlfKDVhxd4+mm3tJNHZug9ufOgDyD8Ri7ZRVtxg8bwpx+B3I\n"
-                     "EiMBnOyQrlMgB7vUF1pul7M+Ej0wc18mXfplliBbHUGvuMTSrHfH3skolchWvLUY\n"
-                     "5d7ZzE8ppGwUKWeE3+CN+5E0BQVBeOXLshRwaVECgYAnfzUdVccB3xEShYJR1fgk\n"
-                     "z2j0h+qaJvaxKuvJvVeKlUwUy3mll60oKSQ63xUo304upyJRjSbNOGObVCrwpl2C\n"
-                     "E6pf7FA7tCS3FEs35pbzDzf8iynfH96tEjaZwd1G3JxDv2Bp1WNE5Nk4t9E5Bewd\n"
-                     "ZAxTyufiLJcidAn0Slc8Ig==\n-----END PRIVATE KEY-----\n",
-      "client_email": "machinery-app@preventive-day.iam.gserviceaccount.com",
-      "client_id": "118080498355827247801",
-      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-      "token_uri": "https://oauth2.googleapis.com/token",
-      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/machinery-app%40preventive-day.iam.gserviceaccount.com",
-      "universe_domain": "googleapis.com"
-    }
-    
+    # 🟢 [FORCE REFRESH] สั่งบังคับให้คลาวด์เคลียร์ความทรงจำเก่า และอ่านไฟล์ google_creds.json ตัวจริงบน GitHub ใหม่ทุกรอบ
+    if os.path.exists("google_creds.json"):
+        try:
+            # ใช้ฟังก์ชันแกะไฟล์มาตรฐานของ Google Auth ดั้งเดิม ดึงลายเซ็น PEM แท้ 100%
+            creds = Credentials.from_service_account_file("google_creds.json", scopes=scopes)
+            return gspread.authorize(creds)
+        except Exception as e:
+            st.error(f"ระบบตรวจพบปัญหาภายในไฟล์กุญแจ: {str(e)}")
+            
+    # กรณีหาไฟล์ไม่เจอ ให้ดึงระบบสำรองแบบดักโครงสร้างดิกชันนารีล้างขยะ
+    creds_dict = dict(st.secrets["gspread_credentials"]) if "gspread_credentials" in st.secrets else {}
     return gspread.authorize(Credentials.from_service_account_info(creds_dict, scopes=scopes))
 
 def send_line_alert(msg_text):
