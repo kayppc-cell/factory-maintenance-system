@@ -17,7 +17,7 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 BOSS_PASSWORD = "boss1234"  
 
 # ⚠️ นำรหัส Spreadsheet ID ของไฟล์ Google Sheets มาวางตรงนี้แทนนะครับเพื่อนรัก
-SPREADSHEET_ID = "YOUR_SPREADSHEET_ID_HERE" 
+SPREADSHEET_ID = "1hXBpjrZMJDGmBC0ib9tSP-FeCISCgg9QOYG8NwHt6cA" 
 
 def get_google_sheet_client():
     """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets"""
@@ -412,7 +412,7 @@ else:
 
     with st.expander("🖨️ เครื่องมือหัวหน้างาน: พิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
         sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()))
-        base_url = "https://factory-maintenance.streamlit.app/" 
+        base_url = "https://pes-maintenance.streamlit.app/" 
         qr_url = f"{base_url}?id={sel_m}"
         qr = qrcode.make(qr_url)
         buf = BytesIO()
