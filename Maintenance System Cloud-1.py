@@ -20,9 +20,11 @@ BOSS_PASSWORD = "boss1234"
 SPREADSHEET_ID = "1hXBpjrZMJDGmBC0ib9tSP-FeCISCgg9QOYG8NwHt6cA" 
 
 def get_google_sheet_client():
-    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets"""
+    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets ผ่านระบบ Secrets Security"""
     scopes = ["https://www.googleapis.com/auth/sheets", "https://www.googleapis.com/auth/drive"]
-    return gspread.authorize(Credentials.from_service_account_file("google_creds.json", scopes=scopes))
+    # ดึงข้อมูลกุญแจตรงจากระบบ Secrets บนคลาวด์โดยตรง ไม่ต้องง้อไฟล์ .json อีกต่อไป
+    creds_dict = dict(st.secrets["gspread_credentials"])
+    return gspread.authorize(Credentials.from_service_account_info(creds_dict, scopes=scopes))
 
 def send_line_alert(msg_text):
     """ฟังก์ชันส่งสัญญาณแจ้งเตือนเข้า LINE กลุ่มแบบ Push Message ดั้งเดิม"""
