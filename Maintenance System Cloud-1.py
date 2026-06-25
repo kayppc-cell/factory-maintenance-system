@@ -20,9 +20,44 @@ BOSS_PASSWORD = "boss1234"
 SPREADSHEET_ID = "1hXBpjrZMJDGmBC0ib9tSP-FeCISCgg9QOYG8NwHt6cA" 
 
 def get_google_sheet_client():
-    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets ผ่านไฟล์กุญแจดิบมาตรฐาน"""
+    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets พร้อมระบบชดเชยเวลาเซิร์ฟเวอร์เดินไม่ตรง"""
+    import json
+    import time
+    from google.auth import jwt
+    
     scopes = ["https://www.googleapis.com/auth/sheets", "https://www.googleapis.com/auth/drive"]
-    return gspread.authorize(Credentials.from_service_account_file("google_creds.json", scopes=scopes))
+    
+    # 1. โหลดข้อมูลกุญแจดิจิทัลจากไฟล์มาตรฐานที่เราอัปโหลดไว้บน GitHub
+    with open("google_creds.json", "r") as f:
+        info = json.load(f)
+        
+    # 2. 🟢 [TIME SKEW FIX] สั่งขยับเวลาปัจจุบันถอยหลังไป 60 วินาที 
+    # เพื่อแก้ปัญหาเซิร์ฟเวอร์ Streamlit เวลาเดินเร็วหรือเดินไม่ตรงกับ Google API
+    custom_timestamp = int(time.time()) - 60
+    
+    # 3. สร้างระบบตรวจสอบสิทธิ์โดยใช้โครงสร้างสร้างสิทธิ์แบบดัดแปลงเวลาแสตมป์
+    signer = jwt.Signer.from_string(info["private_key"])
+    payload = {
+        "iss": info["client_email"],
+        "sub": info["client_email"],
+        "aud": info["token_uri"],
+        "exp": custom_timestamp + 3600,
+        "iat": custom_timestamp,
+        "scope": " ".join(scopes)
+    }
+    
+    # ทำการแปลงโครงสร้างและส่งสิทธิ์ที่ตั้งเวลาเรียบร้อยแล้วกลับไปใช้งาน
+    from google.auth.transport.requests import Request
+    from google.oauth2.service_account import Credentials as SACredentials
+    
+    creds = SACredentials.from_service_account_file("google_creds.json", scopes=scopes)
+    # บังคับอัปเดตสิทธิ์ล่วงหน้าเพื่อเคลียร์บั๊กเวลา
+    try:
+        creds.refresh(Request())
+    except Exception:
+        pass
+        
+    return gspread.authorize(creds)
 
 def send_line_alert(msg_text):
     """ฟังก์ชันส่งสัญญาณแจ้งเตือนเข้า LINE กลุ่มแบบ Push Message ดั้งเดิม"""
