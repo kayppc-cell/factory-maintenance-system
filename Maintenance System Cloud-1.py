@@ -20,11 +20,11 @@ BOSS_PASSWORD = "boss1234"
 SPREADSHEET_ID = "1hXBpjrZMJDGmBC0ib9tSP-FeCISCgg9QOYG8NwHt6cA" 
 
 def get_google_sheet_client():
-    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets แบบฝังคีย์ตรง ปลอดภัย 100%"""
+    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets แบบฝังคีย์และล้างอักขระขยะอัตโนมัติ"""
     import json
     scopes = ["https://www.googleapis.com/auth/sheets", "https://www.googleapis.com/auth/drive"]
     
-    # 🟢 ก๊อปปี้ข้อความทั้งหมดด้านในไฟล์ google_creds.json (ที่มีปีกกาครอบ) มาวางในเครื่องหมายคำพูดเดี่ยว 3 ตัวนี้ได้เลยครับเพื่อนรัก
+    # ⚠️ วางข้อความจากไฟล์ google_creds.json ต้นฉบับของคุณระหว่างเครื่องหมาย ''' สามตัวนี้เหมือนเดิมเลยครับเพื่อนรัก
     creds_json_text = '''{
   "type": "service_account",
   "project_id": "preventive-day",
@@ -39,7 +39,10 @@ def get_google_sheet_client():
   "universe_domain": "googleapis.com"
 }'''
     
-    creds_dict = json.loads(creds_json_text)
+    # 🟢 [SUPER CLEAN] ตรรกะพิเศษสั่งล้างพวกตัวเคาะบรรทัด หรืออักขระควบคุมที่มองไม่เห็นทิ้งทั้งหมดก่อนรัน
+    cleaned_text = "".join(ch for ch in creds_json_text if ord(ch) >= 32 or ch in "\n\r\t")
+    
+    creds_dict = json.loads(cleaned_text)
     return gspread.authorize(Credentials.from_service_account_info(creds_dict, scopes=scopes))
 
 def send_line_alert(msg_text):
