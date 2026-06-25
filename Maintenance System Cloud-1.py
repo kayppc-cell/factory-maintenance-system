@@ -415,7 +415,7 @@ else:
 
     with st.expander("🖨️ เครื่องมือหัวหน้างาน: พิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
         sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()))
-        base_url = "https://factory-maintenance.streamlit.app/" 
+        base_url = "https://pes-maintenance.streamlit.app/" 
         qr_url = f"{base_url}?id={sel_m}"
         qr = qrcode.make(qr_url)
         buf = BytesIO()
