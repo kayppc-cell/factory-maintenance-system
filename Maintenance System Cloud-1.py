@@ -20,52 +20,9 @@ BOSS_PASSWORD = "boss1234"
 SPREADSHEET_ID = "1hXBpjrZMJDGmBC0ib9tSP-FeCISCgg9QOYG8NwHt6cA" 
 
 def get_google_sheet_client():
-    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets แบบฝังคีย์ดอกใหม่ล่าสุด ป้องกันปัญหาไฟล์หลุด 100%"""
-    import json
+    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets ผ่านไฟล์กุญแจดิบมาตรฐาน"""
     scopes = ["https://www.googleapis.com/auth/sheets", "https://www.googleapis.com/auth/drive"]
-    
-    # 🟢 [UPDATED KEY] รหัสแท้แกะกล่องดอกใหม่ล่าสุดของคุณ เรียงแถวระเบียบกริบ ไร้ปัญหา Invalid Padding แน่นอน!
-    creds_dict = {
-      "type": "service_account",
-      "project_id": "preventive-day",
-      "private_key_id": "aa98bd0da5549ef624648020552f88efb8979376",
-      "private_key": "-----BEGIN PRIVATE KEY-----\n"
-                     "MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDYljBL3hyxPiJu\n"
-                     "/U9OWJufqJuDHhZB3wDqdgFgJesrmlfc8bOWom6+35M3UHVkhbR5Pc+CgEX1X785\n"
-                     "I5VviJFC7u7j712Vx8/8oJKLc/wH1KjLOAMte33k4RGcoB1M8KdyrBtiLTcpDPxA\n"
-                     "MCeTKTuIyiuiom4VURrZ5cRQcyk6S8yz2hkvmwRMfmo8hyG8v/vIeUoMzNKzJJgY\n"
-                     "P54zfI3mPFCffR9dhhikvQC7NHdNr0kOSwkKSSE6loey2wNw7I2nKGoJ58VDI+Jy\n"
-                     "XyM3oH9AscZhbTbl7xuAXTnOLAyAdaLQ9OhvL5pX8KcEEiHfSXzVje89/nLbVOS4\n"
-                     "vDxOEFmhAgMBAAECggEAUxHHlFGsT461RjyBnlr91U6l1rRDdSBDCaoY/PeOKzsX\n"
-                     "V/acGrpSH4NAw4ZogBWIErhSTotESchfX1r2hcCrdjCOD35PNpNcglhT3IivsZEu\n"
-                     "7EKfdWJX9uEcECaZFll239SC7DTLY0NHvJa7lwXJf72K3uXNsv9YfRpTIUgKGAEl\n"
-                     "8aIeE7SINYtWgc9/t/jKLFqQdvfT6kyU8+Q5z+tT0RYuAcBbxlsqbGg1lHY3EHn6\n"
-                     "GkJlLHRC6esyYUFt21AYAHPTqqzbKEUvJOEWTU8EDafPqImypkI44GJi6uP69xy8\n"
-                     "8e1Lyk9n8/n7vypFAmYN/R8mAYp0UtfJJnQz2XjAwQKBgQDrf05ipNMFUzqFq/xz\n"
-                     "mxWz5ltEFyaBaAvydfsCYfMJ9R1DU5tm5610BpO2i8oHf8VeuD9gPv0J8Af/HOhB\n"
-                     "JG+0RqSE9LnblsJC9Y6/I5++IO1DDHd1SSEPgAo5xJCfIWmbAI0EZw+TZjor6+HS\n"
-                     "nuMrWubb2nTy2y1DhQwlCxReq1wKBgQDrcWiEnnjXmWmTR6PsJAXWvbr63PWQqR2L\n"
-                     "EU8PouFPLnP1wBWQoZwt6RfVYaX12NIt6y8GqsX8ldxM0WM0ua/7l3kZFIWvcl3M\n"
-                     "r6c2d60lNiJmz7tOFDM/9Pc5Qw86QPwuxgkTNfbG3nbuiQ3iKxuRtQuSxmT0Tx5K\n"
-                     "MxP9eDjIRwKBgQCCGrhEmUkYJQ4s8YKsn96SoE6FxMB6N/B5yKKfg1vRgYDkRFmT\n"
-                     "taVHd6a98GbyU63IEcS5uLL1fY39bIwICUhJccnMxqOz5It4kM+HW/gSA4DxTP7m\n"
-                     "ZjuEo7mChs1bjQsaHmjKKOIbDhxPTadaUsuFa97gSqhTWOpbOTzxjY/wywKBgQDf\n"
-                     "vf5dSVv9R0UVOVeF6RXDZLpz+9dBifURW3mOmnMTFEoOmGPl9i69Um3b0dgtMcdK\n"
-                     "69zcsR1FVATu220zheK/bMsgEmiYuk55XdPB5ykb274FhhOxt3Ccrubh++BUs7zz\n"
-                     "li65mubRRkgvlv8il2SzqyE8cl0t7qISUUgF8GHFsQKBgQCvMR4w3jS9xKEXlR2K\n"
-                     "0tP+Bq0fN8hnoGnP0Am0v19U+yEPpGHR8b7HwLC9Fzac8Grq99utOu6fFy3SB9Xt\n"
-                     "mDo0OdK5wzhgrmwEfSLATS81fOea0xN99w66fy0eCYNrHlpL5qcNF+pOVnWp1Orc\n"
-                     "CvoEw4Y5SmxNGKJgOaf0csz2wA==\n-----END PRIVATE KEY-----\n",
-      "client_email": "machinery-app@preventive-day.iam.gserviceaccount.com",
-      "client_id": "118080498355827247801",
-      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-      "token_uri": "https://oauth2.googleapis.com/token",
-      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/machinery-app%40preventive-day.iam.gserviceaccount.com",
-      "universe_domain": "googleapis.com"
-    }
-    
-    return gspread.authorize(Credentials.from_service_account_info(creds_dict, scopes=scopes))
+    return gspread.authorize(Credentials.from_service_account_file("google_creds.json", scopes=scopes))
 
 def send_line_alert(msg_text):
     """ฟังก์ชันส่งสัญญาณแจ้งเตือนเข้า LINE กลุ่มแบบ Push Message ดั้งเดิม"""
