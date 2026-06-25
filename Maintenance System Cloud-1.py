@@ -3,6 +3,8 @@ import requests
 import datetime
 import qrcode
 import io
+from io import BytesIO  # 🟢 เติมตัวพักข้อมูลที่ระบบแจ้งเออร์เรอร์กลับคืนมาแล้วครับ!
+import json             # 🟢 เติมเครื่องมือแปลงสัญญานส่งไลน์กลับคืนมาแล้วครับ!
 import os
 import gspread
 from google.oauth2.service_account import Credentials
@@ -33,7 +35,7 @@ def send_line_alert(msg_text):
         pass
 
 # =========================================================================
-# 📑 2. MASTER DATA (ดึงครบ 54 รายการ + เช็คลิสต์คำต่อคำ ห้ามเปลี่ยนเพื่อ ISO)
+# 📑 2. MASTER DATA (รายการเครื่องจักร 54 รายการ + เช็คลิสต์คำต่อคำ ห้ามเปลี่ยนเพื่อ ISO)
 # =========================================================================
 MACHINES = {
     "CNC3X-01": "CNC 3 แกน #01", "CNC3X-02": "CNC 3 แกน #02",
@@ -219,12 +221,11 @@ def save_tech_data_to_cloud(machine_id, tech_name, results_dict, m_type):
         ws = get_or_setup_worksheet(sh, machine_id, m_type)
         
         day_num = datetime.datetime.now().day
-        target_col = day_num + 2 # วันที่ 1 ตรงกับคอลัมน์ C (คอลัมน์ 3)
+        target_col = day_num + 2
         
         checklist_items = CHECKLISTS[m_type]
         fail_notes = []
         
-        # เขียนสัญลักษณ์ลงแต่ละช่องตามเงื่อนไขเดิมของโรงงาน
         for i, item in enumerate(checklist_items, 1):
             row_pos = 5 + i
             if item in results_dict:
@@ -243,7 +244,6 @@ def save_tech_data_to_cloud(machine_id, tech_name, results_dict, m_type):
                 
                 ws.update_cell(row_pos, target_col, symbol)
                 
-        # อัปเดตประวัติอาการเสียสะสมในคอลัมน์ B เสมอ
         tech_row, _, n_cell = get_coordinates(m_type)
         note_row_idx = int(n_cell[1:])
         
@@ -257,7 +257,6 @@ def save_tech_data_to_cloud(machine_id, tech_name, results_dict, m_type):
         else:
             if not old_value: ws.update_cell(note_row_idx, 2, "เครื่องจักรปกติ")
             
-        # ลงชื่อช่างเทคนิคแนวตั้ง (เซ็นชื่อในพิกัดวันที่)
         ws.update_cell(tech_row, target_col, tech_name)
         return True, "บันทึกข้อมูลเรียบร้อย"
     except Exception as e:
@@ -289,7 +288,7 @@ def get_current_cloud_note(machine_id, m_type):
         return ""
 
 # =========================================================================
-# 🎨 5. STREAMLIT WEB APP UI (แกะปุ่มสลับเมนู Sidebar ตามโค้ดดั้งเดิมของคุณ)
+# 🎨 5. STREAMLIT WEB APP UI
 # =========================================================================
 st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
 user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"])
@@ -306,9 +305,6 @@ machine_id = machine_id.replace("%20", " ")
 
 m_type_selected = get_machine_type(machine_id)
 
-# -------------------------------------------------------------------------
-# โหมด 1: ฝั่งช่างเทคนิค (ส่งฟอร์ม 4 ตัวเลือก ช่องติ๊กครบถ้วน)
-# -------------------------------------------------------------------------
 if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title(f"📋 ใบตรวจสอบเครื่อง {m_type_selected} ประจำวัน")
@@ -326,7 +322,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         
         for i, item in enumerate(current_checklist, 1):
             st.write(f"**{i}. {item}**")
-            # 🟢 ปรับเปลี่ยนคืนออปชัน 4 ช่องเลือก ตามที่โรงงานตกลงกันไว้เป๊ะๆ
             status = st.radio(f"ผลการตรวจข้อ {i}", ["ใช้งานได้ปกติ", "ทำการแก้ไขใช้งานได้ปกติ", "ใช้งานไม่ได้ต้องแก้ไข", "ไม่ได้ทำงาน"], horizontal=True, key=f"check_{i}", label_visibility="collapsed", index=None)
             if i in required_photo_indexes:
                 st.write("📷 *หัวข้อบังคับถ่ายรูปหลักฐานยืนยันหน้างานจริง*")
@@ -369,9 +364,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 else:
                     st.error(f"เกิดข้อผิดพลาดคลาวด์: {err_msg}")
 
-# -------------------------------------------------------------------------
-# โหมด 2: บอร์ดควบคุมรวมแผนกของหัวหน้างาน
-# -------------------------------------------------------------------------
 else:
     st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
     st.subheader(f"📅 ประจำวันที่: {now.strftime('%d/%m/%Y')} (ช่องวันที่คอลัมน์บน Google Sheets: วันที่ {current_day})")
@@ -394,7 +386,6 @@ else:
             st.text_area("📝 รายการอาการเสียสะสมปัจจุบัน (ช่อง B)", value=current_notes, key=f"note_area_{m_id}", height=100, disabled=True)
             st.divider()
 
-        # วงกระดานแสดงผล 11 บล็อกแผนกตามสารบบไฟล์ต้นฉบับดั้งเดิมเป๊ะๆ
         categories = {
             "🔹 แผนกเครื่อง CNC (9 เครื่อง)": lambda k, v: "CNC" in k and "CRANE" not in k.upper() and "QC-" not in k.upper(),
             "🔹 แผนกเครน CRANE / HOIST (2 ตัว)": lambda k, v: "CRANE" in k.upper(),
@@ -424,9 +415,9 @@ else:
 
     with st.expander("🖨️ เครื่องมือหัวหน้างาน: พิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
         sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()))
-        base_url = "https://factory-maintenance.streamlit.app/" # เมื่อเปิดแอปเสร็จแล้วนำลิงก์จริงมาหยอดแทนได้ครับ
+        base_url = "https://factory-maintenance.streamlit.app/" 
         qr_url = f"{base_url}?id={sel_m}"
         qr = qrcode.make(qr_url)
         buf = BytesIO()
         qr.save(buf)
-        st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
+        st.image(buf.getvalue(), caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}") # 🟢 แก้ไขคำสั่งให้ดึงค่า .getvalue() ออกมาแสดงภาพถูกต้องแล้วครับ
