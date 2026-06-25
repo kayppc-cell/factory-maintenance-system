@@ -21,9 +21,10 @@ SPREADSHEET_ID = "1hXBpjrZMJDGmBC0ib9tSP-FeCISCgg9QOYG8NwHt6cA"
 
 def get_google_sheet_client():
     """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets ผ่านระบบ Secrets Security"""
+    import json
     scopes = ["https://www.googleapis.com/auth/sheets", "https://www.googleapis.com/auth/drive"]
-    # ดึงข้อมูลกุญแจตรงจากระบบ Secrets บนคลาวด์โดยตรง ไม่ต้องง้อไฟล์ .json อีกต่อไป
-    creds_dict = dict(st.secrets["gspread_credentials"])
+    # แปลงข้อความที่เราครอบฝนทอง 3 ตัวไว้ ให้กลับกลายเป็นกุญแจดิจิทัล JSON ที่ถูกต้องสมบูรณ์
+    creds_dict = json.loads(st.secrets["gspread_credentials"])
     return gspread.authorize(Credentials.from_service_account_info(creds_dict, scopes=scopes))
 
 def send_line_alert(msg_text):
