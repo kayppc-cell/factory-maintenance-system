@@ -20,49 +20,51 @@ BOSS_PASSWORD = "boss1234"
 SPREADSHEET_ID = "1hXBpjrZMJDGmBC0ib9tSP-FeCISCgg9QOYG8NwHt6cA" 
 
 def get_google_sheet_client():
-    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets แบบฝังคีย์แท้ถาวร ป้องกันปัญหา JWT Signature 100%"""
+    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets แบบฝังคีย์ดอกใหม่ล่าสุด ป้องกันปัญหาไฟล์หลุด 100%"""
+    import json
     scopes = ["https://www.googleapis.com/auth/sheets", "https://www.googleapis.com/auth/drive"]
     
-    # 🟢 [SUPER CLEAN KEY] ถอดรหัสลายเซ็นแท้แยกบรรทัดเรียบร้อยอย่างเป็นระเบียบ ไม่มีอักขระขยะซ่อนแน่นอน
+    # 🟢 [NEW KEY EMBEDDED] รหัสแท้แกะกล่องจากกุญแจดอกใหม่ของคุณ ไร้รอยแผล ไร้อักขระขยะซ่อนเร้น
     creds_dict = {
-        "type": "service_account",
-        "project_id": "preventive-day",
-        "private_key_id": "1a18c8ca770d3b144db98e0d58b39e061fb4fdb1",
-        "private_key": "-----BEGIN PRIVATE KEY-----\n"
-                       "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC5MNyBio92Hoy3\n"
-                       "BK11Pl8JeVq4Ma2MIc+pj9bzKOWxTzvbrnurywLLUoKwrfpnCZT3yK/HEB/KlHpY\n"
-                       "yhPl45Wi9ih31DhfcaBwQ7nYqAOsF9FQfpK+sGVyuWV32DS8RvfRs/XGHY3eEuPE\n"
-                       "W2vh7KJPAMYM3E/xrBrZ+afUn3cSHAXq+D+NnpM6wRzD631IGDBMX3ilotNYLIXc\n"
-                       "FzSCApEERBywjv0ebKX7L91ln6Ffjipqb6G6OxfK1434ENLfaeO5y8JB4BKI9Xjm\n"
-                       "8iNi6f9c7n/2qPIT+VPiJ66RI8wzuG7z5MHGbb/OETzQLgR/vIFrs3zTpMy9VJ6c\n"
-                       "PKq9xoQBAgMBAAECggEAEOvYRiTnQWN+t41fnRYnIGo8ghaV9Tc0rplkSmEbBcXH\n"
-                       "4iWSCss4tOPT6bln5yjOugpWF2IPiZbiDAFg6pFOP67u2S4kvYHYJ1Hk5hlKBpxB\n"
-                       "bGfDnn3NxGeJiJ1BRwV8k0XgLP8HcXLlopE9AaHeSEIt62cx2gSpwajEXBFtLt/\n"
-                       "dR4irqJRqeBgBXkVY4bommxMvXG5ZDeYsSNgs/fTSvO/IpJQLbifzG1kan92ajfv\n"
-                       "8PcAGz7G3AD/Xmq0r6oAzId58TUNqB6Z6uja7cd/RJH0ui1gUz0fw1yS4MdWEQ14\n"
-                       "yzF7fCAaaMmP7bTXZuGQVWaJXO7PuNnlVpRCXGvZ8QKBgQDhnVmhmv2JwchiaXyY\n"
-                       "OEB6Q58kou7QJw1w81MoZfKw/oMlVq4UPSFFZyNBcIOqVzH85yX8xUf89UyMfAAH\n"
-                       "yni2DwFVeMj3jpM58Y6nhbcIqDIgnDUrbD9wgoeE14Mj3yQ1XVH0uCQ2jgQs20uz\n"
-                       "rjdImzVYVUnW4smJJbp9vxxnqQKBgQDSIcvl8EcZTZ79Ely7VTFBwqURXOswWXe1\n"
-                       "BVHxT8ypC1d51UIlOz/rWAe+C36Hm1IioxX0wuTX1RFzVSNf5sY3QKav1OZ2FRo4\n"
-                       "ez01MSHGqZGDYCI1ScuFyyZbXVd5uf3xSkuB0jrZknmYqSwZJd5N93nYdpwrYYMM\n"
-                       "otNncAIQmQKBgGpnByqMKh6Z4aNoFHbFsML4uUlR/kb05AXs+78FtZt7rOYjJx4s\n"
-                       "ZlCQ/7ORGMdxMAYSDXxUnkrSdTOcF3eVKbDTCtIAkOcPuqeNILYo/dV7XYi7oufD\n"
-                       "uXeaV8dyzEpSpoT0af58Cbgg6h8tnVo0Q6ZebJ4oOxa5BktEG9vKEd9hAoGBAIJD\n"
-                       "RzY03K536u5xWqEa790XP+Limj2vyMCkGqcgU/wbNtAk/ss7zqUjPjF2yKpiA+nK\n"
-                       "9cp0ow6VXCsGBVbnJcuMvYhUz8U10bpf05LM8WZJKhaqGqq0I4G+bPnIhHjGbwEM\n"
-                       "kIBbBfZokg6sGNVCH2xv1M32wVs3KNlFew4tZmpJAoGAFwBI+5gCpeMy7lPdVrt/\n"
-                       "81a+R53mo7RqVIKjS+ojvVnnlmpmVXSSBlijvW8j95PBXYhKeuSIGfuVCSQXXw0E\n"
-                       "jH7n6AG7P44sBAKB3TKCD0871QIhAqjq9I5faa8YCsluXDOZk2VBPQWLV5FX92dS\n"
-                       "u5IINoQticUEtEUVI4FaJZU=\n-----END PRIVATE KEY-----\n",
-        "client_email": "machinery-app@preventive-day.iam.gserviceaccount.com",
-        "client_id": "118080498355827247801",
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/machinery-app%40preventive-day.iam.gserviceaccount.com",
-        "universe_domain": "googleapis.com"
+      "type": "service_account",
+      "project_id": "preventive-day",
+      "private_key_id": "801c8f0630212986dfea2d59e5176fc2ad0b7bee",
+      "private_key": "-----BEGIN PRIVATE KEY-----\n"
+                     "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCxv6QMJBI4sExy\n"
+                     "tuGWv/1KkGIvD8MtrNdvQxnC0PiIxN92KZTI+xZf+glsgrA4ctK+dFtttfvM+g28\n"
+                     "pJ6X6j6gqF1Z9JI4SKX9e5mU8ZnuqTD/XmnXBoEa6kFOVjEofIsvZK0Ue0RK8qsM\n"
+                     "2hrhMQH1XMdNzj99BroA2qYPq0J8KQm0OpXu6DdPT7XcpFsDAro+9pW5r7dyXaiN\n"
+                     "FcW8Kd2Tzv/cJor+068udOZJfTvYUKiW0tTxpBhnYt+RFR6GVKggIHxzSi70MsM5\n"
+                     "Sq5ggcLvbtnAlIkWDjYN5xsSlRuvsVmNyzZ2Znh2hONV0CkZikTVbxLf+eIeuTOI\n"
+                     "r9mLQ/1LAgMBAAECggEAALlyGk+J1fw0uEWUTQnQEBRBw524gjUh4LYw+aWth6yM\n"
+                     "ZNmKgc4AKN6DXu8vuRqOLkQ9+iw3jaHuYag9vAr9+itBYvXc76pTAH9fL/p6S0OJ\n"
+                     "8vqIiZwFRDCscYnP85qBuEws1FnvyzL3CFdWcVjwkLTFsa2fhGKAix9zQQKBCmL6\n"
+                     "iVNz3VLy0cmcqDi+nNNc2hyPQgdir6Kow/qB5mnzUawWJ6HQh0SKnoa4Xd70Zcvg\n"
+                     "ertwvJjD0JhNYyhm+DXXpWddF84ZEq6TW0qiZokT/dDhYN9AbL3E0okBxAUHeVfZ\n"
+                     "zJcZ5Ed+0mibWeeffxM8dqB+5hDE+zxKev+MqBC7RQKBgQDV4pALZebHzY5+5ceD\n"
+                     "QW3KyTR1eXwKZJkS3CQzclTUL7D6dgPw9FbAun0yZgdYbCANs0MJSNXDQoXPOOSy\n"
+                     "JhHmrhn3dtQHwjM0/MQRMmUSx4SU/fSpEiJMnBtkB4/wT9yb6RWZFwExJueLxGOS\n"
+                     "11fQ+kYzSd7OF3hbeBRpZpvMzwKBgQDUv4brW+1nR+5Hh05r9VBuM1bdUXboWVEJ\n"
+                     "FJjq+VpDZYwUiZEaZffV8mUfAOCsZrRKlE5USwumQe+MzPs0NZq3jQzWtofd36wh\n"
+                     "hvbOMdf1gGC2auW0/SMfh0RhHF8AkvIiBVEEKtx2jYRhqGc5yMaTDUX1pX06b7yj\n"
+                     "HthZi7b+xQKBgCQK/gMttOpOtYik6C4yRHI73d8+Da0irrkC6AbTaYAoWUabxKZC\n"
+                     "RqxLwPVRREOeVPh6EP3rjDpPZ4U4LTHoQHQDOtT87VYxX7e6MMBFIcs8XBdPhH9J\n"
+                     "UwZd+C+vJo50ptSPPtiBi+3ghHyFJ9KC/4Vz54iVFjrcsaeYYLgyVmb5AoGAByDz\n"
+                     "0GcgKVnLrjHmes+ZhlfKDVhxd4+mm3tJNHZug9ufOgDyD8Ri7ZRVtxg8bwpx+B3I\n"
+                     "EiMBnOyQrlMgB7vUF1pul7M+Ej0wc18mXfplliBbHUGvuMTSrHfH3skolchWvLUY\n"
+                     "5d7ZzE8ppGwUKWeE3+CN+5E0BQVBeOXLshRwaVECgYAnfzUdVccB3xEShYJR1fgk\n"
+                     "z2j0h+qaJvaxKuvJvVeKlUwUy3mll60oKSQ63xUo304upyJRjSbNOGObVCrwpl2C\n"
+                     "E6pf7FA7tCS3FEs35pbzDzf8iynfH96tEjaZwd1G3JxDv2Bp1WNE5Nk4t9E5Bewd\n"
+                     "ZAxTyufiLJcidAn0Slc8Ig==\n-----END PRIVATE KEY-----\n",
+      "client_email": "machinery-app@preventive-day.iam.gserviceaccount.com",
+      "client_id": "118080498355827247801",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://oauth2.googleapis.com/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/machinery-app%40preventive-day.iam.gserviceaccount.com",
+      "universe_domain": "googleapis.com"
     }
+    
     return gspread.authorize(Credentials.from_service_account_info(creds_dict, scopes=scopes))
 
 def send_line_alert(msg_text):
