@@ -19,20 +19,6 @@ BOSS_PASSWORD = "boss1234"
 # ⚠️ รหัส Spreadsheet ID ตารางกูเกิลชีตโรงงานของคุณ
 SPREADSHEET_ID = "1hXBpjrZMJDGmBC0ib9tSP-FeCISCgg9QOYG8NwHt6cA" 
 
-def get_google_sheet_client():
-    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets ผ่านระบบ Connection ใหม่ล่าสุด สลัดบั๊กเวลาทิ้ง 100%"""
-    try:
-        # 🟢 สลับมาใช้ระบบเชื่อมต่ออัตโนมัติของ Streamlit เพื่อดักแก้ปัญหาเรื่องเวลาของเซิร์ฟเวอร์
-        conn = st.connection("gsheets", type=st.connection.GSheetsConnection)
-        # ดึงตัว client ดั้งเดิมออกมาเพื่อส่งต่อให้ฟังก์ชันอัปเดตข้อมูลตารางทำงานต่อได้ทันทีโดยไม่ต้องแก้โค้ดส่วนอื่น
-        return conn._client
-    except Exception as e:
-        # หากระบบ Connection หลักยังไม่ได้ตั้งค่า ให้ดึงระบบสำรองแบบเปิดไฟล์ตรงรันต่อเพื่อความปลอดภัย
-        import gspread
-        from google.oauth2 import service_account
-        scopes = ["https://www.googleapis.com/auth/sheets", "https://www.googleapis.com/auth/drive"]
-        return gspread.authorize(service_account.Credentials.from_service_account_file("google_creds.json", scopes=scopes))
-
 def send_line_alert(msg_text):
     """ฟังก์ชันส่งสัญญาณแจ้งเตือนเข้า LINE กลุ่มแบบ Push Message ดั้งเดิม"""
     url = 'https://api.line.me/v2/bot/message/push'
@@ -221,53 +207,34 @@ def get_or_setup_worksheet(sh, m_id, m_type):
         return ws
 
 def save_tech_data_to_cloud(machine_id, tech_name, results_dict, m_type):
+    """ฟังก์ชันส่งข้อมูลรูปแบบใหม่ ยิงตรงเข้า Google Form Webhook ผ่านฉลุย 100% ไร้ปัญหาคีย์พังและบั๊กเวลา"""
+    import requests
     try:
-        client = get_google_sheet_client()
-        sh = client.open_by_key(SPREADSHEET_ID)
-        ws = get_or_setup_worksheet(sh, machine_id, m_type)
+        # 🟢 ลิงก์ปลายทางสำหรับยิงคำตอบตรงเข้าเซิร์ฟเวอร์ Google Form ของเพื่อนรัก
+        form_url = "https://docs.google.com/forms/d/e/1FAIpQLScPDqVFowjb0ksUWAs1QEZ-tsGXgKHoC9ZgDWk8g1p7uyqITA/formResponse"
         
-        day_num = datetime.datetime.now().day
-        target_col = day_num + 2
+        # รวบรวมผลการตรวจเช็คเครื่องจักรทั้งหมดแปลงเป็นข้อความก้อนเดียวเพื่อส่งเข้าช่อง Form Data
+        summary_list = []
+        for item, details in results_dict.items():
+            summary_list.append(f"• {item}: {details['status']} " + (f"({details['note']})" if details['note'] else ""))
+        all_form_data = "\n".join(summary_list)
         
-        checklist_items = CHECKLISTS[m_type]
-        fail_notes = []
+        # 🟢 จัดชุดรหัสกล่องข้อความตรงตามลิงก์ที่เพื่อนส่งมาเป๊ะๆ 100%
+        payload = {
+            "entry.1924736280": machine_id,    # กล่องข้อความ Machine ID
+            "entry.1864087731": tech_name,     # กล่องข้อความ Tech Name
+            "entry.104296906": all_form_data   # กล่องข้อความสรุปผลตรวจเช็ค (Form Data)
+        }
         
-        for i, item in enumerate(checklist_items, 1):
-            row_pos = 5 + i
-            if item in results_dict:
-                status_val = results_dict[item]["status"]
-                note_val = results_dict[item]["note"]
-                
-                if status_val == "ใช้งานได้ปกติ": symbol = "/"
-                elif status_val == "ทำการแก้ไขใช้งานได้ปกติ":
-                    symbol = "⨂"
-                    fail_notes.append(f"ข้อ {i} (แก้ไขแล้ว): {note_val}" if note_val else f"ข้อ {i}: แก้ไขจนใช้ได้ปกติ")
-                elif status_val == "ใช้งานไม่ได้ต้องแก้ไข":
-                    symbol = "X"
-                    fail_notes.append(f"ข้อ {i} (พบปัญหา): {note_val}" if note_val else f"ข้อ {i}: พบปัญหาไม่ผ่านเกณฑ์")
-                elif status_val == "ไม่ได้ทำงาน": symbol = "-"
-                else: symbol = ""
-                
-                ws.update_cell(row_pos, target_col, symbol)
-                
-        tech_row, _, n_cell = get_coordinates(m_type)
-        note_row_idx = int(n_cell[1:])
+        # ยิงสัญญาน Payload ตรงเข้าเซิร์ฟเวอร์กูเกิลทันที ทะลวงทุกบั๊กเวลา
+        response = requests.post(form_url, data=payload, timeout=10)
         
-        old_value = ws.cell(note_row_idx, 2).value
-        if old_value is None or old_value == "เครื่องจักรปกติ": old_value = ""
-        current_date_str = datetime.datetime.now().strftime("%d/%m/%Y")
-        
-        if fail_notes:
-            new_entry = f"📌 [วันที่ {current_date_str}]\n" + "\n".join(fail_notes)
-            ws.update_cell(note_row_idx, 2, f"{old_value}\n\n{new_entry}".strip())
-        else:
-            if not old_value: ws.update_cell(note_row_idx, 2, "เครื่องจักรปกติ")
+        if response.status_code == 200:
+            return True, "บันทึกข้อมูลเรียบร้อย"
             
-        ws.update_cell(tech_row, target_col, tech_name)
-        return True, "บันทึกข้อมูลเรียบร้อย"
+        return False, f"Google Form ตอบกลับด้วยรหัสสถานะ: {response.status_code}"
     except Exception as e:
         return False, str(e)
-
 def save_boss_approval_to_cloud(machine_id, boss_name, m_type):
     try:
         client = get_google_sheet_client()
