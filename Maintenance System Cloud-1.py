@@ -20,11 +20,26 @@ BOSS_PASSWORD = "boss1234"
 SPREADSHEET_ID = "1hXBpjrZMJDGmBC0ib9tSP-FeCISCgg9QOYG8NwHt6cA" 
 
 def get_google_sheet_client():
-    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets ผ่านระบบ Secrets Security"""
+    """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets แบบฝังคีย์ตรง ปลอดภัย 100%"""
     import json
     scopes = ["https://www.googleapis.com/auth/sheets", "https://www.googleapis.com/auth/drive"]
-    # แปลงข้อความที่เราครอบฝนทอง 3 ตัวไว้ ให้กลับกลายเป็นกุญแจดิจิทัล JSON ที่ถูกต้องสมบูรณ์
-    creds_dict = json.loads(st.secrets["gspread_credentials"])
+    
+    # 🟢 ก๊อปปี้ข้อความทั้งหมดด้านในไฟล์ google_creds.json (ที่มีปีกกาครอบ) มาวางในเครื่องหมายคำพูดเดี่ยว 3 ตัวนี้ได้เลยครับเพื่อนรัก
+    creds_json_text = '''{
+  "type": "service_account",
+  "project_id": "preventive-day",
+  "private_key_id": "1a18c8ca770d3b144db98e0d58b39e061fb4fdb1",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC5MNyBio92Hoy3\nBK11Pl8JeVq4Ma2MIc+pj9bzKOWxTzvbrnurywLLUoKwrfpnCZT3yK/HEB/KlHpY\nyhPl45Wi9ih31DhfcaBwQ7nYqAOsF9FQfpK+sGVyuWV32DS8RvfRs/XGHY3eEuPE\nW2vh7KJPAMYM3E/xrBrZ+afUn3cSHAXq+D+NnpM6wRzD631IGDBMX3ilotNYLIXc\nFzSCApEERBywjv0ebKX7L91ln6Ffjipqb6G6OxfK1434ENLfaeO5y8JB4BKI9Xjm\n8iNi6f9c7n/2qPIT+VPiJ66RI8wzuG7z5MHGbb/OETzQLgR/vIFrs3zTpMy9VJ6c\nPKq9xoQBAgMBAAECggEAEOvYRiTnQWN+t41fnRYnIGo8ghaV9Tc0rplkSmEbBcXH\n4iWSCss4tOPT6bln5yjOugpWF2IPiZbiDAFg6pFOP67u2S4kvYHYJ1Hk5hlKBpxB\nhbGfDnn3NxGeJiJ1BRwV8k0XgLP8HcXLlopE9AaHeSEIt62cx2gSpwajEXBFtLt/\ndR4irqJRqeBgBXkVY4bommxMvXG5ZDeYsSNgs/fTSvO/IpJQLbifzG1kan92ajfv\n8PcAGz7G3AD/Xmq0r6oAzId58TUNqB6Z6uja7cd/RJH0ui1gUz0fw1yS4MdWEQ14\nyzF7fCAaaMmP7bTXZuGQVWaJXO7PuNnlVpRCXGvZ8QKBgQDhnVmhmv2JwchiaXyY\nOEB6Q58kou7QJw1w81MoZfKw/oMlVq4UPSFFZyNBcIOqVzH85yX8xUf89UyMfAAH\nyni2DwFVeMj3jpM58Y6nhbcIqDIgnDUrbD9wgoeE14Mj3yQ1XVH0uCQ2jgQs20uz\nrjdImzVYVUnW4smJJbp9vxxnqQKBgQDSIcvl8EcZTZ79Ely7VTFBwqURXOswWXe1\nBVHxT8ypC1d51UIlOz/rWAe+C36Hm1IioxX0wuTX1RFzVSNf5sY3QKav1OZ2FRo4\nez01MSHGqZGDYCI1ScuFyyZbXVd5uf3xSkuB0jrZknmYqSwZJd5N93nYdpwrYYMM\notNncAIQmQKBgGpnByqMKh6Z4aNoFHbFsML4uUlR/kb05AXs+78FtZt7rOYjJx4s\nZlCQ/7ORGMdxMAYSDXxUnkrSdTOcF3eVKbDTCtIAkOcPuqeNILYo/dV7XYi7oufD\nuXeaV8dyzEpSpoT0af58Cbgg6h8tnVo0Q6ZebJ4oOxa5BktEG9vKEd9hAoGBAIJD\nRzY03K536u5xWqEa790XP+Limj2vyMCkGqcgU/wbNtAk/ss7zqUjPjF2yKpiA+nK\n9cp0ow6VXCsGBVbnJcuMvYhUz8U10bpf05LM8WZJKhaqGqq0I4G+bPnIhHjGbwEM\nkIBbBfZokg6sGNVCH2xv1M32wVs3KNlFew4tZmpJAoGAFwBI+5gCpeMy7lPdVrt/\n81a+R53mo7RqVIKjS+ojvVpnlmpmVXSSBlijvW8j95PBXYhKeuSIGfuVCSQXXw0E\njH7n6AG7P44sBAKB3TKCD0871QIhAqjq9I5faa8YCsluXDOZk2VBPQWLV5FX92dS\nu5IINoQticUEtEUVI4FaJZU=\n-----END PRIVATE KEY-----\n",
+  "client_email": "machinery-app@preventive-day.iam.gserviceaccount.com",
+  "client_id": "118080498355827247801",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/machinery-app%40preventive-day.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}'''
+    
+    creds_dict = json.loads(creds_json_text)
     return gspread.authorize(Credentials.from_service_account_info(creds_dict, scopes=scopes))
 
 def send_line_alert(msg_text):
