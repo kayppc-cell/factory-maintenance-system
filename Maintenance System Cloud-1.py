@@ -3,8 +3,8 @@ import requests
 import datetime
 import qrcode
 import io
-from io import BytesIO  # 🟢 เติมตัวพักข้อมูลที่ระบบแจ้งเออร์เรอร์กลับคืนมาแล้วครับ!
-import json             # 🟢 เติมเครื่องมือแปลงสัญญานส่งไลน์กลับคืนมาแล้วครับ!
+from io import BytesIO  
+import json             
 import os
 import gspread
 from google.oauth2.service_account import Credentials
@@ -17,7 +17,7 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 BOSS_PASSWORD = "boss1234"  
 
 # ⚠️ นำรหัส Spreadsheet ID ของไฟล์ Google Sheets มาวางตรงนี้แทนนะครับเพื่อนรัก
-SPREADSHEET_ID = "1hXBpjrZMJDGmBC0ib9tSP-FeCISCgg9QOYG8NwHt6cA" 
+SPREADSHEET_ID = "YOUR_SPREADSHEET_ID_HERE" 
 
 def get_google_sheet_client():
     """เปิดประตูเชื่อมสายเน็ตไปยังคลาวด์ Google Sheets"""
@@ -114,7 +114,7 @@ CHECKLISTS = {
     "GRINDING": [
         "การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP",
         "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร",
-        "ตรวจสอบระดับน้ำมันของ PUMP น้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"
+        "ตรวจสอบระดับน้ำมันของ PUMPน้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"
     ],
     "CUTTER GRINDING": ["การ WORM UP แกน Y พร้อมใช้งาน", "การ WORM UP แกน Z พร้อมใช้งาน", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของมอเตอร์ มีการหมุนปกติ", "ตรวจสอบการจับหัวคอเรต"],
     "MILLING": [
@@ -158,7 +158,7 @@ def get_machine_type(m_id):
     if m_id == "QC-16": return "QC-16"
     if m_id == "QC-17": return "QC-17"
     if m_id in ["QC-18", "QC-19", "QC-20", "QC-21"]: return "QC-ARM_STD"
-    if "COMP-" in m_id: return "COMP-01" if "01" in m_id else "COMP-02"
+    if "COMP-" in m_id: return "COMP_STD"  # 🟢 [FIXED] แก้ไขจุดเชื่อมโยงให้วิ่งหาคีย์ "COMP_STD" ในระบบให้ถูกต้องแล้วครับ!
     if "GRINDING" in m_id: return "GRINDING"
     if "CUTTER" in m_id: return "CUTTER GRINDING"
     if "MILLING" in m_id: return "MILLING"
@@ -171,13 +171,10 @@ def get_machine_type(m_id):
 PHOTO_RULES = {
     "CNC": [2, 3, 4, 5, 8, 13], "Crane no.1": [3, 4], "Crane no.2": [3, 4], "QC-01": [4],
     "QC-VERNIER_STD": [2, 4], "QC-HIGAUGE_STD": [2], "QC-MICRO_STD": [2], "QC-15": [6], "QC-16": [3], "QC-17": [2],
-    "QC-ARM_STD": [3], "COMP-01": [1, 2, 3], "COMP-02": [1, 2, 3], "GRINDING": [2, 4, 7], "CUTTER GRINDING": [],
+    "QC-ARM_STD": [3], "COMP_STD": [1, 2, 3], "GRINDING": [2, 4, 7], "CUTTER GRINDING": [],
     "MILLING": [6, 7], "CUTTING": [3, 5, 7], "MIG CO2": [3, 4, 5], "ARGON": [3, 4, 6], "BAND SAW": [2, 3, 5]
 }
 
-# =========================================================================
-# 📐 3. COORDINATES MAPPER (ถอดพิกัดล็อกแถวตามตรรกะ Excel เดิมของคุณเป๊ะๆ)
-# =========================================================================
 def get_coordinates(m_type):
     if m_type == "CNC": return 22, 24, "B28"
     if "CRANE" in m_type.upper(): return 14, 16, "B19"
@@ -192,7 +189,7 @@ def get_coordinates(m_type):
     return 11, 13, "B16"
 
 # =========================================================================
-# ☁️ 4. GOOGLE SHEETS CLOUD ENGINE (รองรับ 4 สถานะ ติ๊กเครื่องหมายตามกติกา)
+# ☁️ 4. GOOGLE SHEETS CLOUD ENGINE
 # =========================================================================
 def get_or_setup_worksheet(sh, m_id, m_type):
     try:
@@ -415,9 +412,9 @@ else:
 
     with st.expander("🖨️ เครื่องมือหัวหน้างาน: พิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
         sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()))
-        base_url = "https://pes-maintenance.streamlit.app/" 
+        base_url = "https://factory-maintenance.streamlit.app/" 
         qr_url = f"{base_url}?id={sel_m}"
         qr = qrcode.make(qr_url)
         buf = BytesIO()
         qr.save(buf)
-        st.image(buf.getvalue(), caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}") # 🟢 แก้ไขคำสั่งให้ดึงค่า .getvalue() ออกมาแสดงภาพถูกต้องแล้วครับ
+        st.image(buf.getvalue(), caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
