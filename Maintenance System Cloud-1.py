@@ -6,15 +6,18 @@ import io
 from io import BytesIO  
 import json             
 import os
-import pandas as pd
+import gspread
+from google.oauth2.service_account import Credentials
 
 # =========================================================================
-# 🔑 1. CONFIGURATION SYSTEM & LINE NOTIFY (ระบบดั้งเดิมของคุณ)
+# 🔑 1. CONFIGURATION SYSTEM & LINE NOTIFY (ดึงจากไฟล์เดิมของคุณ)
 # =========================================================================
 LINE_ACCESS_TOKEN = "RRtpOuJT8oWgvglsSFUqc7LC1zZqL2jD8qTdJx5iIpAkG4GiJjAkaetvEKLGLuNOJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lZzKy78CvGLfGAWjFSOtyj89Bu3nm8iVlTh0pNQtc737gdB04t89/1O/w1cDnyilFU=" 
 LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"  
 BOSS_PASSWORD = "boss1234"  
-DATA_FILE = "local_maintenance_data.csv" # ไฟล์เก็บข้อมูลในเซิร์ฟเวอร์ตัวเอง
+
+# ⚠️ รหัส Spreadsheet ID ตารางกูเกิลชีตโรงงานของคุณ
+SPREADSHEET_ID = "1hXBpjrZMJDGmBC0ib9tSP-FeCISCgg9QOYG8NwHt6cA" 
 
 def send_line_alert(msg_text):
     """ฟังก์ชันส่งสัญญาณแจ้งเตือนเข้า LINE กลุ่มแบบ Push Message ดั้งเดิม"""
@@ -76,7 +79,7 @@ CHECKLISTS = {
         "ตรวจสอบการเคลื่อนที่ของแกนทุกแกน (X,Y,Z)", "ตรวจสอบสภาพของน้ำ Coolant ถ่ายรูปค่าที่วัดได้ส่งเข้าระบบ",
         "การทำงานของ Coolant pump", "การทำงานของ Unclamp และการเปลี่ยน Tool", "การทำงานของ Spindle",
         "การทำงานของ Arm เปลี่ยน Tool", "ตรวจสอบระดับของน้ำ Coolant เติมเมื่ออยู่ระดับที่ต่ำ",
-        "ความสะอาดทั่วไปของเครื่องจักรโดยรวม", "ตรวจสอบความพร้อมสภาพโดยรวม(ฟังด้วยหู ดูด้วยตา)", "ตรวจสอบสายไฮโดรลิกส์ และสายลม"
+        "ความสะอาดทั่วไป of เครื่องจักรโดยรวม", "ตรวจสอบความพร้อมสภาพโดยรวม(ฟังด้วยหู ดูด้วยตา)", "ตรวจสอบสายไฮโดรลิกส์ และสายลม"
     ],
     "Crane no.1": [
         "ตรวจเช็คปุ่มกดต้องอยู่ในสภาพพร้อมใช้งาน ไม่แตก ไม่ชำรุด เสียหาย", "ตรวจเช็คการหยุดเครน เดินหน้า และถอยหลัง เมื่อปล่อยปุ่มกดต้องหยุดทันที",
@@ -167,37 +170,103 @@ PHOTO_RULES = {
     "MILLING": [6, 7], "CUTTING": [3, 5, 7], "MIG CO2": [3, 4, 5], "ARGON": [3, 4, 6], "BAND SAW": [2, 3, 5]
 }
 
+def get_coordinates(m_type):
+    if m_type == "CNC": return 22, 24, "B28"
+    if "CRANE" in m_type.upper(): return 14, 16, "B19"
+    if m_type == "QC-01": return 10, 12, "B15"
+    if m_type in ["QC-VERNIER_STD", "QC-MICRO_STD", "QC-ARM_STD", "QC-16", "QC-17", "BAND SAW", "CUTTING", "ARGON"]: return 11, 13, "B16"
+    if m_type == "QC-HIGAUGE_STD": return 11, 13, "B15"
+    if m_type == "QC-15": return 12, 14, "B17"
+    if m_type == "GRINDING": return 16, 18, "B21"
+    if m_type == "CUTTER GRINDING": return 13, 15, "B18"
+    if m_type == "MILLING": return 20, 22, "B25"
+    if m_type == "MIG CO2": return 13, 15, "B18"
+    return 11, 13, "B16"
+
 # =========================================================================
-# 💾 3. LOCAL FILE STORAGE ENGINE (ระบบบันทึกในตัว เสถียรที่สุด 100%)
+# ☁️ 3. GOOGLE SHEETS AUTHENTICATION (คืนชีพกุญแจแท้แกะกล่องดอกสมบูรณ์)
 # =========================================================================
-def save_tech_data_locally(machine_id, tech_name, results_dict):
-    """บันทึกข้อมูลแบบด่วนลงเป็นไฟล์ตารางในระบบภายในแอปเพื่อความชัวร์"""
+def get_google_sheet_client():
+    """เปิดสิทธิ์เชื่อมต่อไปยังกูเกิลชีตโดยดึงค่าจากไฟล์กุญแจโดยตรง มั่นใจซิงค์ติด 100%"""
+    scopes = ["https://www.googleapis.com/auth/sheets", "https://www.googleapis.com/auth/drive"]
+    # เรียกใช้ไฟล์กุญแจแท้ดิบตัวเต็มที่เราดาวน์โหลดและอัปโหลดขึ้น GitHub ไว้
+    return gspread.authorize(Credentials.from_service_account_file("google_creds.json", scopes=scopes))
+
+def get_or_setup_worksheet(sh, m_id, m_type):
     try:
-        summary_list = []
-        for item, details in results_dict.items():
-            status_text = details['status'] if details['status'] else "ไม่ได้เลือกสถานะ"
-            summary_list.append(f"{item}: {status_text}" + (f" ({details['note']})" if details['note'] else ""))
-        all_form_data = " | ".join(summary_list)
+        return sh.worksheet(m_id)
+    except gspread.exceptions.WorksheetNotFound:
+        ws = sh.add_worksheet(title=m_id, rows="50", cols="40")
+        ws.update_cell(1, 1, f"ใบตรวจสอบประจำเครื่องจักร: {MACHINES[m_id]}")
+        ws.update_cell(4, 2, "รายการตรวจสอบ / วันที่ประจำเดือน")
+        for d in range(1, 32): ws.update_cell(4, d + 2, d)
         
-        new_data = {
-            "Timestamp": [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
-            "Machine ID": [machine_id],
-            "Machine Name": [MACHINES.get(machine_id, "")],
-            "Tech Name": [tech_name],
-            "Form Data": [all_form_data]
-        }
-        df_new = pd.DataFrame(new_data)
-        
-        if os.path.exists(DATA_FILE):
-            df_old = pd.read_csv(DATA_FILE)
-            df_total = pd.concat([df_old, df_new], ignore_index=True)
-        else:
-            df_total = df_new
+        items = CHECKLISTS[m_type]
+        for idx, text in enumerate(items):
+            ws.update_cell(idx + 5, 1, idx + 1)
+            ws.update_cell(idx + 5, 2, text)
             
-        df_total.to_csv(DATA_FILE, index=False)
-        return True, "บันทึกข้อมูลเรียบร้อย"
+        t_row, b_row, n_cell = get_coordinates(m_type)
+        ws.update_cell(t_row, 2, "ช่างเทคนิคผู้เข้าตรวจ (ลงชื่อ)")
+        ws.update_cell(b_row, 2, "หัวหน้างานผู้อนุมัติ (ลงชื่อ)")
+        ws.update_cell(int(n_cell[1:]), 1, "บันทึกอาการเสียสะสม (ช่อง B)")
+        return ws
+
+def save_tech_data_to_cloud(machine_id, tech_name, results_dict, m_type):
+    """หยอดสถานะของแต่ละข้อตรวจเช็คลงในช่องคอลัมน์ของวันที่ปัจจุบันบน Google Sheet โครงสร้างแท้ของคุณ"""
+    try:
+        client = get_google_sheet_client()
+        sh = client.open_by_key(SPREADSHEET_ID)
+        ws = get_or_setup_worksheet(sh, machine_id, m_type)
+        
+        day_num = datetime.datetime.now().day
+        target_col = day_num + 2 # วันที่ 1 จะไปลงที่คอลัมน์ 3 (C) พอดีเป๊ะ
+        
+        items = CHECKLISTS[m_type]
+        for idx, item in enumerate(items, 5):
+            status_val = results_dict[item]["status"]
+            # แปลงสถานะเป็นสัญลักษณ์ย่อเพื่อความสวยงามสไตล์ ISO
+            short_status = "✓" if "ปกติ" in status_val else "❌" if "ต้องแก้ไข" in status_val else "-"
+            ws.update_cell(idx, target_col, short_status)
+            
+        t_row, _, n_cell = get_coordinates(m_type)
+        ws.update_cell(t_row, target_col, tech_name)
+        
+        # รวบรวมหมายเหตุอาการเสียไปบันทึกสะสมไว้ที่คอลัมน์ B ด้านล่าง
+        notes_collected = [results_dict[item]["note"] for item in items if results_dict[item]["note"]]
+        if notes_collected:
+            current_note_row = int(n_cell[1:])
+            old_val = ws.cell(current_note_row, 2).value or ""
+            new_val = old_val + ("\n" if old_val else "") + f"[วันที่ {day_num}]: " + ", ".join(notes_collected)
+            ws.update_cell(current_note_row, 2, new_val)
+            
+        return True, ""
     except Exception as e:
         return False, str(e)
+
+def save_boss_approval_to_cloud(machine_id, boss_name, m_type):
+    try:
+        client = get_google_sheet_client()
+        sh = client.open_by_key(SPREADSHEET_ID)
+        ws = sh.worksheet(machine_id)
+        day_num = datetime.datetime.now().day
+        target_col = day_num + 2
+        _, boss_row, _ = get_coordinates(m_type)
+        ws.update_cell(boss_row, target_col, boss_name)
+        return True
+    except:
+        return False
+
+def get_current_cloud_note(machine_id, m_type):
+    try:
+        client = get_google_sheet_client()
+        sh = client.open_by_key(SPREADSHEET_ID)
+        ws = sh.worksheet(machine_id)
+        _, _, n_cell = get_coordinates(m_type)
+        val = ws.cell(int(n_cell[1:]), 2).value
+        return val if val else ""
+    except: 
+        return ""
 
 # =========================================================================
 # 🎨 4. STREAMLIT WEB APP UI 
@@ -206,6 +275,7 @@ st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม
 user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"])
 
 now = datetime.datetime.now()
+current_day = now.day
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
 query_params = st.query_params
@@ -261,10 +331,10 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if status_val == "ใช้งานไม่ได้ต้องแก้ไข": fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
                 elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
             
-            with st.spinner("🚀 กำลังบันทึกข้อมูลรายงานเข้าระบบส่วนกลาง..."):
-                success, err_msg = save_tech_data_locally(machine_id, tech_name, results)
+            with st.spinner("🚀 กำลังเชื่อมต่อหยอดข้อมูลลงช่องวันที่บน Google Sheets ของแท้..."):
+                success, err_msg = save_tech_data_to_cloud(machine_id, tech_name, results, m_type_selected)
                 if success:
-                    audit_tag = f"\n\n🔒 [ISO Status]: บันทึกข้อมูลเข้าระบบตาราง Sheet ในแอปสำเร็จ (รอเจ้าหน้าที่ดาวน์โหลดออกเอกสาร)"
+                    audit_tag = f"\n\n🔒 [ISO Status]: บันทึกรายงานตรงฟอร์มประจำเครื่อง {machine_id} แล้ว (รอหัวหน้าลงนาม)"
                     if fails:
                         summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {machine_id}\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
                         send_line_alert(summary_msg + audit_tag)
@@ -272,35 +342,65 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                         ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {machine_id}\n✅ ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
                         send_line_alert(ok_msg + audit_tag)
                 
-                    st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จเสร็จสิ้น 100%!")
+                    st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} เข้าสู่ฟอร์ม Google Sheets ตารางวันที่สำเร็จเรียบร้อย!")
                     st.balloons()
                 else:
                     st.error(f"เกิดข้อผิดพลาดคลาวด์: {err_msg}")
 
 else:
-    st.title("🔐 หน้าต่างสำหรับเจ้าหน้าที่ / หัวหน้างาน (ดาวน์โหลดตาราง ISO)")
+    st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
+    st.subheader(f"📅 ประจำวันที่: {now.strftime('%d/%m/%Y')} (ช่องวันที่คอลัมน์บน Google Sheets: วันที่ {current_day})")
+    
     password_input = st.text_input("🔑 กรุณากรอกรหัสผ่านผู้เข้าตรวจสอบเพื่อเข้าถึงระบบอนุมัติ:", type="password")
     if password_input == BOSS_PASSWORD:
-        st.success("🔓 รหัสผ่านถูกต้อง ยินดีต้อนรับคุณพลวัฒน์")
-        st.write("### 📊 บอร์ดจัดเก็บรายงานเอกสารอิเล็กทรอนิกส์")
+        st.success("🔓 รหัสผ่านถูกต้อง เข้าสู่ระบบลงนามดิจิทัลมาตรฐาน ISO สำเร็จ")
+        boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
+        st.divider()
+        st.write("### 📊 บอร์ดควบคุมควบคุมใบงานรวม (แยกรายแผนกตามจริง)")
         
-        if os.path.exists(DATA_FILE):
-            df_report = pd.read_csv(DATA_FILE)
-            st.dataframe(df_report, use_container_width=True)
+        def render_machine_card(m_id, m_name, m_type_flag):
+            st.info(f"⚙️ **{m_id}**\n{m_name}")
+            if st.button(f"✅ กดอนุมัติฟอร์มออนไลน์ของ {m_id}", key=f"btn_{m_id}"):
+                if save_boss_approval_to_cloud(m_id, boss_name, m_type_flag):
+                    st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
+                    send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจเช็คประจำวันที่ {current_day} ของเครื่อง {m_id} บนระบบคลาวด์เรียบร้อยแล้ว")
             
-            # แปลงข้อมูลเป็น Excel เพื่อให้ดาวน์โหลดไปพิมพ์ฟอร์ม ISO
-            towrite = io.BytesIO()
-            df_report.to_excel(towrite, index=False, header=True)
-            towrite.seek(0)
-            
-            st.download_button(
-                label="📥 คลิกที่นี่เพื่อดาวน์โหลดไฟล์ตารางรายงานออกมาเป็น Excel",
-                data=towrite,
-                file_name=f"ISO_Maintenance_Report_{datetime.datetime.now().strftime('%Y%m%d')}.xlsx",
-                mime="application/vnd.ms-excel",
-                use_container_width=True
-            )
-        else:
-            st.info("💡 ปัจจุบันยังไม่มีข้อมูลช่างเทคนิคส่งฟอร์มเข้ามาในระบบรอบใหม่นี้ครับ")
+            current_notes = get_current_cloud_note(m_id, m_type_flag)
+            st.text_area("📝 รายการอาการเสียสะสมปัจจุบัน (ช่อง B)", value=current_notes, key=f"note_area_{m_id}", height=100, disabled=True)
+            st.divider()
+
+        categories = {
+            "🔹 แผนกเครื่อง CNC (9 เครื่อง)": lambda k, v: "CNC" in k and "CRANE" not in k.upper() and "QC-" not in k.upper(),
+            "🔹 แผนกเครน CRANE / HOIST (2 ตัว)": lambda k, v: "CRANE" in k.upper(),
+            "🔹 แผนกเครื่องมือวัดคุณภาพ QC (21 เครื่อง)": lambda k, v: "QC-" in k.upper(),
+            "🔹 แผนกเครื่องเจียรผิว GRINDING (2 เครื่อง)": lambda k, v: "GRINDING" in k and "CUTTER" not in k,
+            "🔹 แผนกเครื่องลับคม CUTTER GRINDING (1 เครื่อง)": lambda k, v: "CUTTER" in k,
+            "🔹 แผนกเครื่องมิลลิ่ง MILLING (3 เครื่อง)": lambda k, v: "MILLING" in k,
+            "🔹 แผนกเครื่องตัด CUTTING (2 เครื่อง)": lambda k, v: "CUTTING" in k,
+            "🔹 แผนกเครื่องเชื่อม MIG CO2 (3 เครื่อง)": lambda k, v: "MIG" in k,
+            "🔹 แผนกเครื่องเชื่อม ARGON (1 เครื่อง)": lambda k, v: "ARGON" in k,
+            "🔹 แผนกเครื่องเลื่อยสายพาน BAND SAW (3 เครื่อง)": lambda k, v: "BAND" in k,
+            "🔹 แผนกปั๊มลม AIR COMPRESSOR (2 เครื่อง)": lambda k, v: "COMP-" in k.upper()
+        }
+
+        for cat_title, filter_func in categories.items():
+            st.write(f"#### {cat_title}")
+            cols = st.columns(3)
+            idx = 0
+            for m_id, m_name in MACHINES.items():
+                if filter_func(m_id, m_name):
+                    with cols[idx % 3]:
+                        render_machine_card(m_id, m_name, get_machine_type(m_id))
+                    idx += 1
+
     elif password_input != "": 
         st.error("❌ รหัสผ่านไม่ถูกต้อง")
+
+    with st.expander("🖨️ เครื่องมือหัวหน้างาน: พิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
+        sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()))
+        base_url = "https://pes-maintenance.streamlit.app/" 
+        qr_url = f"{base_url}?machine_id={sel_m}" 
+        qr = qrcode.make(qr_url)
+        buf = BytesIO()
+        qr.save(buf)
+        st.image(buf.getvalue(), caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
