@@ -12,7 +12,6 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment
 
 # --- 1. CONFIGURATION ---
-# ล็อกสิทธิ์เข้าใช้งานระบบ LINE Messaging API (Line Bot ตัวจริงประจำกลุ่มของคุณ)
 LINE_ACCESS_TOKEN = "RRtpOuJT8oWgvglsSFUqc7LC1zZqL2jD8qTdJx5iIpAkG4GiJjAkaetvEKLGLuNOJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lZzKy78CvGLfGAWjFSOtyj89Bu3nm8iVlTh0pNQtc737gdB04t89/1O/w1cDnyilFU=" 
 LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"  
 
@@ -60,7 +59,7 @@ MACHINES = {
     "BAND SAW-01": "เครื่องเลื่อยสายพาน #01", "BAND SAW-02": "เครื่องเลื่อยสายพาน #02", "BAND SAW-03": "เครื่องเลื่อยสายพาน #03"
 }
 
-# รายการเช็คลิสต์แยกตามประเภทแผนก (ล็อกข้อความตามเอกสารชุดจริงแบบคำต่อคำ)
+# รายการเช็คลิสต์แยกตามประเภทแผนก
 CHECKLISTS = {
     "CNC": [
         "Worm up เครื่องจักร 15 นาที ทุกครั้งที่ใช้งาน", "เช็คระดับนำมัน Oil Matic Mesh ทุกวัน เติมเมื่อพร่อง",
@@ -146,18 +145,14 @@ def get_unmerged_cell(ws, coordinate_str):
 
 # --- 2. FUNCTIONS ---
 def send_line_alert(msg_text):
-    """ฟังก์ชันหลักส่งข้อความรายงานตามมาตรฐาน LINE Messaging API ดั้งเดิมของคุณ"""
     url = 'https://api.line.me/v2/bot/message/push'
     headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
     payload = {"to": LINE_TARGET_ID, "messages": [{"type": "text", "text": msg_text}]}
     try: requests.post(url, headers=headers, data=json.dumps(payload))
     except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
 
-# 🟢 [UPDATED DEFINITIVE] ฟังก์ชันสำหรับอัปโหลดและส่งรูปภาพเข้า LINE Bot (Messaging API) ตัวจริงประจำกลุ่ม
 def send_line_image(photo_path, caption_text):
-    """อัปโหลดภาพผ่านเซิร์ฟเวอร์ฝากรูปภาพชั่วคราวเพื่อแปลงเป็น URL แล้วยิงส่งตรงเข้า Line Bot กลุ่มสำเร็จแน่นอน 100%"""
     try:
-        # 1. นำไฟล์ภาพที่ช่างถ่าย ฝากไว้ที่เซิร์ฟเวอร์โฮสต์รูปภาพชั่วคราวฟรี (freeimage.host API อเนกประสงค์ฟรี ไม่ต้องมี Key)
         with open(photo_path, "rb") as img_file:
             response = requests.post(
                 "https://freeimage.host/api/1/upload",
@@ -165,10 +160,8 @@ def send_line_image(photo_path, caption_text):
                 files={"source": img_file}
             )
             res_json = response.json()
-            # 2. แกะเอาลิงก์ URL รูปภาพสาธารณะที่แท้จริงออกมา
             public_image_url = res_json["image"]["url"]
             
-        # 3. ยิงคำสั่งประกอบเข้า LINE Messaging API สู่ห้องแชทกลุ่ม เพื่อให้ภาพเด้งขึ้นหน้าจอทันที!
         url = 'https://api.line.me/v2/bot/message/push'
         headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
         payload = {
@@ -291,20 +284,30 @@ def save_custom_excel_note_by_boss(machine_id, m_type, new_text):
         return True
     except Exception as e: print(f"Save custom note error: {e}"); return False
 
-# --- 3. UI NAVIGATION SIDEBAR ---
+# --- 3. UI NAVIGATION SIDEBAR & QUERY PARAMETERS ---
+st.set_page_config(page_title="Smart Factory PM SYSTEM", page_icon="🔧", layout="wide")
+
+# ดึงข้อมูล Query Parameters จากลิงก์ด้านบนสุดของเว็บ
+query_params = st.query_params
+
+# 🟢 [ADDED MECHANIC] ระบบเช็คว่าลิงก์มี ?role=boss พ่วงมาด้วยหรือไม่เพื่อสลับหน้าจอออโต้
+raw_role = query_params.get("role", "tech")
+default_role_index = 1 if str(raw_role).strip().lower() == "boss" else 0
+
 st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
-user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"])
+user_role = st.sidebar.radio(
+    "เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", 
+    ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"],
+    index=default_role_index # ล็อกหน้าต่างตั้งต้นตามที่เปิดผ่านลิงก์ทันที!
+)
 
 now = datetime.datetime.now()
 current_day = now.day
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
-query_params = st.query_params
 raw_machine_id = query_params.get("id", "CNC3X-01")
-
 if isinstance(raw_machine_id, list): machine_id = str(raw_machine_id[0]).strip()
 else: machine_id = str(raw_machine_id).strip()
-
 machine_id = machine_id.replace("%20", " ")
 
 if "CRANE NO.1" in machine_id.upper() or "CRANE NO.1" in machine_id: m_type_selected = "Crane no.1"
@@ -383,7 +386,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 saved_path = save_uploaded_photo(machine_id, current_day, idx, uploaded_photos[idx]["file"])
                 if saved_path: 
                     photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ")
-                    # เรียกคำสั่งแปลงรูปเป็น URL และส่งตรงเข้าแชท Line Bot กลุ่มแบบกางภาพ
                     send_line_image(saved_path, f"📷 [หลักฐานข้อ {idx}] เครื่อง: {machine_id} โดยช่าง {tech_name}")
             
             fails, fixed_items = [], []
