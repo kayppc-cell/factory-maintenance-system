@@ -15,7 +15,6 @@ from openpyxl.styles import Alignment
 LINE_ACCESS_TOKEN = "RRtpOuJT8oWgvglsSFUqc7LC1zZqL2jD8qTdJx5iIpAkG4GiJjAkaetvEKLGLuNOJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lZzKy78CvGLfGAWjFSOtyj89Bu3nm8iVlTh0pNQtc737gdB04t89/1O/w1cDnyilFU=" 
 LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"  
 
-# ระบุตำแหน่งโฟลเดอร์ทำงานอัตโนมัติบนระบบคลาวด์
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 BOSS_PASSWORD = "boss1234"  
 
@@ -71,7 +70,7 @@ CHECKLISTS = {
         "ความสะอาดทั่วไปของเครื่องจักรโดยรวม", "ตรวจสอบความพร้อมสภาพโดยรวม(ฟังด้วยหู ดูด้วยตา)", "ตรวจสอบสายไฮโดรลิกส์ และสายลม"
     ],
     "Crane no.1": [
-        "ตรวจเช็คปุ่มกดต้องอยู่ในสภาพพร้อมใช้งาน ไม่แตก ไม่ชำรุด เสียหาย", "ตรวจเช็คการหยุดเครน เดินหน้า และถอยหลัง เมื่อปล่อยปุ่มกดต้องหยุดทันที",
+        "ตรวจเช็คปุ่มกดต้องอยู่ในสภาพพร้อมใช้งาน ไม่แตก ไม่ชำมรุด เสียหาย", "ตรวจเช็คการหยุดเครน เดินหน้า และถอยหลัง เมื่อปล่อยปุ่มกดต้องหยุดทันที",
         "ตรวจเช็คสลิงต้องไม่แตกฝอยเป็นหนาม\nและบิดงอ", "ตรวจเช็คตะขอต้องไม่มีรอยแตกร้าวสูญหายกิ๊ปปากตะขอไม่ชำรุดหรือหลุดหาย",
         "ตรวจเช็คสายบังคับเครนต้องไม่ชำรุดสายไฟไม่ขาดรุ่งริ่ง\nไม่เรียบร้อย", "ตรวจเช็คสัญญานเสียงเมื่อเริ่มเดินเครนต้องมีเสียงเตือนการทำงาน"
     ],
@@ -201,24 +200,15 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         col_letter = get_column_letter(2 + day_num)
         
         checklist_items = CHECKLISTS[m_type]
-        fail_notes = []
-        
         for i, item in enumerate(checklist_items, 1):
             cell_coordinate = f"{col_letter}{5 + i}"
             current_cell = get_unmerged_cell(ws, cell_coordinate)
             if item in results_dict:
                 status_val = results_dict[item]["status"]
-                note_val = results_dict[item]["note"]
                 
                 if status_val == "ใช้งานได้ปกติ": current_cell.value = "/"
-                elif status_val == "ทำการแก้ไขใช้งานได้ปกติ":
-                    current_cell.value = "⨂"
-                    if note_val: fail_notes.append(f"ข้อ {i} (แก้ไขแล้ว): {note_val}")
-                    else: fail_notes.append(f"ข้อ {i}: ทำการแก้ไขให้ใช้งานได้ปกติแล้ว")
-                elif status_val == "ใช้งานไม่ได้ต้องแก้ไข":
-                    current_cell.value = "X"
-                    if note_val: fail_notes.append(f"ข้อ {i} (พบปัญหา): {note_val}")
-                    else: fail_notes.append(f"ข้อ {i}: พบปัญหาไม่ผ่านมาตรฐาน")
+                elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": current_cell.value = "⨂"
+                elif status_val == "ใช้งานไม่ได้ต้องแก้ไข": current_cell.value = "X"
                 elif status_val == "ไม่ได้ทำงาน": current_cell.value = "-"
                 
                 current_cell.alignment = Alignment(horizontal='center', vertical='center')
@@ -287,19 +277,18 @@ def save_custom_excel_note_by_boss(machine_id, m_type, new_text):
 # --- 3. UI NAVIGATION SIDEBAR & QUERY PARAMETERS ---
 st.set_page_config(page_title="Smart Factory PM SYSTEM", page_icon="🔧", layout="wide")
 
-# ดึงข้อมูล Query Parameters จากลิงก์ด้านบนสุดของเว็บ
 query_params = st.query_params
-
-# 🟢 [ADDED MECHANIC] ระบบเช็คว่าลิงก์มี ?role=boss พ่วงมาด้วยหรือไม่เพื่อสลับหน้าจอออโต้
 raw_role = query_params.get("role", "tech")
-default_role_index = 1 if str(raw_role).strip().lower() == "boss" else 0
+is_boss_link = str(raw_role).strip().lower() == "boss"
 
-st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
-user_role = st.sidebar.radio(
-    "เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", 
-    ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"],
-    index=default_role_index # ล็อกหน้าต่างตั้งต้นตามที่เปิดผ่านลิงก์ทันที!
-)
+# 🟢 [UPDATED LOGIC] ถ้าลิงก์พ่วงท้าย ?role=boss มาด้วย ระบบจะซ่อน Sidebar ทั้งยิ้มทิ้งไปเลยครับ!
+if is_boss_link:
+    # ตั้งค่าสิทธิ์เป็นหัวหน้างานทันทีโดยไม่ต้องแสดงช่องติ๊กเลือกเมนูให้เกะกะ
+    user_role = "🔐 หัวหน้างาน/ผู้ตรวจสอบ"
+else:
+    # ลิงก์ช่างปกติหรือสแกน QR หน้างานมา จะขึ้นเมนูด้านซ้ายให้ติ๊กเลือกตามปกติครับ
+    st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
+    user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"])
 
 now = datetime.datetime.now()
 current_day = now.day
@@ -573,7 +562,7 @@ else:
         for m_id, m_name in MACHINES.items():
             if "COMP-" in m_id.upper():
                 with (comp_col1 if comp_idx % 3 == 0 else (comp_col2 if comp_idx % 3 == 1 else comp_col3)):
-                    render_machine_card(m_id, m_name, "COMP-01") 
+                    render_machine_card(m_id, m_name, "QC-02") 
                 comp_idx += 1
 
     elif password_input != "": st.error("❌ รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบรหัสผ่านใหม่อีกครั้งครับเพื่อนรัก")
