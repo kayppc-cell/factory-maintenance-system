@@ -137,7 +137,6 @@ CHECKLISTS = {
     ]
 }
 
-# 🟢 [ADDED BACK] ฟังก์ชันจำแนกประเภทเครื่องจักรที่เผลอลบไป ดึงกลับมาทำงานแล้วครับ
 def get_machine_type(m_id):
     if "CNC" in m_id and "CRANE" not in m_id.upper() and "QC-" not in m_id.upper(): return "CNC"
     if "CRANE NO.1" in m_id.upper(): return "Crane no.1"
@@ -160,6 +159,13 @@ def get_machine_type(m_id):
     if "BAND" in m_id: return "BAND SAW"
     return "CNC"
 
+PHOTO_RULES = {
+    "CNC": [2, 3, 4, 5, 8, 13], "Crane no.1": [3, 4], "Crane no.2": [3, 4], "QC-01": [4],
+    "QC-VERNIER_STD": [2, 4], "QC-HIGAUGE_STD": [2], "QC-MICRO_STD": [2], "QC-15": [6], "QC-16": [3], "QC-17": [2],
+    "QC-ARM_STD": [3], "COMP_STD": [1, 2, 3], "GRINDING": [2, 4, 7], "CUTTER GRINDING": [],
+    "MILLING": [6, 7], "CUTTING": [3, 5, 7], "MIG CO2": [3, 4, 5], "ARGON": [3, 4, 6], "BAND SAW": [2, 3, 5]
+}
+
 def get_coordinates(m_type):
     if m_type == "CNC": return 22, 24, "B28"
     if "CRANE" in m_type.upper(): return 14, 16, "B19"
@@ -177,21 +183,28 @@ def get_coordinates(m_type):
 # ⚙️ 3. MULTI-FILE EXCEL STORAGE ENGINE (ระบบเขียนแยก 1 เครื่องต่อ 1 ไฟล์เด็ดขาด)
 # =========================================================================
 def save_tech_data_to_separate_excel(machine_id, tech_name, results_dict, m_type):
-    """ฟังก์ชันเปิดไฟล์แม่แบบรายเครื่องจักร หยอดเครื่องหมาย และบันทึกแยกไฟล์ไม่ปนกัน"""
     try:
         template_file = f"{machine_id}.xlsx"       
         live_output_file = f"LIVE_{machine_id}.xlsx" 
         
+        # ปรับปรุง: ถ้าไม่มีไฟล์ต้นฉบับรายเครื่องบนกิต ระบบจะสร้างไฟล์ใหม่ให้ทันทีเพื่อไม่ให้ระบบล็อกบั๊ก
         if not os.path.exists(live_output_file):
             if os.path.exists(template_file):
                 import shutil
                 shutil.copy(template_file, live_output_file)
             else:
-                return False, f"ไม่พบไฟล์ต้นฉบับ {template_file} บน GitHub กรุณาอัปโหลดไฟล์เทมเพลตของเครื่องนี้ก่อนนะครับเพื่อนรัก"
+                # สร้างไฟล์ Excel จำลองขึ้นมาแทนที่ทันทีเพื่อให้ระบบทำงานได้ ไม่ต้องรออัปโหลด
+                from openpyxl import Workbook
+                temp_wb = Workbook()
+                temp_ws = temp_wb.active
+                temp_ws.title = machine_id
+                temp_ws.cell(row=4, column=2, value="รายการตรวจสอบ / วันที่ประจำเดือน")
+                for d in range(1, 32): temp_ws.cell(row=4, column=d + 2, value=d)
+                for idx, text in enumerate(CHECKLISTS[m_type], 5): temp_ws.cell(row=idx, column=2, value=text)
+                temp_wb.save(live_output_file)
         
         wb = load_workbook(live_output_file)
         ws = wb.active 
-        
         day_num = datetime.datetime.now().day
         target_col = day_num + 2 
         
@@ -212,32 +225,34 @@ def save_tech_data_to_separate_excel(machine_id, tech_name, results_dict, m_type
             ws.cell(row=note_row, column=2, value=new_val)
             
         wb.save(live_output_file)
-        return True, "บันทึกเข้าฟอร์มเครื่องเฉพาะสำเร็จ"
+        return True, "บันทึกสำเร็จ"
     except Exception as e:
         return False, str(e)
 
 def save_boss_approval_to_excel(machine_id, boss_name, m_type):
     try:
-        if os.path.exists(f"LIVE_{machine_id}.xlsx"):
-            wb = load_workbook(f"LIVE_{machine_id}.xlsx")
+        filename = f"LIVE_{machine_id}.xlsx"
+        if os.path.exists(filename):
+            wb = load_workbook(filename)
             ws = wb.active
             day_num = datetime.datetime.now().day
             target_col = day_num + 2
             _, boss_row, _ = get_coordinates(m_type)
             ws.cell(row=boss_row, column=target_col, value=boss_name)
-            wb.save(f"LIVE_{machine_id}.xlsx")
+            wb.save(filename)
             return True
         return False
     except:
         return False
 
 # =========================================================================
-# 🎨 4. STREAMLIT WEB APP UI 
+# 🎨 4. STREAMLIT WEB APP UI (กู้คืนหน้าต่างและฟังก์ชันของเก่ากลับมาครบชุด)
 # =========================================================================
 st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
 user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"])
 
 now = datetime.datetime.now()
+current_day = now.day
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
 query_params = st.query_params
@@ -251,10 +266,11 @@ for actual_id in MACHINES.keys():
 
 m_type_selected = get_machine_type(machine_id)
 
+# --- 🔧 ฝั่งหน้าฟอร์มของช่างเทคนิค ---
 if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
-    st.info(f"📄 มาตรฐาน ISO: **FM-MN-07 Rev.00** บันทึกแยกไฟล์ตรงระบบเครื่อง `[ {machine_id} ]`")
+    st.info(f"📄 มาตรฐาน ISO: **FM-MN-07 Rev.00** บันทึกแยกไฟล์เครื่อง `[ {machine_id} ]`")
 
     if not query_params.get("id") and not query_params.get("machine_id"):
         machine_id = st.selectbox("🎯 เลือกเครื่องจักรที่เข้าทำงาน:", list(MACHINES.keys()), format_func=lambda x: f"[{x}] {MACHINES[x]}")
@@ -265,12 +281,20 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
 
     with st.form("pm_form"):
         tech_name = st.text_input("👤 ชื่อช่างผู้ตรวจเช็ค (ผู้รับผิดชอบ)", placeholder="ระบุชื่อ-นามสกุลของคุณ")
-        results = {}
+        results, uploaded_photos = {}, {}
         current_checklist = CHECKLISTS[m_type_selected]
+        required_photo_indexes = PHOTO_RULES.get(m_type_selected, [])
         
+        # 📷 [ADDED BACK] คืนชีพระบบตรวจเช็คและช่องแนบรูปถ่ายของเก่ากลับมาครบชุด
         for i, item in enumerate(current_checklist, 1):
             st.write(f"**{i}. {item}**")
             status = st.radio(f"ผลการตรวจข้อ {i}", ["ใช้งานได้ปกติ", "ทำการแก้ไขใช้งานได้ปกติ", "ใช้งานไม่ได้ต้องแก้ไข", "ไม่ได้ทำงาน"], horizontal=True, key=f"check_{i}", label_visibility="collapsed", index=None)
+            
+            if i in required_photo_indexes:
+                st.write("📷 *หัวข้อบังคับถ่ายรูปหลักฐานยืนยันหน้างานจริง*")
+                uploaded_file = st.file_uploader(f"แนบรูปข้อ {i}", type=["jpg", "jpeg", "png"], key=f"photo_{i}")
+                uploaded_photos[i] = {"file": uploaded_file, "index": i}
+                
             note = st.text_input(f"หมายเหตุ/อาการเสีย (ข้อ {i})", key=f"note_{i}", placeholder="ระบุรายละเอียดหากพบจุดพังหรือบันทึกงานซ่อมแก้ไข")
             results[item] = {"status": status, "note": note}
             st.divider()
@@ -280,47 +304,88 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     if submitted:
         if not tech_name: st.error("❌ กรุณากรอกชื่อช่างผู้ตรวจสอบก่อนส่งรายงานครับ!")
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
+        elif any(uploaded_photos[idx]["file"] is None for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาแนบภาพหลักฐานให้ครบถ้วนก่อนกดส่งนะครับ")
         else:
             fails = [f"- ข้อ {i}. {item}" for i, item in enumerate(current_checklist, 1) if results[item]["status"] == "ใช้งานไม่ได้ต้องแก้ไข"]
-            
-            with st.spinner(f"🚀 กำลังเขียนข้อมูลลงในฟอร์ม Excel ไฟล์ {machine_id}.xlsx..."):
+            with st.spinner(f"🚀 กำลังบันทึกข้อมูลเข้าสู่ตาราง..."):
                 success, err_msg = save_tech_data_to_separate_excel(machine_id, tech_name, results, m_type_selected)
                 if success:
                     audit_tag = f"\n\n🔒 [ISO Status]: แยกไฟล์บันทึกเรียบร้อยเป็นไฟล์ {machine_id}.xlsx ชัดเจน"
                     if fails:
-                        summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {machine_id}\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
+                        summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {machine_id}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
                         send_line_alert(summary_msg + audit_tag)
                     else:
                         ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {machine_id}\n✅ ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
                         send_line_alert(ok_msg + audit_tag)
                 
-                    st.success(f"🎉 บันทึกข้อมูลลงใบฟอร์ม Excel ประจำเครื่อง {machine_id} แยกไฟล์เฉพาะเรียบร้อย!")
+                    st.success(f"🎉 บันทึกข้อมูลลงใบฟอร์ม Excel ประจำเครื่อง {machine_id} เรียบร้อย!")
                     st.balloons()
                 else:
                     st.error(f"เกิดข้อผิดพลาด: {err_msg}")
 
+# --- 🔐 ฝั่งหน้าจอของหัวหน้างาน (ดึงแผงควบคุมแยกรายแผนก 3 คอลัมน์กลับมาครบชุด) ---
 else:
-    st.title("🔐 หน้าต่างดาวน์โหลดฟอร์มแยกรายเครื่องจักร (สำหรับหัวหน้างาน)")
+    st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
+    st.subheader(f"📅 ประจำวันที่: {now.strftime('%d/%m/%Y')} (ช่องตารางวันที่คอลัมน์บน Excel: วันที่ {current_day})")
+    
     password_input = st.text_input("🔑 กรุณากรอกรหัสผ่านผู้เข้าตรวจสอบเพื่อเข้าถึงระบบอนุมัติ:", type="password")
     if password_input == BOSS_PASSWORD:
         st.success("🔓 รหัสผ่านถูกต้อง ยินดีต้อนรับคุณพลวัฒน์")
-        st.write("### 🖨️ คลังเลือกดาวน์โหลดไฟล์เอกสาร ISO แยกเครื่อง")
+        st.write("### 📊 บอร์ดควบคุมควบคุมใบงานรวม (แยกรายแผนกตามโครงสร้างเดิม)")
         
-        selected_download_machine = st.selectbox("🎯 เลือกเครื่องจักรที่ต้องการดาวน์โหลดไฟล์ Excel:", list(MACHINES.keys()), format_func=lambda x: f"[{x}] {MACHINES[x]}")
-        live_file_target = f"LIVE_{selected_download_machine}.xlsx"
-        
-        if os.path.exists(live_file_target):
-            st.info(f"💡 ไฟล์ของเครื่อง {selected_download_machine} พร้อมให้ดาวน์โหลดแล้วครับ")
-            with open(live_file_target, "rb") as f:
-                st.download_button(
-                    label=f"📥 คลิกดาวน์โหลดฟอร์มแท้ของเครื่อง {selected_download_machine}",
-                    data=f,
-                    file_name=f"FM-MN-07-Rev00_{selected_download_machine}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
-        else:
-            st.warning(f"💡 ปัจจุบันเครื่อง {selected_download_machine} ยังไม่มีช่างหน้างานกดส่งรายงานเข้ามารอบใหม่ครับ (หรือคุณยังไม่ได้อัปโหลดไฟล์แม่แบบ {selected_download_machine}.xlsx ขึ้น GitHub งับ)")
+        def render_machine_card(m_id, m_name, m_type_flag):
+            st.info(f"⚙️ **{m_id}**\n{m_name}")
+            if st.button(f"✅ กดอนุมัติฟอร์มออนไลน์ของ {m_id}", key=f"btn_{m_id}"):
+                if save_boss_approval_to_excel(m_id, boss_name, m_type_flag):
+                    st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
+                    send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจเช็คประจำวันที่ {current_day} ของเครื่อง {m_id} เรียบร้อยแล้ว")
             
+            # ปุ่มดาวน์โหลดไฟล์รายงาน Excel แยกเครื่องประจำวัน
+            live_file_target = f"LIVE_{m_id}.xlsx"
+            if os.path.exists(live_file_target):
+                with open(live_file_target, "rb") as f:
+                    st.download_button(
+                        label=f"📥 โหลด Excel ของ {m_id}",
+                        data=f,
+                        file_name=f"FM-MN-07-Rev00_{m_id}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key=f"dl_{m_id}"
+                    )
+            st.divider()
+
+        # 📊 [ADDED BACK] คลังแบ่งแยกรายแผนกของแท้ดั้งเดิม โผล่กลับมาครบชุดแบบดึงไฟล์แยกเครื่อง
+        categories = {
+            "🔹 แผนกเครื่อง CNC (9 เครื่อง)": lambda k, v: "CNC" in k and "CRANE" not in k.upper() and "QC-" not in k.upper(),
+            "🔹 แผนกเครน CRANE / HOIST (2 ตัว)": lambda k, v: "CRANE" in k.upper(),
+            "🔹 แผนกเครื่องมือวัดคุณภาพ QC (21 เครื่อง)": lambda k, v: "QC-" in k.upper(),
+            "🔹 แผนกเครื่องเจียรผิว GRINDING (2 เครื่อง)": lambda k, v: "GRINDING" in k and "CUTTER" not in k,
+            "🔹 แผนกเครื่องลับคม CUTTER GRINDING (1 เครื่อง)": lambda k, v: "CUTTER" in k,
+            "🔹 แผนกเครื่องมิลลิ่ง MILLING (3 เครื่อง)": lambda k, v: "MILLING" in k,
+            "🔹 แผนกเครื่องตัด CUTTING (2 เครื่อง)": lambda k, v: "CUTTING" in k,
+            "🔹 แผนกเครื่องเชื่อม MIG CO2 (3 เครื่อง)": lambda k, v: "MIG" in k,
+            "🔹 แผนกเครื่องเชื่อม ARGON (1 เครื่อง)": lambda k, v: "ARGON" in k,
+            "🔹 แผนกเครื่องเลื่อยสายพาน BAND SAW (3 เครื่อง)": lambda k, v: "BAND" in k,
+            "🔹 แผนกปั๊มลม AIR COMPRESSOR (2 เครื่อง)": lambda k, v: "COMP-" in k.upper()
+        }
+
+        for cat_title, filter_func in categories.items():
+            st.write(f"#### {cat_title}")
+            cols = st.columns(3)
+            idx = 0
+            for m_id, m_name in MACHINES.items():
+                if filter_func(m_id, m_name):
+                    with cols[idx % 3]:
+                        render_machine_card(m_id, m_name, get_machine_type(m_id))
+                    idx += 1
+
     elif password_input != "": 
         st.error("❌ รหัสผ่านไม่ถูกต้อง")
+
+    with st.expander("🖨️ เครื่องมือหัวหน้างาน: พิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
+        sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()))
+        base_url = "https://pes-maintenance.streamlit.app/" 
+        qr_url = f"{base_url}?machine_id={sel_m}" 
+        qr = qrcode.make(qr_url)
+        buf = BytesIO()
+        qr.save(buf)
+        st.image(buf.getvalue(), caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
