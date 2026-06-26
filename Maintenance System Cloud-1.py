@@ -15,7 +15,7 @@ from openpyxl.styles import Alignment
 LINE_ACCESS_TOKEN = "RRtpOuJT8oWgvglsSFUqc7LC1zZqL2jD8qTdJx5iIpAkG4GiJjAkaetvEKLGLuNOJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lZzKy78CvGLfGAWjFSOtyj89Bu3nm8iVlTh0pNQtc737gdB04t89/1O/w1cDnyilFU=" 
 LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"  
 
-# 🟢 ปรับพิกัดแอปให้ตรวจจำตำแหน่งออโต้บนคลาวด์
+# 🟢 ระบุตำแหน่งโฟลเดอร์ทำงานอัตโนมัติบนระบบคลาวด์
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 BOSS_PASSWORD = "boss1234"  
 
@@ -103,12 +103,12 @@ CHECKLISTS = {
     "QC-21": ["ตรวจดูสภาพของสายไฟ", "ตรวจดูสภาพ ARM ของเครื่อง", "ตรวจดูสภาพของหัว PROBE คตงอหรือไม่", "ตรวจสอบ STICKER", "ตรวจสอบ NOTEBOOK COMPUTER"],
     "COMP-01": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
     "COMP-02": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
-    "GRINDING": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงาน of PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMP น้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
+    "GRINDING": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMP น้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
     "CUTTER GRINDING": ["การ WORM UP แกน Y พร้อมใช้งาน", "การ WORM UP แกน Z พร้อมใช้งาน", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของมอเตอร์ มีการหมุนปกติ", "ตรวจสอบการจับหัวคอเรต"],
     "MILLING": ["Worm Spindle ก่อนเริมงาน ตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor", "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคร่องตัวในการเคลื่อนที่ของ Spindle )", "ตรวจสอบการ SLIDE  ของแกน X", "ตรวจสอบการ SLIDE  ของแกน Y", "ตรวจสอบการ SLIDE  ของแกน Z", "ระดับน้ำมันไฮดรอลิค ตรวจสอบน้ำมันในปั้มน้ำมันหล่อ ลื่นแกน  X,Y,Z", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั้ม COOLANT และสภาพของน้ำ  COOLANT", "ตรวจสอบหน้าจอ  DIGITAL READ OUT และการทำ งานของ LINEAR SCALE", "หยอดน้ำมันหล่อลื่นทุกวันจันทร์", "ตรวจสอบการทำงานของไฟฟ้าแสงสว่างของเครื่อง", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร  และอุกรณ์เสริมต่าง ๆ"],
     "CUTTING": ["การ Worm spindle ก่อนเริ่มงาน เพื่อตรวจ ความผิดปกติของชุด Back gauge และ Motor", "เช็ค Auto Up-Down back gauge และ Manual ( ความคล่องตัวในการเคลื่อนที่ )", "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับในปั้มน้ำมัน หล่อลืนแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด", "ตรวจสอบ Digital  read out และการทำงานของ Linear  scale", "อัดจาระบีตามจุดที่อัดจาระบีทุกๆจุด", "ตรวจสอบใบมีด  บนและล่าง", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง จักรและอุปกรณ์เสริมต่าง ๆ"],
     "MIG CO2": ["ตรวจสภาพความพร้อมโดยรวมของเครื่อง", "เช็ค BREAKER เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์ และสวิชท์ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดัน ของก๊าซ CO2 และปรับตั้งอย่างถูกต้อง", "ตรวจจุดต่อของก๊าซ CO2 รั่วหรือไม่", "ตรวจสภาพความพร้อมของสายไฟ สายก๊าซ  CO2 ว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราวด์", "ทำความสะอาดหัวเชื่อมก่อนใช้งาน"],
-    "ARGON": ["ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อ of สายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราว์", "ตรวจสภาความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"],
+    "ARGON": ["ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราว์", "ตรวจสภาความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"],
     "BAND SAW": ["เช็ค Auto Up-Down Back Gauge และ Manual (ความคล่องตัวในการเคลื่อนที่ของ Spindle)", "เช็คระดับน้ำมันไฮดรอลิค", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั๊ม COOLANT และสภาพของน้ำ COOLANT", "ตรวจสอบ Switch (สวิตซ์) หน้า BOX CONTROL", "ตรวจสอบระดับน้ำมันหล่อลื่นในห้องเกียร์"]
 }
 
@@ -123,6 +123,29 @@ PHOTO_RULES = {
     "ARGON": [3, 4, 6], "BAND SAW": [2, 3, 5]
 }
 
+# 🟢 [ADDED DEF DEFINITIVE] คืนชีพฟังก์ชันคำนวณพิกัดแกน Excel ลบปัญหา NameError ถาวร
+def get_coordinates(m_type):
+    if m_type == "CNC": return 22, 24, "B28"
+    if "CRANE" in m_type.upper(): return 14, 16, "B19"
+    if m_type == "QC-01": return 10, 12, "B15"
+    if m_type in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-10", "QC-11", "QC-12", "QC-13", "QC-14", "QC-15", "QC-16", "QC-17", "QC-18", "QC-19", "QC-20", "QC-21"]: 
+        # จัดพิกัดสำหรับเครื่องตระกูล QC รายบุคคล
+        if m_type == "QC-01": return 10, 12, "B15"
+        if m_type in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-18", "QC-19", "QC-20", "QC-21"]: return 11, 13, "B16"
+        if m_type in ["QC-10", "QC-11", "QC-12"]: return 11, 13, "B15"
+        if m_type == "QC-15": return 12, 14, "B17"
+        if m_type == "QC-16": return 11, 13, "B16"
+        if m_type == "QC-17": return 11, 13, "B16"
+    if "COMP" in m_type.upper(): return 11, 13, "B16"
+    if m_type == "GRINDING": return 16, 18, "B21"
+    if m_type == "CUTTER GRINDING": return 13, 15, "B18"
+    if m_type == "MILLING": return 20, 22, "B25"
+    if m_type == "CUTTING": return 14, 16, "B20"
+    if m_type == "MIG CO2": return 13, 15, "B18"
+    if m_type == "ARGON": return 14, 16, "B19"
+    if m_type == "BAND SAW": return 11, 13, "B16"
+    return 11, 13, "B16"
+
 # --- 2. FUNCTIONS ---
 def send_line_alert(msg_text):
     url = 'https://api.line.me/v2/bot/message/push'
@@ -133,7 +156,6 @@ def send_line_alert(msg_text):
 
 def save_uploaded_photo(machine_id, day_num, item_index, uploaded_file):
     if uploaded_file is not None:
-        # 🟢 ปรับโฟลเดอร์เซฟภาพไปไว้ในโฟลเดอร์ชั่วคราวที่มีสิทธิ์เขียนไฟล์ 100% บนระบบคลาวด์ ป้องกันการค้าง
         folder_path = os.path.join(BASE_FOLDER, "maintenance_photos")
         sub_folder = os.path.join(folder_path, f"{machine_id}_Day_{day_num}")
         if not os.path.exists(folder_path): os.makedirs(folder_path, exist_ok=True)
@@ -147,7 +169,6 @@ def save_uploaded_photo(machine_id, day_num, item_index, uploaded_file):
     return None
 
 def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_type):
-    # 🟢 บังคับจับคู่เปิดชื่อไฟล์ตามแบบชื่อบน GitHub (FM-MN-07_รหัสเครื่อง.xlsx)
     target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
     if not os.path.isfile(target_excel_path): return False, f"ไม่พบไฟล์แบบฟอร์ม `{target_excel_path}` บนระบบคลาวด์"
     try:
@@ -179,7 +200,7 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
                 current_cell.alignment = Alignment(horizontal='center', vertical='center')
                 
         t_row, _, n_cell = get_coordinates(m_type)
-        ws.cell(row=t_row, column=2 + day_num, value=tech_name) # ลงชื่อช่างในช่องวันที่ตรงคอลัมน์
+        ws.cell(row=t_row, column=2 + day_num, value=tech_name)
         
         notes_collected = [results_dict[item]["note"] for item in checklist_items if results_dict[item]["note"]]
         if notes_collected:
@@ -211,18 +232,8 @@ def get_current_excel_note(machine_id, m_type):
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
-        if m_type == "CNC": target_note_cell = "B28"
-        elif "CRANE" in m_type.upper(): target_note_cell = "B19"
-        elif m_type == "QC-01": target_note_cell = "B15"
-        elif m_type in ["QC-02", "QC-03"]: target_note_cell = "B16"
-        elif m_type == "GRINDING": target_note_cell = "B21"
-        elif m_type == "CUTTER GRINDING": target_note_cell = "B18"
-        elif m_type == "MILLING": target_note_cell = "B25"
-        elif m_type == "CUTTING": target_note_cell = "B20"
-        elif m_type == "MIG CO2": target_note_cell = "B18"
-        elif m_type == "ARGON": target_note_cell = "B19"
-        else: target_note_cell = "B16"
-        val = ws[target_note_cell].value
+        _, _, n_cell = get_coordinates(m_type)
+        val = ws[n_cell].value
         return val if val else ""
     except: return ""
 
@@ -232,27 +243,15 @@ def save_custom_excel_note_by_boss(machine_id, m_type, new_text):
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
-        if m_type == "CNC": target_note_cell = "B28"
-        elif "CRANE" in m_type.upper(): target_note_cell = "B19"
-        elif m_type == "QC-01": target_note_cell = "B15"
-        elif m_type in ["QC-02", "QC-03"]: target_note_cell = "B16"
-        elif m_type == "GRINDING": target_note_cell = "B21"
-        elif m_type == "CUTTER GRINDING": target_note_cell = "B18"
-        elif m_type == "MILLING": target_note_cell = "B25"
-        elif m_type == "CUTTING": target_note_cell = "B20"
-        elif m_type == "MIG CO2": target_note_cell = "B18"
-        elif m_type == "ARGON": target_note_cell = "B19"
-        else: target_note_cell = "B16"
+        _, _, n_cell = get_coordinates(m_type)
         
-        ws[target_note_cell] = new_text.strip() if new_text.strip() else "เครื่องจักรปกติ"
-        ws[target_note_cell].alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+        ws[n_cell] = new_text.strip() if new_text.strip() else "เครื่องจักรปกติ"
+        ws[n_cell].alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
         wb.save(target_excel_path)
         return True
     except Exception as e: print(f"Save custom note error: {e}"); return False
 
 # --- 3. UI NAVIGATION SIDEBAR ---
-st.set_page_config(page_title="Smart Factory PM SYSTEM", page_icon="🔧", layout="wide")
-
 st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
 user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"])
 
@@ -307,7 +306,7 @@ else: m_type_selected = "CNC"
 # ==========================================
 if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
-    st.title(f"📋 ใบตรวจสอบเครื่อง {m_type_selected} ประจำวัน")
+    st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
     st.info("📄 มาตรฐานระบบคุณภาพโรงงาน: **FM-MN-07 Rev.00**")
 
     if machine_id in MACHINES: st.success(f"⚙️ คุณกำลังตรวจเครื่อง: **{machine_id} ({MACHINES[machine_id]})**")
@@ -515,14 +514,14 @@ else:
         for m_id, m_name in MACHINES.items():
             if "COMP-" in m_id.upper():
                 with (comp_col1 if comp_idx % 3 == 0 else (comp_col2 if comp_idx % 3 == 1 else comp_col3)):
-                    render_machine_card(m_id, m_name, "QC-02") 
+                    render_machine_card(m_id, m_name, "COMP-01") 
                 comp_idx += 1
 
     elif password_input != "": st.error("❌ รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบรหัสผ่านใหม่อีกครั้งครับเพื่อนรัก")
 
     with st.expander("🖨️ เครื่องมือหัวหน้างาน: พิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
         sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()))
-        qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" # 🟢 ปรับปรุงให้ลิงก์คิวอาร์ชี้ไปที่เว็บบนคลาวด์จริงของโรงงานคุณ
+        qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" 
         qr = qrcode.make(qr_url)
         buf = BytesIO()
         qr.save(buf)
