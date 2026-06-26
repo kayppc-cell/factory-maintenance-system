@@ -187,13 +187,11 @@ def save_tech_data_to_separate_excel(machine_id, tech_name, results_dict, m_type
         template_file = f"{machine_id}.xlsx"       
         live_output_file = f"LIVE_{machine_id}.xlsx" 
         
-        # ปรับปรุง: ถ้าไม่มีไฟล์ต้นฉบับรายเครื่องบนกิต ระบบจะสร้างไฟล์ใหม่ให้ทันทีเพื่อไม่ให้ระบบล็อกบั๊ก
         if not os.path.exists(live_output_file):
             if os.path.exists(template_file):
                 import shutil
                 shutil.copy(template_file, live_output_file)
             else:
-                # สร้างไฟล์ Excel จำลองขึ้นมาแทนที่ทันทีเพื่อให้ระบบทำงานได้ ไม่ต้องรออัปโหลด
                 from openpyxl import Workbook
                 temp_wb = Workbook()
                 temp_ws = temp_wb.active
@@ -229,7 +227,8 @@ def save_tech_data_to_separate_excel(machine_id, tech_name, results_dict, m_type
     except Exception as e:
         return False, str(e)
 
-def save_boss_approval_to_excel(machine_id, boss_name, m_type):
+# 🟢 [FIXED KEY] ปรับแก้ชื่อตัวแปรรับค่าในฟังก์ชันอนุมัติให้ตรงกับที่ UI เรียกส่งมาเรียบร้อยครับ
+def save_boss_approval_to_excel(machine_id, boss_name, m_type_flag):
     try:
         filename = f"LIVE_{machine_id}.xlsx"
         if os.path.exists(filename):
@@ -237,7 +236,7 @@ def save_boss_approval_to_excel(machine_id, boss_name, m_type):
             ws = wb.active
             day_num = datetime.datetime.now().day
             target_col = day_num + 2
-            _, boss_row, _ = get_coordinates(m_type)
+            _, boss_row, _ = get_coordinates(m_type_flag)
             ws.cell(row=boss_row, column=target_col, value=boss_name)
             wb.save(filename)
             return True
@@ -246,7 +245,7 @@ def save_boss_approval_to_excel(machine_id, boss_name, m_type):
         return False
 
 # =========================================================================
-# 🎨 4. STREAMLIT WEB APP UI (กู้คืนหน้าต่างและฟังก์ชันของเก่ากลับมาครบชุด)
+# 🎨 4. STREAMLIT WEB APP UI 
 # =========================================================================
 st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
 user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"])
@@ -266,7 +265,6 @@ for actual_id in MACHINES.keys():
 
 m_type_selected = get_machine_type(machine_id)
 
-# --- 🔧 ฝั่งหน้าฟอร์มของช่างเทคนิค ---
 if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
@@ -285,7 +283,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         current_checklist = CHECKLISTS[m_type_selected]
         required_photo_indexes = PHOTO_RULES.get(m_type_selected, [])
         
-        # 📷 [ADDED BACK] คืนชีพระบบตรวจเช็คและช่องแนบรูปถ่ายของเก่ากลับมาครบชุด
         for i, item in enumerate(current_checklist, 1):
             st.write(f"**{i}. {item}**")
             status = st.radio(f"ผลการตรวจข้อ {i}", ["ใช้งานได้ปกติ", "ทำการแก้ไขใช้งานได้ปกติ", "ใช้งานไม่ได้ต้องแก้ไข", "ไม่ได้ทำงาน"], horizontal=True, key=f"check_{i}", label_visibility="collapsed", index=None)
@@ -312,7 +309,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if success:
                     audit_tag = f"\n\n🔒 [ISO Status]: แยกไฟล์บันทึกเรียบร้อยเป็นไฟล์ {machine_id}.xlsx ชัดเจน"
                     if fails:
-                        summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {machine_id}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
+                        summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {machine_id}\n✅ ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
                         send_line_alert(summary_msg + audit_tag)
                     else:
                         ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {machine_id}\n✅ ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
@@ -323,7 +320,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 else:
                     st.error(f"เกิดข้อผิดพลาด: {err_msg}")
 
-# --- 🔐 ฝั่งหน้าจอของหัวหน้างาน (ดึงแผงควบคุมแยกรายแผนก 3 คอลัมน์กลับมาครบชุด) ---
 else:
     st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
     st.subheader(f"📅 ประจำวันที่: {now.strftime('%d/%m/%Y')} (ช่องตารางวันที่คอลัมน์บน Excel: วันที่ {current_day})")
@@ -340,7 +336,6 @@ else:
                     st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
                     send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจเช็คประจำวันที่ {current_day} ของเครื่อง {m_id} เรียบร้อยแล้ว")
             
-            # ปุ่มดาวน์โหลดไฟล์รายงาน Excel แยกเครื่องประจำวัน
             live_file_target = f"LIVE_{m_id}.xlsx"
             if os.path.exists(live_file_target):
                 with open(live_file_target, "rb") as f:
@@ -353,7 +348,6 @@ else:
                     )
             st.divider()
 
-        # 📊 [ADDED BACK] คลังแบ่งแยกรายแผนกของแท้ดั้งเดิม โผล่กลับมาครบชุดแบบดึงไฟล์แยกเครื่อง
         categories = {
             "🔹 แผนกเครื่อง CNC (9 เครื่อง)": lambda k, v: "CNC" in k and "CRANE" not in k.upper() and "QC-" not in k.upper(),
             "🔹 แผนกเครน CRANE / HOIST (2 ตัว)": lambda k, v: "CRANE" in k.upper(),
