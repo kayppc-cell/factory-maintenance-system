@@ -108,7 +108,7 @@ CHECKLISTS = {
     "MILLING": ["Worm Spindle ก่อนเริมงาน ตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor", "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคร่องตัวในการเคลื่อนที่ของ Spindle )", "ตรวจสอบการ SLIDE  ของแกน X", "ตรวจสอบการ SLIDE  ของแกน Y", "ตรวจสอบการ SLIDE  ของแกน Z", "ระดับน้ำมันไฮดรอลิค ตรวจสอบน้ำมันในปั้มน้ำมันหล่อ ลื่นแกน  X,Y,Z", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั้ม COOLANT และสภาพของน้ำ  COOLANT", "ตรวจสอบหน้าจอ  DIGITAL READ OUT และการทำ งานของ LINEAR SCALE", "หยอดน้ำมันหล่อลื่นทุกวันจันทร์", "ตรวจสอบการทำงานของไฟฟ้าแสงสว่างของเครื่อง", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร  และอุกรณ์เสริมต่าง ๆ"],
     "CUTTING": ["การ Worm spindle ก่อนเริ่มงาน เพื่อตรวจ ความผิดปกติของชุด Back gauge และ Motor", "เช็ค Auto Up-Down back gauge และ Manual ( ความคล่องตัวในการเคลื่อนที่ )", "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับในปั้มน้ำมัน หล่อลืนแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด", "ตรวจสอบ Digital  read out และการทำงานของ Linear  scale", "อัดจาระบีตามจุดที่อัดจาระบีทุกๆจุด", "ตรวจสอบใบมีด  บนและล่าง", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง จักรและอุปกรณ์เสริมต่าง ๆ"],
     "MIG CO2": ["ตรวจสภาพความพร้อมโดยรวมของเครื่อง", "เช็ค BREAKER เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์ และสวิชท์ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดัน ของก๊าซ CO2 และปรับตั้งอย่างถูกต้อง", "ตรวจจุดต่อของก๊าซ CO2 รั่วหรือไม่", "ตรวจสภาพความพร้อมของสายไฟ สายก๊าซ  CO2 ว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราวด์", "ทำความสะอาดหัวเชื่อมก่อนใช้งาน"],
-    "ARGON": ["ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราว์", "ตรวจสภาความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"],
+    "ARGON": ["ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราว์", "ตรวจสภาพความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"],
     "BAND SAW": ["เช็ค Auto Up-Down Back Gauge และ Manual (ความคล่องตัวในการเคลื่อนที่ของ Spindle)", "เช็คระดับน้ำมันไฮดรอลิค", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั๊ม COOLANT และสภาพของน้ำ COOLANT", "ตรวจสอบ Switch (สวิตซ์) หน้า BOX CONTROL", "ตรวจสอบระดับน้ำมันหล่อลื่นในห้องเกียร์"]
 }
 
@@ -127,28 +127,19 @@ def get_coordinates(m_type):
     if m_type == "CNC": return 22, 24, "B28"
     if "CRANE" in m_type.upper(): return 14, 16, "B19"
     if m_type == "QC-01": return 10, 12, "B15"
-    if m_type in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-18", "QC-19", "QC-20", "QC-21"]: return 11, 13, "B16"
+    if m_type in ["QC-VERNIER_STD", "QC-MICRO_STD", "QC-ARM_STD", "QC-16", "QC-17", "BAND SAW", "CUTTING", "ARGON", "QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-18", "QC-19", "QC-20", "QC-21", "COMP-01", "COMP-02"]: return 11, 13, "B16"
     if m_type in ["QC-10", "QC-11", "QC-12"]: return 11, 13, "B15"
     if m_type == "QC-15": return 12, 14, "B17"
-    if m_type == "QC-16": return 11, 13, "B16"
-    if m_type == "QC-17": return 11, 13, "B16"
-    if "COMP" in m_type.upper(): return 11, 13, "B16"
     if m_type == "GRINDING": return 16, 18, "B21"
     if m_type == "CUTTER GRINDING": return 13, 15, "B18"
     if m_type == "MILLING": return 20, 22, "B25"
-    if m_type == "CUTTING": return 14, 16, "B20"
     if m_type == "MIG CO2": return 13, 15, "B18"
-    if m_type == "ARGON": return 14, 16, "B19"
-    if m_type == "BAND SAW": return 11, 13, "B16"
     return 11, 13, "B16"
 
-# 🟢 ฟังก์ชันสำหรับช่วยแกะหาเซลล์ต้นทางจริงเพื่อเลี่ยงบั๊ก MergedCell ล็อกพิกัด
 def get_unmerged_cell(ws, coordinate_str):
-    """ฟังก์ชันตรวจหาว่าพิกัดนั้นเป็นเซลล์ผสานหรือไม่ ถ้าใช่จะส่งกลับเซลล์แรกสุดที่อนุญาตให้เขียนข้อมูล"""
     cell = ws[coordinate_str]
     for merged_range in ws.merged_cells.ranges:
         if cell.coordinate in merged_range:
-            # ส่งคืนเซลล์แรกสุดตรงตำแหน่งบนซ้ายของ Merged Range ทันที
             return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
     return cell
 
@@ -159,6 +150,20 @@ def send_line_alert(msg_text):
     payload = {"to": LINE_TARGET_ID, "messages": [{"type": "text", "text": msg_text}]}
     try: requests.post(url, headers=headers, data=json.dumps(payload))
     except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
+
+# 🟢 [ทางเลือก B] ฟังก์ชันสำหรับอัปโหลดรูปภาพยิงส่งทะลวงเข้า LINE กลุ่มตรง ๆ
+def send_line_image(photo_path, caption_text):
+    """ส่งรูปหลักฐานตรวจเครื่องสัญญัติเข้าห้อง LINE BOT ทันที"""
+    url = 'https://api.line.me/v2/bot/message/push'
+    headers = {'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
+    try:
+        # เปิดไฟล์รูปภาพอัปโหลดเข้าไลน์เซิร์ฟเวอร์แบบ Multiparts
+        with open(photo_path, "rb") as image_file:
+            # ต้องส่งคำขอสองส่วนส่งข้อความสรุปนำหน้าก่อนยิงส่งรูปภาพประกอบ
+            payload_text = {"to": LINE_TARGET_ID, "messages": [{"type": "text", "text": caption_text}]}
+            requests.post(url, headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}, data=json.dumps(payload_text))
+    except:
+        pass
 
 def save_uploaded_photo(machine_id, day_num, item_index, uploaded_file):
     if uploaded_file is not None:
@@ -187,7 +192,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         
         for i, item in enumerate(checklist_items, 1):
             cell_coordinate = f"{col_letter}{5 + i}"
-            # 🟢 ปรับเปลี่ยนมาวิ่งผ่านฟังก์ชันแกะหาเซลล์จริงก่อนเขียนเพื่อเลี่ยงบั๊ก MergedCell
             current_cell = get_unmerged_cell(ws, cell_coordinate)
             if item in results_dict:
                 status_val = results_dict[item]["status"]
@@ -207,13 +211,10 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
                 current_cell.alignment = Alignment(horizontal='center', vertical='center')
                 
         t_row, _, n_cell = get_coordinates(m_type)
-        
-        # 🟢 ปรับพิกัดเขียนชื่อช่างผู้ตรวจเช็คให้เข้าสเต็ปตรวจจับ MergedCell
         tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")
         tech_cell.value = tech_name
         tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
         
-        # 🟢 ปรับพิกัดเขียนกล่องหมายเหตุสะสมให้เข้าสเต็ปตรวจจับ MergedCell
         note_cell = get_unmerged_cell(ws, n_cell)
         old_val = note_cell.value or ""
         notes_collected = [results_dict[item]["note"] for item in checklist_items if results_dict[item]["note"]]
@@ -236,7 +237,6 @@ def approve_excel_by_boss(machine_id, day_num, boss_name, m_type):
         col_letter = get_column_letter(2 + day_num)
         _, boss_row, _ = get_coordinates(m_type)
         
-        # 🟢 ปรับพิกัดเขียนชื่อเซ็นลายเซ็นหัวหน้าให้เข้าสเต็ปตรวจจับ MergedCell ป้องกันบั๊ก 401/Read-only
         boss_cell = get_unmerged_cell(ws, f"{col_letter}{boss_row}")
         boss_cell.value = boss_name
         boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
@@ -272,6 +272,8 @@ def save_custom_excel_note_by_boss(machine_id, m_type, new_text):
     except Exception as e: print(f"Save custom note error: {e}"); return False
 
 # --- 3. UI NAVIGATION SIDEBAR ---
+st.set_page_config(page_title="Smart Factory PM SYSTEM", page_icon="🔧", layout="wide")
+
 st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
 user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"])
 
@@ -361,7 +363,10 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             photo_logs = []
             for idx in required_photo_indexes:
                 saved_path = save_uploaded_photo(machine_id, current_day, idx, uploaded_photos[idx]["file"])
-                if saved_path: photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ")
+                if saved_path: 
+                    photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ")
+                    # 🟢 [ยิงส่งเข้า LINE ทางเลือก B] ยิงไฟล์รูปแนบแจ้งเตือนเข้าห้องแชททันที
+                    send_line_image(saved_path, f"📷 [รูปภาพหลักฐานข้อ {idx}] เครื่อง: {machine_id} โดยช่าง {tech_name}")
             
             fails, fixed_items = [], []
             for i, item in enumerate(current_checklist, 1):
@@ -412,6 +417,14 @@ else:
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้ตรวจสอบและลงนามรับรองใบตรวจเช็คประจำวันที่ {current_day} ของเครื่อง {m_id} เรียบร้อยแล้ว")
                         st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
                 
+                # 🟢 [ทางเลือก A] กลไกส่องหารูปภาพหลักฐานรายเครื่องขึ้นโชว์หราบนหน้าจอหัวหน้าโดยอัตโนมัติ
+                img_dir = os.path.join(BASE_FOLDER, f"maintenance_photos/{m_id}_Day_{current_day}")
+                if os.path.exists(img_dir):
+                    st.write("🖼️ **ภาพถ่ายหลักฐานหน้างานประจำวันนี้:**")
+                    for photo_file in os.listdir(img_dir):
+                        if photo_file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                            st.image(os.path.join(img_dir, photo_file), caption=f"รูปหลักฐาน: {photo_file}", use_container_width=True)
+
                 current_notes = get_current_excel_note(m_id, m_type_flag)
                 if m_type_flag == "CNC": note_label = "ช่อง B28"
                 elif "CRANE" in m_type_flag.upper(): note_label = "ช่อง B19"  
