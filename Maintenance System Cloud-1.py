@@ -7,6 +7,7 @@ import qrcode
 from io import BytesIO
 import json
 import os
+import shutil # 🟢 ดึงโมดูลสำหรับสั่งล้างลบโฟลเดอร์ภาพถ่ายยิ้มกริบ
 import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment
@@ -70,7 +71,7 @@ CHECKLISTS = {
         "ความสะอาดทั่วไปของเครื่องจักรโดยรวม", "ตรวจสอบความพร้อมสภาพโดยรวม(ฟังด้วยหู ดูด้วยตา)", "ตรวจสอบสายไฮโดรลิกส์ และสายลม"
     ],
     "Crane no.1": [
-        "ตรวจเช็คปุ่มกดต้องอยู่ในสภาพพร้อมใช้งาน ไม่แตก ไม่ชำมรุด เสียหาย", "ตรวจเช็คการหยุดเครน เดินหน้า และถอยหลัง เมื่อปล่อยปุ่มกดต้องหยุดทันที",
+        "ตรวจเช็คปุ่มกดต้องอยู่ในสภาพพร้อมใช้งาน ไม่แตก ไม่ชำรุด เสียหาย", "ตรวจเช็คการหยุดเครน เดินหน้า และถอยหลัง เมื่อปล่อยปุ่มกดต้องหยุดทันที",
         "ตรวจเช็คสลิงต้องไม่แตกฝอยเป็นหนาม\nและบิดงอ", "ตรวจเช็คตะขอต้องไม่มีรอยแตกร้าวสูญหายกิ๊ปปากตะขอไม่ชำรุดหรือหลุดหาย",
         "ตรวจเช็คสายบังคับเครนต้องไม่ชำรุดสายไฟไม่ขาดรุ่งริ่ง\nไม่เรียบร้อย", "ตรวจเช็คสัญญานเสียงเมื่อเริ่มเดินเครนต้องมีเสียงเตือนการทำงาน"
     ],
@@ -281,12 +282,9 @@ query_params = st.query_params
 raw_role = query_params.get("role", "tech")
 is_boss_link = str(raw_role).strip().lower() == "boss"
 
-# 🟢 [UPDATED LOGIC] ถ้าลิงก์พ่วงท้าย ?role=boss มาด้วย ระบบจะซ่อน Sidebar ทั้งยิ้มทิ้งไปเลยครับ!
 if is_boss_link:
-    # ตั้งค่าสิทธิ์เป็นหัวหน้างานทันทีโดยไม่ต้องแสดงช่องติ๊กเลือกเมนูให้เกะกะ
     user_role = "🔐 หัวหน้างาน/ผู้ตรวจสอบ"
 else:
-    # ลิงก์ช่างปกติหรือสแกน QR หน้างานมา จะขึ้นเมนูด้านซ้ายให้ติ๊กเลือกตามปกติครับ
     st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
     user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"])
 
@@ -490,7 +488,7 @@ else:
         for m_id, m_name in MACHINES.items():
             if "QC-" in m_id.upper():
                 with (qc_col1 if qc_idx % 3 == 0 else (qc_col2 if qc_idx % 3 == 1 else qc_col3)):
-                    render_machine_card(m_id, m_name, m_id)
+                    render_machine_card(m_id, m_name, "QC")
                 qc_idx += 1
 
         # ---- 4. แผนก GRINDING ----
@@ -562,8 +560,25 @@ else:
         for m_id, m_name in MACHINES.items():
             if "COMP-" in m_id.upper():
                 with (comp_col1 if comp_idx % 3 == 0 else (comp_col2 if comp_idx % 3 == 1 else comp_col3)):
-                    render_machine_card(m_id, m_name, "QC-02") 
+                    render_machine_card(m_id, m_name, "COMP-01") 
                 comp_idx += 1
+
+        # 🟢 [ADDED DEF ADMIN] กล่องระบบล้างภาพถ่ายทดสอบสำหรับผู้ดูแลระบบ ยัดท้ายตาราง
+        st.markdown("---")
+        with st.expander("🧹 กล่องเครื่องมือผู้ดูแลระบบ: ล้างระบบภาพถ่ายทดสอบ (RESET SYSTEM)"):
+            st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานที่ส่งทดสอบก่อนหน้านี้ทั้งหมดออกไปอย่างถาวร เพื่อให้ระบบสะอาดพร้อมเปิดใช้งานจริง")
+            admin_pass = st.text_input("🔑 กรอกรหัสผ่านเพื่อยืนยันสิทธิ์ความปลอดภัยการลบ:", type="password", key="admin_del_pass")
+            if st.button("🚨 สั่งลบรูปภาพทดสอบทั้งหมดกริบ 100%", type="primary"):
+                if admin_pass == BOSS_PASSWORD:
+                    target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
+                    if os.path.exists(target_photo_folder):
+                        shutil.rmtree(target_photo_folder) # สั่งลบโฟลเดอร์ภาพเกลี้ยงทั้งโฟลเดอร์หลัก
+                        st.success("🧹 ลบโฟลเดอร์รูปภาพทดสอบทั้งหมดออกไปจากระบบคลาวด์สะอาดบริสุทธิ์เรียบร้อยแล้วครับเพื่อนรัก!")
+                        st.balloons()
+                    else:
+                        st.info("✨ ระบบสะอาดอยู่แล้ว ไม่มีโฟลเดอร์ภาพเก่าค้างให้ลบครับ")
+                else:
+                    st.error("❌ รหัสอนุมัติไม่ถูกต้อง ไม่ได้รับอนุญาตให้ลบประวัติไฟล์ครับ")
 
     elif password_input != "": st.error("❌ รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบรหัสผ่านใหม่อีกครั้งครับเพื่อนรัก")
 
