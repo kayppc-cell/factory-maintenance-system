@@ -129,13 +129,36 @@ CHECKLISTS = {
     "ARGON": [
         "ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ",
         "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่",
-        "ตรวจสภาพความพร้อมของสายกราว์", "ตรวจสภาความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"
+        "ตรวจสภาพความพร้อมของสายกราว์", "ตรวจสภาพความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"
     ],
     "BAND SAW": [
         "เช็ค Auto Up-Down Back Gauge และ Manual (ความคล่องตัวในการเคลื่อนที่ของ Spindle)", "เช็คระดับน้ำมันไฮดรอลิค",
         "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั๊ม COOLANT และสภาพของน้ำ COOLANT", "ตรวจสอบ Switch (สวิตซ์) หน้า BOX CONTROL", "ตรวจสอบระดับน้ำมันหล่อลื่นในห้องเกียร์"
     ]
 }
+
+# 🟢 [ADDED BACK] ฟังก์ชันจำแนกประเภทเครื่องจักรที่เผลอลบไป ดึงกลับมาทำงานแล้วครับ
+def get_machine_type(m_id):
+    if "CNC" in m_id and "CRANE" not in m_id.upper() and "QC-" not in m_id.upper(): return "CNC"
+    if "CRANE NO.1" in m_id.upper(): return "Crane no.1"
+    if "CRANE NO.2" in m_id.upper(): return "Crane no.2"
+    if m_id == "QC-01": return "QC-01"
+    if m_id in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09"]: return "QC-VERNIER_STD"
+    if m_id in ["QC-10", "QC-11", "QC-12"]: return "QC-HIGAUGE_STD"
+    if m_id in ["QC-13", "QC-14"]: return "QC-MICRO_STD"
+    if m_id == "QC-15": return "QC-15"
+    if m_id == "QC-16": return "QC-16"
+    if m_id == "QC-17": return "QC-17"
+    if m_id in ["QC-18", "QC-19", "QC-20", "QC-21"]: return "QC-ARM_STD"
+    if "COMP-" in m_id: return "COMP_STD"  
+    if "GRINDING" in m_id: return "GRINDING"
+    if "CUTTER" in m_id: return "CUTTER GRINDING"
+    if "MILLING" in m_id: return "MILLING"
+    if "CUTTING" in m_id: return "CUTTING"
+    if "MIG" in m_id: return "MIG CO2"
+    if "ARGON" in m_id: return "ARGON"
+    if "BAND" in m_id: return "BAND SAW"
+    return "CNC"
 
 def get_coordinates(m_type):
     if m_type == "CNC": return 22, 24, "B28"
@@ -156,10 +179,9 @@ def get_coordinates(m_type):
 def save_tech_data_to_separate_excel(machine_id, tech_name, results_dict, m_type):
     """ฟังก์ชันเปิดไฟล์แม่แบบรายเครื่องจักร หยอดเครื่องหมาย และบันทึกแยกไฟล์ไม่ปนกัน"""
     try:
-        template_file = f"{machine_id}.xlsx"       # เช่น CNC3X-01.xlsx
-        live_output_file = f"LIVE_{machine_id}.xlsx" # ไฟล์ที่อัปเดตข้อมูลแล้ว
+        template_file = f"{machine_id}.xlsx"       
+        live_output_file = f"LIVE_{machine_id}.xlsx" 
         
-        # ถ้ายังไม่มีไฟล์สะสมข้อมูล ให้จำลองคัดลอกมาจากต้นฉบับรายเครื่องจักร
         if not os.path.exists(live_output_file):
             if os.path.exists(template_file):
                 import shutil
@@ -167,12 +189,11 @@ def save_tech_data_to_separate_excel(machine_id, tech_name, results_dict, m_type
             else:
                 return False, f"ไม่พบไฟล์ต้นฉบับ {template_file} บน GitHub กรุณาอัปโหลดไฟล์เทมเพลตของเครื่องนี้ก่อนนะครับเพื่อนรัก"
         
-        # เปิดไฟล์รายเครื่องขึ้นมาเขียนทับ
         wb = load_workbook(live_output_file)
-        ws = wb.active # เขียนลงหน้าหลักของไฟล์เครื่องนั้นๆ
+        ws = wb.active 
         
         day_num = datetime.datetime.now().day
-        target_col = day_num + 2 # วันที่ 1 ตรงกับคอลัมน์ C (3)
+        target_col = day_num + 2 
         
         items = CHECKLISTS[m_type]
         for idx, item in enumerate(items, 5):
@@ -180,11 +201,9 @@ def save_tech_data_to_separate_excel(machine_id, tech_name, results_dict, m_type
             short_status = "✓" if "ปกติ" in status_val else "❌" if "ต้องแก้ไข" in status_val else "-"
             ws.cell(row=idx, column=target_col, value=short_status)
             
-        # ลงชื่อช่างประจำวันในช่องวันที่
         t_row, _, n_cell = get_coordinates(m_type)
         ws.cell(row=t_row, column=target_col, value=tech_name)
         
-        # บันทึกอาการเสียสะสมลงช่อง B ด้านล่าง
         notes_collected = [results_dict[item]["note"] for item in items if results_dict[item]["note"]]
         if notes_collected:
             note_row = int(n_cell[1:])
@@ -196,6 +215,21 @@ def save_tech_data_to_separate_excel(machine_id, tech_name, results_dict, m_type
         return True, "บันทึกเข้าฟอร์มเครื่องเฉพาะสำเร็จ"
     except Exception as e:
         return False, str(e)
+
+def save_boss_approval_to_excel(machine_id, boss_name, m_type):
+    try:
+        if os.path.exists(f"LIVE_{machine_id}.xlsx"):
+            wb = load_workbook(f"LIVE_{machine_id}.xlsx")
+            ws = wb.active
+            day_num = datetime.datetime.now().day
+            target_col = day_num + 2
+            _, boss_row, _ = get_coordinates(m_type)
+            ws.cell(row=boss_row, column=target_col, value=boss_name)
+            wb.save(f"LIVE_{machine_id}.xlsx")
+            return True
+        return False
+    except:
+        return False
 
 # =========================================================================
 # 🎨 4. STREAMLIT WEB APP UI 
@@ -272,9 +306,7 @@ else:
         st.success("🔓 รหัสผ่านถูกต้อง ยินดีต้อนรับคุณพลวัฒน์")
         st.write("### 🖨️ คลังเลือกดาวน์โหลดไฟล์เอกสาร ISO แยกเครื่อง")
         
-        # ให้หัวหน้างานเลือกชื่อเครื่องจักรที่ต้องการจะดึงไฟล์ Excel สรุปผลออกไปพิมพ์งาน
         selected_download_machine = st.selectbox("🎯 เลือกเครื่องจักรที่ต้องการดาวน์โหลดไฟล์ Excel:", list(MACHINES.keys()), format_func=lambda x: f"[{x}] {MACHINES[x]}")
-        
         live_file_target = f"LIVE_{selected_download_machine}.xlsx"
         
         if os.path.exists(live_file_target):
