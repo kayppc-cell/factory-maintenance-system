@@ -15,7 +15,7 @@ from openpyxl.styles import Alignment
 LINE_ACCESS_TOKEN = "RRtpOuJT8oWgvglsSFUqc7LC1zZqL2jD8qTdJx5iIpAkG4GiJjAkaetvEKLGLuNOJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lZzKy78CvGLfGAWjFSOtyj89Bu3nm8iVlTh0pNQtc737gdB04t89/1O/w1cDnyilFU=" 
 LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"  
 
-# 🟢 ระบุตำแหน่งโฟลเดอร์ทำงานอัตโนมัติบนระบบคลาวด์
+# ระบุตำแหน่งโฟลเดอร์ทำงานอัตโนมัติบนระบบคลาวด์
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 BOSS_PASSWORD = "boss1234"  
 
@@ -123,19 +123,15 @@ PHOTO_RULES = {
     "ARGON": [3, 4, 6], "BAND SAW": [2, 3, 5]
 }
 
-# 🟢 [ADDED DEF DEFINITIVE] คืนชีพฟังก์ชันคำนวณพิกัดแกน Excel ลบปัญหา NameError ถาวร
 def get_coordinates(m_type):
     if m_type == "CNC": return 22, 24, "B28"
     if "CRANE" in m_type.upper(): return 14, 16, "B19"
     if m_type == "QC-01": return 10, 12, "B15"
-    if m_type in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-10", "QC-11", "QC-12", "QC-13", "QC-14", "QC-15", "QC-16", "QC-17", "QC-18", "QC-19", "QC-20", "QC-21"]: 
-        # จัดพิกัดสำหรับเครื่องตระกูล QC รายบุคคล
-        if m_type == "QC-01": return 10, 12, "B15"
-        if m_type in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-18", "QC-19", "QC-20", "QC-21"]: return 11, 13, "B16"
-        if m_type in ["QC-10", "QC-11", "QC-12"]: return 11, 13, "B15"
-        if m_type == "QC-15": return 12, 14, "B17"
-        if m_type == "QC-16": return 11, 13, "B16"
-        if m_type == "QC-17": return 11, 13, "B16"
+    if m_type in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-18", "QC-19", "QC-20", "QC-21"]: return 11, 13, "B16"
+    if m_type in ["QC-10", "QC-11", "QC-12"]: return 11, 13, "B15"
+    if m_type == "QC-15": return 12, 14, "B17"
+    if m_type == "QC-16": return 11, 13, "B16"
+    if m_type == "QC-17": return 11, 13, "B16"
     if "COMP" in m_type.upper(): return 11, 13, "B16"
     if m_type == "GRINDING": return 16, 18, "B21"
     if m_type == "CUTTER GRINDING": return 13, 15, "B18"
@@ -145,6 +141,16 @@ def get_coordinates(m_type):
     if m_type == "ARGON": return 14, 16, "B19"
     if m_type == "BAND SAW": return 11, 13, "B16"
     return 11, 13, "B16"
+
+# 🟢 ฟังก์ชันสำหรับช่วยแกะหาเซลล์ต้นทางจริงเพื่อเลี่ยงบั๊ก MergedCell ล็อกพิกัด
+def get_unmerged_cell(ws, coordinate_str):
+    """ฟังก์ชันตรวจหาว่าพิกัดนั้นเป็นเซลล์ผสานหรือไม่ ถ้าใช่จะส่งกลับเซลล์แรกสุดที่อนุญาตให้เขียนข้อมูล"""
+    cell = ws[coordinate_str]
+    for merged_range in ws.merged_cells.ranges:
+        if cell.coordinate in merged_range:
+            # ส่งคืนเซลล์แรกสุดตรงตำแหน่งบนซ้ายของ Merged Range ทันที
+            return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
+    return cell
 
 # --- 2. FUNCTIONS ---
 def send_line_alert(msg_text):
@@ -181,7 +187,8 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         
         for i, item in enumerate(checklist_items, 1):
             cell_coordinate = f"{col_letter}{5 + i}"
-            current_cell = ws[cell_coordinate]
+            # 🟢 ปรับเปลี่ยนมาวิ่งผ่านฟังก์ชันแกะหาเซลล์จริงก่อนเขียนเพื่อเลี่ยงบั๊ก MergedCell
+            current_cell = get_unmerged_cell(ws, cell_coordinate)
             if item in results_dict:
                 status_val = results_dict[item]["status"]
                 note_val = results_dict[item]["note"]
@@ -200,14 +207,20 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
                 current_cell.alignment = Alignment(horizontal='center', vertical='center')
                 
         t_row, _, n_cell = get_coordinates(m_type)
-        ws.cell(row=t_row, column=2 + day_num, value=tech_name)
         
+        # 🟢 ปรับพิกัดเขียนชื่อช่างผู้ตรวจเช็คให้เข้าสเต็ปตรวจจับ MergedCell
+        tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")
+        tech_cell.value = tech_name
+        tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
+        
+        # 🟢 ปรับพิกัดเขียนกล่องหมายเหตุสะสมให้เข้าสเต็ปตรวจจับ MergedCell
+        note_cell = get_unmerged_cell(ws, n_cell)
+        old_val = note_cell.value or ""
         notes_collected = [results_dict[item]["note"] for item in checklist_items if results_dict[item]["note"]]
         if notes_collected:
-            note_row = int(n_cell[1:])
-            old_val = ws.cell(row=note_row, column=2).value or ""
             new_val = old_val + ("\n" if old_val else "") + f"[วันที่ {day_num}]: " + ", ".join(notes_collected)
-            ws.cell(row=note_row, column=2, value=new_val)
+            note_cell.value = new_val
+            note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
             
         wb.save(target_excel_path)
         return True, ""
@@ -220,8 +233,13 @@ def approve_excel_by_boss(machine_id, day_num, boss_name, m_type):
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
+        col_letter = get_column_letter(2 + day_num)
         _, boss_row, _ = get_coordinates(m_type)
-        ws.cell(row=boss_row, column=2 + day_num, value=boss_name)
+        
+        # 🟢 ปรับพิกัดเขียนชื่อเซ็นลายเซ็นหัวหน้าให้เข้าสเต็ปตรวจจับ MergedCell ป้องกันบั๊ก 401/Read-only
+        boss_cell = get_unmerged_cell(ws, f"{col_letter}{boss_row}")
+        boss_cell.value = boss_name
+        boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
         wb.save(target_excel_path)
         return True
     except Exception as e: print(f"Boss approve error: {e}"); return False
@@ -233,7 +251,8 @@ def get_current_excel_note(machine_id, m_type):
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
         _, _, n_cell = get_coordinates(m_type)
-        val = ws[n_cell].value
+        note_cell = get_unmerged_cell(ws, n_cell)
+        val = note_cell.value
         return val if val else ""
     except: return ""
 
@@ -244,9 +263,10 @@ def save_custom_excel_note_by_boss(machine_id, m_type, new_text):
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
         _, _, n_cell = get_coordinates(m_type)
+        note_cell = get_unmerged_cell(ws, n_cell)
         
-        ws[n_cell] = new_text.strip() if new_text.strip() else "เครื่องจักรปกติ"
-        ws[n_cell].alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+        note_cell.value = new_text.strip() if new_text.strip() else "เครื่องจักรปกติ"
+        note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
         wb.save(target_excel_path)
         return True
     except Exception as e: print(f"Save custom note error: {e}"); return False
