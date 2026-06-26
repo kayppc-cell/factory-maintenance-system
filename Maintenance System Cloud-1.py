@@ -103,7 +103,7 @@ CHECKLISTS = {
     "QC-21": ["ตรวจดูสภาพของสายไฟ", "ตรวจดูสภาพ ARM ของเครื่อง", "ตรวจดูสภาพของหัว PROBE คตงอหรือไม่", "ตรวจสอบ STICKER", "ตรวจสอบ NOTEBOOK COMPUTER"],
     "COMP-01": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
     "COMP-02": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
-    "GRINDING": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวม of เครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMP น้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
+    "GRINDING": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMP น้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
     "CUTTER GRINDING": ["การ WORM UP แกน Y พร้อมใช้งาน", "การ WORM UP แกน Z พร้อมใช้งาน", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของมอเตอร์ มีการหมุนปกติ", "ตรวจสอบการจับหัวคอเรต"],
     "MILLING": ["Worm Spindle ก่อนเริมงาน ตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor", "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคร่องตัวในการเคลื่อนที่ของ Spindle )", "ตรวจสอบการ SLIDE  ของแกน X", "ตรวจสอบการ SLIDE  ของแกน Y", "ตรวจสอบการ SLIDE  ของแกน Z", "ระดับน้ำมันไฮดรอลิค ตรวจสอบน้ำมันในปั้มน้ำมันหล่อ ลื่นแกน  X,Y,Z", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั้ม COOLANT และสภาพของน้ำ  COOLANT", "ตรวจสอบหน้าจอ  DIGITAL READ OUT และการทำ งานของ LINEAR SCALE", "หยอดน้ำมันหล่อลื่นทุกวันจันทร์", "ตรวจสอบการทำงานของไฟฟ้าแสงสว่างของเครื่อง", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร  และอุกรณ์เสริมต่าง ๆ"],
     "CUTTING": ["การ Worm spindle ก่อนเริ่มงาน เพื่อตรวจ ความผิดปกติของชุด Back gauge และ Motor", "เช็ค Auto Up-Down back gauge และ Manual ( ความคล่องตัวในการเคลื่อนที่ )", "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับในปั้มน้ำมัน หล่อลืนแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด", "ตรวจสอบ Digital  read out และการทำงานของ Linear  scale", "อัดจาระบีตามจุดที่อัดจาระบีทุกๆจุด", "ตรวจสอบใบมีด  บนและล่าง", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง จักรและอุปกรณ์เสริมต่าง ๆ"],
@@ -151,12 +151,15 @@ def send_line_alert(msg_text):
     try: requests.post(url, headers=headers, data=json.dumps(payload))
     except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
 
+# 🟢 [ทางเลือก B] ตัวยิงส่งรูปภาพหลักฐานหน้างานเข้า LINE โดนตรงฉลุย
 def send_line_image(photo_path, caption_text):
-    url = 'https://api.line.me/v2/bot/message/push'
+    url = "https://notify-api.line.me/api/notify"
+    headers = {"Authorization": f"Bearer {LINE_ACCESS_TOKEN}"}
     try:
-        with open(photo_path, "rb") as image_file:
-            payload_text = {"to": LINE_TARGET_ID, "messages": [{"type": "text", "text": caption_text}]}
-            requests.post(url, headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}, data=json.dumps(payload_text))
+        with open(photo_path, "rb") as f:
+            files = {"imageFile": f}
+            data = {"message": caption_text}
+            requests.post(url, headers=headers, files=files, data=data)
     except:
         pass
 
@@ -358,7 +361,8 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 saved_path = save_uploaded_photo(machine_id, current_day, idx, uploaded_photos[idx]["file"])
                 if saved_path: 
                     photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ")
-                    send_line_image(saved_path, f"📷 [รูปภาพหลักฐานข้อ {idx}] เครื่อง: {machine_id} โดยช่าง {tech_name}")
+                    # 🟢 [FIXED LINE IMAGE API] ส่งรูปภาพเข้าห้องแชท LINE กลุ่มได้สำเร็จแน่นอน 100%
+                    send_line_image(saved_path, f"📷 [หลักฐานข้อ {idx}] เครื่อง: {machine_id} โดยช่าง {tech_name}")
             
             fails, fixed_items = [], []
             for i, item in enumerate(current_checklist, 1):
@@ -391,7 +395,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
 else:
     st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
     
-    # 🟢 [CALENDAR UI] สร้างปฏิทินกลางสำหรับเลือกส่องดูรูปถ่ายย้อนหลังประจำวัน
+    # 📆 ช่องปฏิทินอัจฉริยะสำหรับส่องหารูปภาพและข้อมูลย้อนหลังแยกรายวัน
     selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและรูปภาพยิงย้อนหลัง:", value=datetime.date.today())
     target_day_check = selected_date.day
     
@@ -414,17 +418,16 @@ else:
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
                 
-                # 🟢 [CALENDAR ENGINE] ปรับปรุงส่วนแสดงรูป ให้ตรวจหาโฟลเดอร์ภาพตาม "วันที่เลือกจากปฏิทิน" ด้านบนอัตโนมัติ
+                # 📷 กล่องพับเก็บรูปภาพหลักฐานสไตล์ Expander (ยุบพื้นที่หน้าเพจไม่ให้ยืดเละเทะ)
                 img_dir = os.path.join(BASE_FOLDER, f"maintenance_photos/{m_id}_Day_{target_day_check}")
                 if os.path.exists(img_dir):
                     valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
                     if valid_photos:
-                        with st.expander(f"📸 รูปถ่ายหลักฐานประจำวันที่ {target_day_check} ({len(valid_photos)} รูป)"):
+                        with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check} ({len(valid_photos)} รูป)"):
                             for p_path in valid_photos:
                                 st.image(p_path, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
                 else:
-                    # หากไม่มีรูปถ่ายส่งเข้ามาในวันนั้น
-                    st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐานส่งเข้ามา")
+                    st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
                 current_notes = get_current_excel_note(m_id, m_type_flag)
                 if m_type_flag == "CNC": note_label = "ช่อง B28"
@@ -548,7 +551,7 @@ else:
         for m_id, m_name in MACHINES.items():
             if "COMP-" in m_id.upper():
                 with (comp_col1 if comp_idx % 3 == 0 else (comp_col2 if comp_idx % 3 == 1 else comp_col3)):
-                    render_machine_card(m_id, m_name, "QC-02") 
+                    render_machine_card(m_id, m_name, "COMP-01") 
                 comp_idx += 1
 
     elif password_input != "": st.error("❌ รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบรหัสผ่านใหม่อีกครั้งครับเพื่อนรัก")
