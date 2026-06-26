@@ -151,15 +151,11 @@ def send_line_alert(msg_text):
     try: requests.post(url, headers=headers, data=json.dumps(payload))
     except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
 
-# 🟢 [ทางเลือก B] ฟังก์ชันสำหรับอัปโหลดรูปภาพยิงส่งทะลวงเข้า LINE กลุ่มตรง ๆ
 def send_line_image(photo_path, caption_text):
-    """ส่งรูปหลักฐานตรวจเครื่องสัญญัติเข้าห้อง LINE BOT ทันที"""
+    """ส่งรูปหลักฐานตรวจเครื่องเข้าห้อง LINE BOT"""
     url = 'https://api.line.me/v2/bot/message/push'
-    headers = {'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
     try:
-        # เปิดไฟล์รูปภาพอัปโหลดเข้าไลน์เซิร์ฟเวอร์แบบ Multiparts
         with open(photo_path, "rb") as image_file:
-            # ต้องส่งคำขอสองส่วนส่งข้อความสรุปนำหน้าก่อนยิงส่งรูปภาพประกอบ
             payload_text = {"to": LINE_TARGET_ID, "messages": [{"type": "text", "text": caption_text}]}
             requests.post(url, headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}, data=json.dumps(payload_text))
     except:
@@ -272,8 +268,6 @@ def save_custom_excel_note_by_boss(machine_id, m_type, new_text):
     except Exception as e: print(f"Save custom note error: {e}"); return False
 
 # --- 3. UI NAVIGATION SIDEBAR ---
-st.set_page_config(page_title="Smart Factory PM SYSTEM", page_icon="🔧", layout="wide")
-
 st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
 user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"])
 
@@ -365,7 +359,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 saved_path = save_uploaded_photo(machine_id, current_day, idx, uploaded_photos[idx]["file"])
                 if saved_path: 
                     photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ")
-                    # 🟢 [ยิงส่งเข้า LINE ทางเลือก B] ยิงไฟล์รูปแนบแจ้งเตือนเข้าห้องแชททันที
                     send_line_image(saved_path, f"📷 [รูปภาพหลักฐานข้อ {idx}] เครื่อง: {machine_id} โดยช่าง {tech_name}")
             
             fails, fixed_items = [], []
@@ -417,13 +410,15 @@ else:
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้ตรวจสอบและลงนามรับรองใบตรวจเช็คประจำวันที่ {current_day} ของเครื่อง {m_id} เรียบร้อยแล้ว")
                         st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
                 
-                # 🟢 [ทางเลือก A] กลไกส่องหารูปภาพหลักฐานรายเครื่องขึ้นโชว์หราบนหน้าจอหัวหน้าโดยอัตโนมัติ
+                # 🟢 [ไอเดียปรับปรุง UI] พับรูปหลักฐานเก็บไว้ในแถบเมนูสไลด์ ยุบพื้นที่เพจไม่ให้ยืดเละเทะ
                 img_dir = os.path.join(BASE_FOLDER, f"maintenance_photos/{m_id}_Day_{current_day}")
                 if os.path.exists(img_dir):
-                    st.write("🖼️ **ภาพถ่ายหลักฐานหน้างานประจำวันนี้:**")
-                    for photo_file in os.listdir(img_dir):
-                        if photo_file.lower().endswith(('.png', '.jpg', '.jpeg')):
-                            st.image(os.path.join(img_dir, photo_file), caption=f"รูปหลักฐาน: {photo_file}", use_container_width=True)
+                    valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
+                    if valid_photos:
+                        # สร้างกล่องพับเก็บได้เนียนๆ สวยงามสไตล์สากล
+                        with st.expander(f"📸 คลิกเพื่อตรวจรูปภาพหลักฐาน ({len(valid_photos)} รูป)"):
+                            for p_path in valid_photos:
+                                st.image(p_path, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
 
                 current_notes = get_current_excel_note(m_id, m_type_flag)
                 if m_type_flag == "CNC": note_label = "ช่อง B28"
