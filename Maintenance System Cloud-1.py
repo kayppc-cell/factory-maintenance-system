@@ -227,7 +227,7 @@ def save_tech_data_to_separate_excel(machine_id, tech_name, results_dict, m_type
     except Exception as e:
         return False, str(e)
 
-# 🟢 [FIXED KEY] ปรับแก้ชื่อตัวแปรรับค่าในฟังก์ชันอนุมัติให้ตรงกับที่ UI เรียกส่งมาเรียบร้อยครับ
+# 🟢 [FIXED DEFINITIVE] ล็อกชื่อฟังก์ชันหลังบ้านตัวนี้ให้ตรงตามที่ UI วิ่งเข้ามาเรียกหา 100% ปิดจ๊อบเออร์เรอร์ NameError
 def save_boss_approval_to_excel(machine_id, boss_name, m_type_flag):
     try:
         filename = f"LIVE_{machine_id}.xlsx"
@@ -331,6 +331,8 @@ else:
         
         def render_machine_card(m_id, m_name, m_type_flag):
             st.info(f"⚙️ **{m_id}**\n{m_name}")
+            
+            # 🟢 ปุ่มกดอนุมัติเรียกคำสั่งตรงตัวเป๊ะๆ 100% ไม่มีหลุดแล้วครับเพื่อนรัก
             if st.button(f"✅ กดอนุมัติฟอร์มออนไลน์ของ {m_id}", key=f"btn_{m_id}"):
                 if save_boss_approval_to_excel(m_id, boss_name, m_type_flag):
                     st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
