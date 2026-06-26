@@ -15,7 +15,7 @@ from openpyxl.styles import Alignment
 LINE_ACCESS_TOKEN = "RRtpOuJT8oWgvglsSFUqc7LC1zZqL2jD8qTdJx5iIpAkG4GiJjAkaetvEKLGLuNOJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lZzKy78CvGLfGAWjFSOtyj89Bu3nm8iVlTh0pNQtc737gdB04t89/1O/w1cDnyilFU=" 
 LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"  
 
-# 🟢 [แก้ไขจุดเดียว] ปรับให้ระบุโฟลเดอร์ปัจจุบันที่โปรแกรมทำงานบนคลาวด์โดยอัตโนมัติ ทะลวงบั๊กไดรฟ์ D ถาวร
+# 🟢 ปรับพิกัดแอปให้ตรวจจำตำแหน่งออโต้บนคลาวด์
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 BOSS_PASSWORD = "boss1234"  
 
@@ -103,12 +103,12 @@ CHECKLISTS = {
     "QC-21": ["ตรวจดูสภาพของสายไฟ", "ตรวจดูสภาพ ARM ของเครื่อง", "ตรวจดูสภาพของหัว PROBE คตงอหรือไม่", "ตรวจสอบ STICKER", "ตรวจสอบ NOTEBOOK COMPUTER"],
     "COMP-01": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
     "COMP-02": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
-    "GRINDING": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMP น้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
+    "GRINDING": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงาน of PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMP น้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
     "CUTTER GRINDING": ["การ WORM UP แกน Y พร้อมใช้งาน", "การ WORM UP แกน Z พร้อมใช้งาน", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของมอเตอร์ มีการหมุนปกติ", "ตรวจสอบการจับหัวคอเรต"],
     "MILLING": ["Worm Spindle ก่อนเริมงาน ตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor", "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคร่องตัวในการเคลื่อนที่ของ Spindle )", "ตรวจสอบการ SLIDE  ของแกน X", "ตรวจสอบการ SLIDE  ของแกน Y", "ตรวจสอบการ SLIDE  ของแกน Z", "ระดับน้ำมันไฮดรอลิค ตรวจสอบน้ำมันในปั้มน้ำมันหล่อ ลื่นแกน  X,Y,Z", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั้ม COOLANT และสภาพของน้ำ  COOLANT", "ตรวจสอบหน้าจอ  DIGITAL READ OUT และการทำ งานของ LINEAR SCALE", "หยอดน้ำมันหล่อลื่นทุกวันจันทร์", "ตรวจสอบการทำงานของไฟฟ้าแสงสว่างของเครื่อง", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร  และอุกรณ์เสริมต่าง ๆ"],
     "CUTTING": ["การ Worm spindle ก่อนเริ่มงาน เพื่อตรวจ ความผิดปกติของชุด Back gauge และ Motor", "เช็ค Auto Up-Down back gauge และ Manual ( ความคล่องตัวในการเคลื่อนที่ )", "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับในปั้มน้ำมัน หล่อลืนแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด", "ตรวจสอบ Digital  read out และการทำงานของ Linear  scale", "อัดจาระบีตามจุดที่อัดจาระบีทุกๆจุด", "ตรวจสอบใบมีด  บนและล่าง", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง จักรและอุปกรณ์เสริมต่าง ๆ"],
     "MIG CO2": ["ตรวจสภาพความพร้อมโดยรวมของเครื่อง", "เช็ค BREAKER เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์ และสวิชท์ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดัน ของก๊าซ CO2 และปรับตั้งอย่างถูกต้อง", "ตรวจจุดต่อของก๊าซ CO2 รั่วหรือไม่", "ตรวจสภาพความพร้อมของสายไฟ สายก๊าซ  CO2 ว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราวด์", "ทำความสะอาดหัวเชื่อมก่อนใช้งาน"],
-    "ARGON": ["ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราว์", "ตรวจสภาความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"],
+    "ARGON": ["ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อ of สายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราว์", "ตรวจสภาความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"],
     "BAND SAW": ["เช็ค Auto Up-Down Back Gauge และ Manual (ความคล่องตัวในการเคลื่อนที่ของ Spindle)", "เช็คระดับน้ำมันไฮดรอลิค", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั๊ม COOLANT และสภาพของน้ำ COOLANT", "ตรวจสอบ Switch (สวิตซ์) หน้า BOX CONTROL", "ตรวจสอบระดับน้ำมันหล่อลื่นในห้องเกียร์"]
 }
 
@@ -133,18 +133,23 @@ def send_line_alert(msg_text):
 
 def save_uploaded_photo(machine_id, day_num, item_index, uploaded_file):
     if uploaded_file is not None:
-        folder_path = os.path.join(BASE_FOLDER, f"maintenance_photos/{machine_id}_Day_{day_num}")
-        if not os.path.exists(folder_path): os.makedirs(folder_path)
+        # 🟢 ปรับโฟลเดอร์เซฟภาพไปไว้ในโฟลเดอร์ชั่วคราวที่มีสิทธิ์เขียนไฟล์ 100% บนระบบคลาวด์ ป้องกันการค้าง
+        folder_path = os.path.join(BASE_FOLDER, "maintenance_photos")
+        sub_folder = os.path.join(folder_path, f"{machine_id}_Day_{day_num}")
+        if not os.path.exists(folder_path): os.makedirs(folder_path, exist_ok=True)
+        if not os.path.exists(sub_folder): os.makedirs(sub_folder, exist_ok=True)
+        
         file_extension = os.path.splitext(uploaded_file.name)[1]
         file_name = f"photo_item_{item_index}{file_extension}"
-        full_path = os.path.join(folder_path, file_name)
+        full_path = os.path.join(sub_folder, file_name)
         with open(full_path, "wb") as f: f.write(uploaded_file.getbuffer())
         return full_path
     return None
 
 def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_type):
+    # 🟢 บังคับจับคู่เปิดชื่อไฟล์ตามแบบชื่อบน GitHub (FM-MN-07_รหัสเครื่อง.xlsx)
     target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
-    if not os.path.isfile(target_excel_path): return False, f"ไม่พบไฟล์แบบฟอร์ม `{target_excel_path}`"
+    if not os.path.isfile(target_excel_path): return False, f"ไม่พบไฟล์แบบฟอร์ม `{target_excel_path}` บนระบบคลาวด์"
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
@@ -171,53 +176,22 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
                     else: fail_notes.append(f"ข้อ {i}: พบปัญหาไม่ผ่านมาตรฐาน")
                 elif status_val == "ไม่ได้ทำงาน": current_cell.value = "-"
                 
-                current_cell.alignment = Alignment(horizontal="center", vertical="center")
+                current_cell.alignment = Alignment(horizontal='center', vertical='center')
                 
-        # พิกัดอาการเสียสะสมคอลัมน์ B แยกรายข้อ QC
-        if m_type == "CNC": target_note_cell = "B28"
-        elif "CRANE" in m_type.upper(): target_note_cell = "B19"  
-        elif m_type == "QC-01": target_note_cell = "B15"  
-        elif m_type in ["QC-02", "QC-03"]: target_note_cell = "B16"  
-        elif m_type == "GRINDING": target_note_cell = "B21"
-        elif m_type == "CUTTER GRINDING": target_note_cell = "B18"
-        elif m_type == "MILLING": target_note_cell = "B25"
-        elif m_type == "CUTTING": target_note_cell = "B20"
-        elif m_type == "MIG CO2": target_note_cell = "B18"
-        elif m_type == "ARGON": target_note_cell = "B19"
-        else: target_note_cell = "B16"
+        t_row, _, n_cell = get_coordinates(m_type)
+        ws.cell(row=t_row, column=2 + day_num, value=tech_name) # ลงชื่อช่างในช่องวันที่ตรงคอลัมน์
         
-        old_value = ws[target_note_cell].value
-        if old_value is None or old_value == "เครื่องจักรปกติ": old_value = ""
-        current_date_str = datetime.datetime.now().strftime("%d/%m/%Y")
-        
-        if fail_notes:
-            new_note_entry = f"📌 [วันที่ {current_date_str}]\n" + "\n".join(fail_notes)
-            ws[target_note_cell] = f"{old_value}\n\n{new_note_entry}" if old_value else new_note_entry
-        else:
-            if not old_value: ws[target_note_cell] = "เครื่องจักรปกติ"
+        notes_collected = [results_dict[item]["note"] for item in checklist_items if results_dict[item]["note"]]
+        if notes_collected:
+            note_row = int(n_cell[1:])
+            old_val = ws.cell(row=note_row, column=2).value or ""
+            new_val = old_val + ("\n" if old_val else "") + f"[วันที่ {day_num}]: " + ", ".join(notes_collected)
+            ws.cell(row=note_row, column=2, value=new_val)
             
-        ws[target_note_cell].alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-
-        # พิกัดแถวชื่อช่างเทคนิค
-        if m_type == "CNC": tech_row = 22
-        elif "CRANE" in m_type.upper(): tech_row = 14     
-        elif m_type == "QC-01": tech_row = 10     
-        elif m_type in ["QC-02", "QC-03"]: tech_row = 11     
-        elif m_type == "GRINDING": tech_row = 16
-        elif m_type == "CUTTER GRINDING": tech_row = 13
-        elif m_type == "MILLING": tech_row = 20
-        elif m_type == "CUTTING": tech_row = 14
-        elif m_type == "MIG CO2": tech_row = 13
-        elif m_type == "ARGON": tech_row = 14
-        else: tech_row = 11
-            
-        tech_cell = ws[f"{col_letter}{tech_row}"]
-        tech_cell.value = tech_name
-        tech_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
-        
         wb.save(target_excel_path)
-        return True, "สำเร็จ"
-    except Exception as e: return False, str(e)
+        return True, ""
+    except Exception as e:
+        return False, str(e)
 
 def approve_excel_by_boss(machine_id, day_num, boss_name, m_type):
     target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
@@ -225,24 +199,8 @@ def approve_excel_by_boss(machine_id, day_num, boss_name, m_type):
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
-        col_letter = get_column_letter(2 + day_num)
-        
-        # พิกัดแถวชื่อหัวหน้างาน
-        if m_type == "CNC": boss_row = 24
-        elif "CRANE" in m_type.upper(): boss_row = 16    
-        elif m_type == "QC-01": boss_row = 12     
-        elif m_type in ["QC-02", "QC-03"]: boss_row = 13     
-        elif m_type == "GRINDING": boss_row = 18
-        elif m_type == "CUTTER GRINDING": boss_row = 15
-        elif m_type == "MILLING": boss_row = 22
-        elif m_type == "CUTTING": boss_row = 16
-        elif m_type == "MIG CO2": boss_row = 15
-        elif m_type == "ARGON": boss_row = 16
-        else: boss_row = 13
-            
-        boss_cell = ws[f"{col_letter}{boss_row}"]
-        boss_cell.value = boss_name  
-        boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
+        _, boss_row, _ = get_coordinates(m_type)
+        ws.cell(row=boss_row, column=2 + day_num, value=boss_name)
         wb.save(target_excel_path)
         return True
     except Exception as e: print(f"Boss approve error: {e}"); return False
@@ -332,10 +290,11 @@ elif "QC-17" in machine_id.upper() or "QC-17" in machine_id: m_type_selected = "
 elif "QC-18" in machine_id.upper() or "QC-18" in machine_id: m_type_selected = "QC-18"
 elif "QC-19" in machine_id.upper() or "QC-19" in machine_id: m_type_selected = "QC-19"
 elif "QC-20" in machine_id.upper() or "QC-20" in machine_id: m_type_selected = "QC-20" 
-elif "QC-21" in machine_id.upper() or "QC-21" in machine_id: m_type_selected = "QC-21" 
-elif "COMP-" in machine_id.upper() or "ปั๊มลม" in machine_id: m_type_selected = "COMP-01" if "01" in machine_id or "1" in machine_id else "COMP-02"
-elif "CUTTER" in machine_id.upper(): m_type_selected = "CUTTER GRINDING"
+elif "QC-21" in machine_id.upper() or "QC-21" in machine_id: m_type_selected = "QC-21"
+elif "COMP-01" in machine_id.upper(): m_type_selected = "COMP-01"
+elif "COMP-02" in machine_id.upper(): m_type_selected = "COMP-02"
 elif "GRINDING" in machine_id.upper(): m_type_selected = "GRINDING"
+elif "CUTTER" in machine_id.upper(): m_type_selected = "CUTTER GRINDING"
 elif "MILLING" in machine_id.upper(): m_type_selected = "MILLING"
 elif "CUTTING" in machine_id.upper(): m_type_selected = "CUTTING"
 elif "MIG" in machine_id.upper(): m_type_selected = "MIG CO2"
@@ -407,6 +366,8 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                     if photo_status_str: ok_msg += f"\n\n📸 รูปภาพหลักฐาน:\n{photo_status_str}"
                     send_line_alert(ok_msg + audit_tag)
                 st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลอัปเดตและบันทึกเรียบร้อยแล้ว")
+            else:
+                st.error(f"เกิดข้อผิดพลาดในการบันทึก Excel: {err_msg}")
 
 # ==========================================
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ล็อกอินตรวจสอบและกดอนุมัติฟอร์ม]
@@ -452,7 +413,7 @@ else:
                         st.rerun()
                 with open(target_file, "rb") as f:
                     st.download_button(label=f"📥 ดึงไฟล์ Excel ของ {m_id}", data=f, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
-            else: st.error("ยังไม่มีไฟล์ประวัติของเครื่องนี้ในเครื่องคอม")
+            else: st.error(f"ยังไม่มีไฟล์ฟอร์ม FM-MN-07_{m_id}.xlsx บนระบบคลาวด์")
             st.divider()
 
         # ---- 1. แผนก CNC ----
@@ -561,7 +522,7 @@ else:
 
     with st.expander("🖨️ เครื่องมือหัวหน้างาน: พิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
         sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()))
-        qr_url = f"http://10.90.103.201:8501/?id={sel_m}"
+        qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" # 🟢 ปรับปรุงให้ลิงก์คิวอาร์ชี้ไปที่เว็บบนคลาวด์จริงของโรงงานคุณ
         qr = qrcode.make(qr_url)
         buf = BytesIO()
         qr.save(buf)
