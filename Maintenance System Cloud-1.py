@@ -7,7 +7,7 @@ import qrcode
 from io import BytesIO
 import json
 import os
-import shutil # 🟢 ดึงโมดูลสำหรับสั่งล้างลบโฟลเดอร์ภาพถ่ายยิ้มกริบ
+import shutil 
 import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment
@@ -198,37 +198,62 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
-        col_letter = get_column_letter(2 + day_num)
         
-        checklist_items = CHECKLISTS[m_type]
-        for i, item in enumerate(checklist_items, 1):
-            cell_coordinate = f"{col_letter}{5 + i}"
-            current_cell = get_unmerged_cell(ws, cell_coordinate)
-            if item in results_dict:
-                status_val = results_dict[item]["status"]
-                
-                if status_val == "ใช้งานได้ปกติ": current_cell.value = "/"
-                elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": current_cell.value = "⨂"
-                elif status_val == "ใช้งานไม่ได้ต้องแก้ไข": current_cell.value = "X"
-                elif status_val == "ไม่ได้ทำงาน": current_cell.value = "-"
-                
-                current_cell.alignment = Alignment(horizontal='center', vertical='center')
-                
-        t_row, _, n_cell = get_coordinates(m_type)
-        tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")
-        tech_cell.value = tech_name
-        tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
+        t_row, boss_row, n_cell = get_coordinates(m_type)
         
-        note_cell = get_unmerged_cell(ws, n_cell)
-        old_val = note_cell.value or ""
-        notes_collected = [results_dict[item]["note"] for item in checklist_items if results_dict[item]["note"]]
-        if notes_collected:
-            new_val = old_val + ("\n" if old_val else "") + f"[วันที่ {day_num}]: " + ", ".join(notes_collected)
-            note_cell.value = new_val
-            note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+        # 🟢 [AUTO RESET MECHANIC] ถ้าขึ้นวันที่ 1 และกล่องช่องชื่อช่างของวันที่ 1 ยังเป็นค่าว่าง ให้ทำการล้างกระดานเดือนเก่าทันที!
+        check_col_1 = get_column_letter(3) # คอลัมน์ C คือ วันที่ 1
+        first_cell_of_month = get_unmerged_cell(ws, f"{check_col_1}{t_row}")
+        
+        if day_num == 1 and (first_cell_of_month.value is None or first_cell_of_month.value == ""):[cite: 1]
+            # 1. ล้างเครื่องหมายทั้งหมดในตารางวันที่ 1-31 (คอลัมน์ C ถึง AG)
+            checklist_items = CHECKLISTS[m_type][cite: 1]
+            for d in range(1, 32):[cite: 1]
+                c_letter = get_column_letter(2 + d)[cite: 1]
+                # ล้างเครื่องหมายติ๊กเช็คลิสต์รายข้อ
+                for row_idx in range(6, 6 + len(checklist_items)):[cite: 1]
+                    ws.cell(row=row_idx, column=2 + d, value="")[cite: 1]
+                # ล้างชื่อช่างเทคนิค และ ชื่อหัวหน้างาน ประจำวันนั้น ๆ[cite: 1]
+                get_unmerged_cell(ws, f"{c_letter}{t_row}").value = ""[cite: 1]
+                get_unmerged_cell(ws, f"{c_letter}{boss_row}").value = ""[cite: 1]
             
-        wb.save(target_excel_path)
-        return True, ""
+            # 2. รีเซ็ตช่องบันทึกอาการเสียสะสม (คอลัมน์ B) ให้กลับมาสะอาดเริ่มต้นใหม่[cite: 1]
+            note_cell = get_unmerged_cell(ws, n_cell)[cite: 1]
+            note_cell.value = "เครื่องจักรปกติ"[cite: 1]
+            note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)[cite: 1]
+
+        # --- จบขั้นตอน Auto Reset เริ่มกระบวนการเขียนข้อมูลของเดือนใหม่ตามปกติ ---[cite: 1]
+        col_letter = get_column_letter(2 + day_num)[cite: 1]
+        checklist_items = CHECKLISTS[m_type][cite: 1]
+        
+        for i, item in enumerate(checklist_items, 1):[cite: 1]
+            cell_coordinate = f"{col_letter}{5 + i}"[cite: 1]
+            current_cell = get_unmerged_cell(ws, cell_coordinate)[cite: 1]
+            if item in results_dict:[cite: 1]
+                status_val = results_dict[item]["status"][cite: 1]
+                
+                if status_val == "ใช้งานได้ปกติ": current_cell.value = "/"[cite: 1]
+                elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": current_cell.value = "⨂"[cite: 1]
+                elif status_val == "ใช้งานไม่ได้ต้องแก้ไข": current_cell.value = "X"[cite: 1]
+                elif status_val == "ไม่ได้ทำงาน": current_cell.value = "-"[cite: 1]
+                
+                current_cell.alignment = Alignment(horizontal='center', vertical='center')[cite: 1]
+                
+        tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")[cite: 1]
+        tech_cell.value = tech_name[cite: 1]
+        tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')[cite: 1]
+        
+        # เขียนหมายเหตุอาการเสียของวันนี้เพิ่มเติมลงกล่องคอลัมน์ B
+        note_cell = get_unmerged_cell(ws, n_cell)[cite: 1]
+        old_val = "" if note_cell.value == "เครื่องจักรปกติ" else (note_cell.value or "")[cite: 1]
+        notes_collected = [results_dict[item]["note"] for item in checklist_items if results_dict[item]["note"]][cite: 1]
+        if notes_collected:[cite: 1]
+            new_val = old_val + ("\n" if old_val else "") + f"[วันที่ {day_num}]: " + ", ".join(notes_collected)[cite: 1]
+            note_cell.value = new_val[cite: 1]
+            note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)[cite: 1]
+            
+        wb.save(target_excel_path)[cite: 1]
+        return True, ""[cite: 1]
     except Exception as e:
         return False, str(e)
 
@@ -416,7 +441,7 @@ else:
         st.success("🔓 รหัสผ่านถูกต้อง เข้าสู่ระบบลงนามดิจิทัลมาตรฐาน ISO สำเร็จ")
         boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
         st.divider()
-        st.write("### 📊 บอร์ดควบคุมควบคุมใบงานตรวจเช็ค")
+        st.write("### 📊 บอร์ดควบคุมใบงานตรวจเช็ครวมทั้งโรงงาน")
         
         def render_machine_card(m_id, m_name, m_type_flag):
             st.info(f"⚙️ **{m_id}**\n{m_name}")
@@ -472,7 +497,7 @@ else:
                 cnc_idx += 1
 
         # ---- 2. แผนก CRANE ----
-        st.write("#### 🔹 เครน CRANE (2 เครื่อง)")
+        st.write("#### 🔹 เครน CRANE (2 แผนก)")
         crane_col1, crane_col2 = st.columns(2)
         crane_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -482,7 +507,7 @@ else:
                 crane_idx += 1
 
         # ---- 3. แผนก QC ----
-        st.write("#### 🔹 เครื่องมือวัดคุณภาพ QC (19 เครื่องมือวัด, 2 เครื่องจักรทำงาน)")
+        st.write("#### 🔹 แผนกเครื่องมือวัดคุณภาพ QC (19 เครื่องมือวัด, 2 เครื่องจักรทำงาน)")
         qc_col1, qc_col2, qc_col3 = st.columns(3)
         qc_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -563,7 +588,7 @@ else:
                     render_machine_card(m_id, m_name, "COMP-01") 
                 comp_idx += 1
 
-        # 🟢 [ADDED DEF ADMIN] กล่องระบบล้างภาพถ่ายทดสอบสำหรับผู้ดูแลระบบ ยัดท้ายตาราง
+        # กล่องระบบล้างภาพถ่ายทดสอบสำหรับผู้ดูแลระบบ ยัดท้ายตาราง
         st.markdown("---")
         with st.expander("🧹 กล่องเครื่องมือผู้ดูแลระบบ: ล้างระบบภาพถ่ายทดสอบ (RESET SYSTEM)"):
             st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานที่ส่งทดสอบก่อนหน้านี้ทั้งหมดออกไปอย่างถาวร เพื่อให้ระบบสะอาดพร้อมเปิดใช้งานจริง")
@@ -572,7 +597,7 @@ else:
                 if admin_pass == BOSS_PASSWORD:
                     target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
                     if os.path.exists(target_photo_folder):
-                        shutil.rmtree(target_photo_folder) # สั่งลบโฟลเดอร์ภาพเกลี้ยงทั้งโฟลเดอร์หลัก
+                        shutil.rmtree(target_photo_folder) 
                         st.success("🧹 ลบโฟลเดอร์รูปภาพทดสอบทั้งหมดออกไปจากระบบคลาวด์สะอาดบริสุทธิ์เรียบร้อยแล้วครับเพื่อนรัก!")
                         st.balloons()
                     else:
