@@ -355,7 +355,7 @@ else: m_type_selected = "CNC"
 # ==========================================
 if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
     # 🎯 แก้ไขตรงนี้: ปรับขนาดโลโก้เล็กลง (width=180) และเอาไว้ชิดฝั่งซ้ายมือสุด
-    st.image("Logo_Pes.png", width=180)
+    st.image("Logo_Pes.png", width=220)
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
     st.info("📄 มาตรฐานระบบคุณภาพโรงงาน: **FM-MN-07 Rev.00**")
