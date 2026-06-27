@@ -354,6 +354,10 @@ else: m_type_selected = "CNC"
 # 🔧 [โหมดที่ 1: ฝั่งช่างเทคนิคส่งฟอร์มประจำวัน]
 # ==========================================
 if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
+    # จัดให้อยู่กึ่งกลางโดยแบ่งเป็น 3 คอลัมน์ แล้วใส่รูปไว้ตรงกลาง
+    col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
+    with col_logo2:
+    st.image("Logo_Pes.png", use_container_width=True) # ขยายตามขนาดบล็อกตรงกลาง
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
     st.info("📄 มาตรฐานระบบคุณภาพโรงงาน: **FM-MN-07 Rev.00**")
