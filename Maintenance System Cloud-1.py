@@ -416,7 +416,7 @@ else:
         st.success("🔓 รหัสผ่านถูกต้อง เข้าสู่ระบบลงนามดิจิทัลมาตรฐาน ISO สำเร็จ")
         boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
         st.divider()
-        st.write("### 📊 บอร์ดควบคุมควบคุมใบงานรวม (แยกรายแผนก)")
+        st.write("### 📊 บอร์ดควบคุมควบคุมใบงานตรวจเช็ค")
         
         def render_machine_card(m_id, m_name, m_type_flag):
             st.info(f"⚙️ **{m_id}**\n{m_name}")
@@ -462,7 +462,7 @@ else:
             st.divider()
 
         # ---- 1. แผนก CNC ----
-        st.write("#### 🔹 แผนกเครื่อง CNC (9 เครื่อง)")
+        st.write("#### 🔹 เครื่อง CNC (9 เครื่อง)")
         cnc_col1, cnc_col2, cnc_col3 = st.columns(3)
         cnc_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -472,7 +472,7 @@ else:
                 cnc_idx += 1
 
         # ---- 2. แผนก CRANE ----
-        st.write("#### 🔹 แผนกเครน CRANE (2 เครื่อง)")
+        st.write("#### 🔹 เครน CRANE (2 เครื่อง)")
         crane_col1, crane_col2 = st.columns(2)
         crane_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -482,7 +482,7 @@ else:
                 crane_idx += 1
 
         # ---- 3. แผนก QC ----
-        st.write("#### 🔹 แผนกเครื่องมือวัดคุณภาพ QC (19 เครื่องมือวัด, 2 เครื่องจักรทำงาน)")
+        st.write("#### 🔹 เครื่องมือวัดคุณภาพ QC (19 เครื่องมือวัด, 2 เครื่องจักรทำงาน)")
         qc_col1, qc_col2, qc_col3 = st.columns(3)
         qc_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -492,7 +492,7 @@ else:
                 qc_idx += 1
 
         # ---- 4. แผนก GRINDING ----
-        st.write("#### 🔹 แผนกเครื่องเจียรผิว GRINDING (2 เครื่อง)")
+        st.write("#### 🔹 เครื่องเจียรผิว GRINDING (2 เครื่อง)")
         grind_col1, grind_col2 = st.columns(2)
         grind_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -502,12 +502,12 @@ else:
                 grind_idx += 1
 
         # ---- 5. แผนก CUTTER GRINDING ----
-        st.write("#### 🔹 แผนกเครื่องลับคม CUTTER GRINDING (1 เครื่อง)")
+        st.write("#### 🔹 เครื่องลับคม CUTTER GRINDING (1 เครื่อง)")
         cutter_grind_col1, = st.columns(1)
         with cutter_grind_col1: render_machine_card("CUTTER GRINDING-01", MACHINES["CUTTER GRINDING-01"], "CUTTER GRINDING")
 
         # ---- 6. แผนก MILLING ----
-        st.write("#### 🔹 แผนกเครื่องมิลลิ่ง MILLING (3 เครื่อง)")
+        st.write("#### 🔹 เครื่องมิลลิ่ง MILLING (3 เครื่อง)")
         mill_col1, mill_col2, mill_col3 = st.columns(3)
         mill_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -517,7 +517,7 @@ else:
                 mill_idx += 1
 
         # ---- 7. แผนก CUTTING ----
-        st.write("#### 🔹 แผนกเครื่องตัด CUTTING (2 เครื่อง)")
+        st.write("#### 🔹 เครื่องตัด CUTTING (2 เครื่อง)")
         cut_col1, cut_col2 = st.columns(2)
         cut_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -527,7 +527,7 @@ else:
                 cut_idx += 1
 
         # ---- 8. แผนก MIG CO2 ----
-        st.write("#### 🔹 แผนกเครื่องเชื่อม MIG CO2 (3 เครื่อง)")
+        st.write("#### 🔹 เครื่องเชื่อม MIG CO2 (3 เครื่อง)")
         mig_col1, mig_col2, mig_col3 = st.columns(3)
         mig_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -537,14 +537,14 @@ else:
                 mig_idx += 1
 
         # ---- 9. แผนก ARGON ----
-        st.write("#### 🔹 แผนกเครื่องเชื่อม ARGON (1 เครื่อง)")
+        st.write("#### 🔹 เครื่องเชื่อม ARGON (1 เครื่อง)")
         argon_col1, = st.columns(1)
         for m_id, m_name in MACHINES.items():
             if "ARGON" in m_id:
                 with argon_col1: render_machine_card(m_id, m_name, "ARGON")
 
         # ---- 10. แผนก BAND SAW ----
-        st.write("#### 🔹 แผนกเครื่องเลื่อยสายพาน BAND SAW (3 เครื่อง)")
+        st.write("#### 🔹 เครื่องเลื่อยสายพาน BAND SAW (3 เครื่อง)")
         saw_col1, saw_col2, saw_col3 = st.columns(3)
         saw_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -554,7 +554,7 @@ else:
                 saw_idx += 1
 
         # ---- 11. แผนกปั๊มลม COMPRESSOR ----
-        st.write("#### 🔹 แผนกปั๊มลม AIR COMPRESSOR (2 เครื่อง)")
+        st.write("#### 🔹 ปั๊มลม AIR COMPRESSOR (2 เครื่อง)")
         comp_col1, comp_col2, comp_col3 = st.columns(3)
         comp_idx = 0
         for m_id, m_name in MACHINES.items():
