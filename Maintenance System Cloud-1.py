@@ -472,7 +472,7 @@ else:
                 cnc_idx += 1
 
         # ---- 2. แผนก CRANE ----
-        st.write("#### 🔹 แผนกเครน CRANE / HOIST (2 ตัว)")
+        st.write("#### 🔹 แผนกเครน CRANE (2 เครื่อง)")
         crane_col1, crane_col2 = st.columns(2)
         crane_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -482,7 +482,7 @@ else:
                 crane_idx += 1
 
         # ---- 3. แผนก QC ----
-        st.write("#### 🔹 แผนกเครื่องมือวัดคุณภาพ QC (ประหยัดพื้นที่ เรียงหน้ากระดาน 3 แถว)")
+        st.write("#### 🔹 แผนกเครื่องมือวัดคุณภาพ QC")
         qc_col1, qc_col2, qc_col3 = st.columns(3)
         qc_idx = 0
         for m_id, m_name in MACHINES.items():
