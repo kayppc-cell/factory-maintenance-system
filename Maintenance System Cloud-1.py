@@ -482,7 +482,7 @@ else:
                 crane_idx += 1
 
         # ---- 3. แผนก QC ----
-        st.write("#### 🔹 แผนกเครื่องมือวัดคุณภาพ QC (21 เครื่องมือวัด)")
+        st.write("#### 🔹 แผนกเครื่องมือวัดคุณภาพ QC (19 เครื่องมือวัด, 2 เครื่องจักรทำงาน)")
         qc_col1, qc_col2, qc_col3 = st.columns(3)
         qc_idx = 0
         for m_id, m_name in MACHINES.items():
