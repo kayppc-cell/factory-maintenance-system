@@ -27,32 +27,32 @@ MACHINES = {
     "CNC3X-07": "CNC 3 แกน #07", "CNC3X-08": "CNC 3 แกน #08",
     "CNC5X-01": "CNC 5 แกน #พิเศษ",
     "Crane no.1": "เครน CNC NO.1", "Crane no.2": "เครน QC NO.2",
-    "QC-01": "เครื่องวัดความแข็ง QC-01",  
-    "QC-02": "เวอร์เนีย 1000 QC-02",       
-    "QC-03": "เวอร์เนีย 300 QC-03",  
-    "QC-04": "เวอร์เนีย 300 QC-04",   
-    "QC-05": "เวอร์เนีย 200 QC-05",
-    "QC-06": "เวอร์เนีย 200 QC-06",  
-    "QC-07": "เวอร์เนีย 200 QC-07",
-    "QC-08": "เวอร์เนีย 200 QC-08", 
-    "QC-09": "เวอร์เนีย 200 QC-09",
-    "QC-10": "ไฮเกจ 300 QC-10",
-    "QC-11": "ไฮเกจ 600 QC-11",
-    "QC-12": "ไฮเกจ 600 QC-12",
-    "QC-13": "ไมโคร 0-25 QC-13",
-    "QC-14": "ไมโคร 5-30 QC-14",
-    "QC-15": "CMM QC-15",
-    "QC-16": "Laser QC-16",
-    "QC-17": "เลื่อยสายพาน QC-17",
-    "QC-18": "Faro Arm QC-18",
-    "QC-19": "Arm 2.8 QC-19",
-    "QC-20": "Arm 2.4 QC-20",               
-    "QC-21": "Arm 3.5 QC-21",
+    "QC-01": "เครื่องวัดความแข็ง",  
+    "QC-02": "เวอร์เนีย 1000 QC-VN-009",       
+    "QC-03": "เวอร์เนีย 300 QC-VN-011",  
+    "QC-04": "เวอร์เนีย 300 QC-VN-029",   
+    "QC-05": "เวอร์เนีย 200 QC-VN-025",
+    "QC-06": "เวอร์เนีย 200 QC-VN-026",  
+    "QC-07": "เวอร์เนีย 200 QC-VN-027",
+    "QC-08": "เวอร์เนีย 200 QC-VN-028", 
+    "QC-09": "เวอร์เนีย 600 QC-VN-010",
+    "QC-10": "ไฮเกจ 300 QC-HG-006",
+    "QC-11": "ไฮเกจ 600 QC-HG-007",
+    "QC-12": "ไฮเกจ 1000 QC-HG-008",
+    "QC-13": "ไมโคร 0-25 QC-MC-013",
+    "QC-14": "ไมโคร 5-30 QC-MC-024",
+    "QC-15": "CMM QC-CMM-001",
+    "QC-16": "Laser QC-Laser-001",
+    "QC-17": "เลื่อยสายพาน QC-SAW-001",
+    "QC-18": "Faro Arm QC-AC-001",
+    "QC-19": "Cimcore Arm 2.8 QC-AC-003",
+    "QC-20": "Cimcore Arm 2.4 QC-AC-002",               
+    "QC-21": "Cimcore Arm 3.5 QC-AC-004",
     "COMP-01": "ปั๊มลม 1 COMP-01",          
     "COMP-02": "ปั๊มลม 2 COMP-02",
     "GRINDING-01": "เครื่องเจียร GRINDING #01", "GRINDING-02": "เครื่องเจียร GRINDING #02",
     "CUTTER GRINDING-01": "เครื่องลับคม CUTTER GRINDING #01",
-    "MILLING-01": "เครื่องมิลลิ่ง #01", "MILLING-02": "เครื่องมิลลิ่ง #02", "MILLING-03": "เครื่องมิลลิ่ง #03", "MILLING-04": "เครื่องมิลลิ่ง #04",
+    "MILLING-01": "เครื่องมิลลิ่ง #01", "MILLING-02": "เครื่องมิลลิ่ง #02", "MILLING-03": "เครื่องมิลลิ่ง #03", "MILLING-04": "เครื่องเฟสเก็บขนาด",
     "LATHE-01": "เครื่องกลึง LATHE #01", 
     "CUTTING-01": "เครื่องตัด CUTTING #01", 
     "BENDING-01": "เครื่องพับ BENDING #01", 
@@ -421,7 +421,7 @@ else: m_type_selected = "CNC"
 # 🔧 [โหมดที่ 1: ฝั่งช่างเทคนิคส่งฟอร์มประจำวัน]
 # ==========================================
 if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
-    st.image("Logo_Pes.png", width=140)
+    st.image("Logo_Pes.png", width=240)
 
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
@@ -492,8 +492,8 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ล็อกอินตรวจสอบและกดอนุมัติฟอร์ม]
 # ==========================================
 else:
-    st.image("Logo_Pes.png", width=140)
-        
+    st.image("Logo_Pes.png", width=240)
+    st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
     
     selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและรูปภาพยิงย้อนหลัง:", value=datetime.date.today())
@@ -506,7 +506,7 @@ else:
         st.success("🔓 รหัสผ่านถูกต้อง เข้าสู่ระบบลงนามดิจิทัลมาตรฐาน ISO สำเร็จ")
         boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
         st.divider()
-        st.write("### 📊 บอร์ดควบคุมควบคุมใบงานรวม (แยกรายแผนก)")
+        st.write("### 📊 บอร์ดควบคุมรายงานการตรวจเช็ค ทั้งโรงงาน")
         
         def render_machine_card(m_id, m_name, m_type_flag):
             st.info(f"⚙️ **{m_id}**\n{m_name}")
@@ -557,7 +557,7 @@ else:
             st.divider()
 
         # ---- 1. แผนก CNC ----
-        st.write("#### 🔹 แผนกเครื่อง CNC (9 เครื่อง)")
+        st.write("#### 🔹 เครื่อง CNC (9 เครื่อง)")
         cnc_col1, cnc_col2, cnc_col3 = st.columns(3)
         cnc_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -567,7 +567,7 @@ else:
                 cnc_idx += 1
 
         # ---- 2. แผนก CRANE ----
-        st.write("#### 🔹 แผนกเครน CRANE / HOIST (2 ตัว)")
+        st.write("#### 🔹 เครน CRANE (2 แผนก)")
         crane_col1, crane_col2 = st.columns(2)
         crane_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -577,7 +577,7 @@ else:
                 crane_idx += 1
 
         # ---- 3. แผนก QC ----
-        st.write("#### 🔹 แผนกเครื่องมือวัดคุณภาพ QC (ประหยัดพื้นที่ เรียงหน้ากระดาน 3 แถว)")
+        st.write("#### 🔹 เครื่องมือวัดคุณภาพ QC (19 เครื่องมือวัด, 2 เครื่องจักรทำงาน)")
         qc_col1, qc_col2, qc_col3 = st.columns(3)
         qc_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -587,7 +587,7 @@ else:
                 qc_idx += 1
 
         # ---- 4. แผนก GRINDING ----
-        st.write("#### 🔹 แผนกเครื่องเจียรผิว GRINDING (2 เครื่อง)")
+        st.write("#### 🔹 เครื่องเจียรผิว GRINDING (2 เครื่อง)")
         grind_col1, grind_col2 = st.columns(2)
         grind_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -597,12 +597,12 @@ else:
                 grind_idx += 1
 
         # ---- 5. แผนก CUTTER GRINDING ----
-        st.write("#### 🔹 แผนกเครื่องลับคม CUTTER GRINDING (1 เครื่อง)")
+        st.write("#### 🔹 เครื่องลับคม CUTTER GRINDING (1 เครื่อง)")
         cutter_grind_col1, = st.columns(1)
         with cutter_grind_col1: render_machine_card("CUTTER GRINDING-01", MACHINES["CUTTER GRINDING-01"], "CUTTER GRINDING")
 
         # ---- 6. แผนก MILLING ----
-        st.write("#### 🔹 แผนกเครื่องมิลลิ่ง MILLING (4 เครื่อง)")
+        st.write("#### 🔹 เครื่องมิลลิ่ง MILLING (4 เครื่อง)")
         mill_col1, mill_col2, mill_col3 = st.columns(3)
         mill_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -612,22 +612,22 @@ else:
                 mill_idx += 1
 
         # ---- 7. แผนก LATHE ----
-        st.write("#### 🔹 แผนกเครื่องกลึง LATHE (1 เครื่อง)")
+        st.write("#### 🔹 เครื่องกลึง LATHE (1 เครื่อง)")
         lathe_col1, = st.columns(1)
         with lathe_col1: render_machine_card("LATHE-01", MACHINES["LATHE-01"], "LATHE")
 
         # ---- 8. แผนก CUTTING ----
-        st.write("#### 🔹 แผนกเครื่องตัด CUTTING (1 เครื่อง)")
+        st.write("#### 🔹 เครื่องตัด CUTTING (1 เครื่อง)")
         cut_col1, = st.columns(1)
         with cut_col1: render_machine_card("CUTTING-01", MACHINES["CUTTING-01"], "CUTTING")
 
         # ---- 9. แผนก BENDING ----
-        st.write("#### 🔹 แผนกเครื่องพับ BENDING (1 เครื่อง)")
+        st.write("#### 🔹 เครื่องพับ BENDING (1 เครื่อง)")
         bend_col1, = st.columns(1)
         with bend_col1: render_machine_card("BENDING-01", MACHINES["BENDING-01"], "BENDING")
 
         # ---- 10. แผนก MIG CO2 ----
-        st.write("#### 🔹 แผนกเครื่องเชื่อม MIG CO2 (3 เครื่อง)")
+        st.write("#### 🔹 เครื่องเชื่อม MIG CO2 (3 เครื่อง)")
         mig_col1, mig_col2, mig_col3 = st.columns(3)
         mig_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -637,7 +637,7 @@ else:
                 mig_idx += 1
 
         # ---- 11. แผนก ARGON ----
-        st.write("#### 🔹 แผนกเครื่องเชื่อม ARGON (2 เครื่อง)")
+        st.write("#### 🔹 เครื่องเชื่อม ARGON (2 เครื่อง)")
         argon_col1, argon_col2 = st.columns(2)
         argon_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -647,12 +647,12 @@ else:
                 argon_idx += 1
 
         # ---- 12. แผนก WELDING ALUMINUM ----
-        st.write("#### 🔹 แผนกเครื่องเชื่อมอลูมิเนียม WELDING ALUMINUM (1 เครื่อง)")
+        st.write("#### 🔹 เครื่องเชื่อมอลูมิเนียม WELDING ALUMINUM (1 เครื่อง)")
         wel_al_col1, = st.columns(1)
         with wel_al_col1: render_machine_card("WELDING_ALUMINUM-01", MACHINES["WELDING_ALUMINUM-01"], "WELDING_ALUMINUM")
 
         # ---- 13. แผนกปั๊มลม COMPRESSOR ----
-        st.write("#### 🔹 แผนกปั๊มลม AIR COMPRESSOR (2 เครื่อง)")
+        st.write("#### 🔹 เครื่องปั๊มลม AIR COMPRESSOR (2 เครื่อง)")
         comp_col1, comp_col2, comp_col3 = st.columns(3)
         comp_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -661,13 +661,8 @@ else:
                     render_machine_card(m_id, m_name, "COMP-01") 
                 comp_idx += 1
 
-        # ---- 14. แผนก FORKLIFT ----
-        st.write("#### 🔹 แผนกรถโฟคลิฟ FORKLIFT (1 เครื่อง)")
-        fork_col1, = st.columns(1)
-        with fork_col1: render_machine_card("FORKLIFT-01", MACHINES["FORKLIFT-01"], "FORKLIFT")
-
-        # ---- 15. แผนก BAND SAW ----
-        st.write("#### 🔹 แผนกเครื่องเลื่อยสายพาน BAND SAW (3 เครื่อง)")
+        # ---- 14. แผนก BAND SAW ----
+        st.write("#### 🔹 เครื่องเลื่อยสายพาน BAND SAW (3 เครื่อง)")
         saw_col1, saw_col2, saw_col3 = st.columns(3)
         saw_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -675,6 +670,11 @@ else:
                 with (saw_col1 if saw_idx % 3 == 0 else (saw_col2 if saw_idx % 3 == 1 else saw_col3)):
                     render_machine_card(m_id, m_name, "BAND SAW")
                 saw_idx += 1
+
+        # ---- 15. แผนก FORKLIFT ----
+        st.write("#### 🔹 รถโฟคลิฟ FORKLIFT (1 เครื่อง)")
+        fork_col1, = st.columns(1)
+        with fork_col1: render_machine_card("FORKLIFT-01", MACHINES["FORKLIFT-01"], "FORKLIFT")
 
         # กล่องระบบล้างภาพถ่ายทดสอบสำหรับผู้ดูแลระบบ ยัดท้ายตาราง
         st.markdown("---")
