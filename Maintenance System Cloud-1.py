@@ -19,7 +19,7 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 BOSS_PASSWORD = "boss1234"  
 
-# ทะเบียนเครื่องจักรกลางประจำโรงงาน (รวมครบ 10 แผนก ทั้งหมด 29 เครื่อง/ตัว)
+# ทะเบียนเครื่องจักรกลางประจำโรงงาน (อัปเดตเพิ่มเครื่องกลึง LATHE-01 ต่อท้าย Milling เรียบร้อยครับ)
 MACHINES = {
     "CNC3X-01": "CNC 3 แกน #01", "CNC3X-02": "CNC 3 แกน #02",
     "CNC3X-03": "CNC 3 แกน #03", "CNC3X-04": "CNC 3 แกน #04",
@@ -52,10 +52,13 @@ MACHINES = {
     "COMP-02": "ปั๊มลม 2 COMP-02",
     "GRINDING-01": "เครื่องเจียร GRINDING #01", "GRINDING-02": "เครื่องเจียร GRINDING #02",
     "CUTTER GRINDING-01": "เครื่องลับคม CUTTER GRINDING #01",
-    "MILLING-01": "เครื่องมิลลิ่ง #01", "MILLING-02": "เครื่องมิลลิ่ง #02", "MILLING-03": "เครื่องมิลลิ่ง #03",
-    "CUTTING-01": "เครื่องตัด CUTTING #01", "CUTTING-02": "เครื่องตัด CUTTING #02",
+    "MILLING-01": "เครื่องมิลลิ่ง #01", "MILLING-02": "เครื่องมิลลิ่ง #02", "MILLING-03": "เครื่องมิลลิ่ง #03", "MILLING-04": "เครื่องมิลลิ่ง #04",
+    "LATHE-01": "เครื่องกลึง LATHE #01", # 🎯 เพิ่มเครื่องจักรแผนกใหม่ตรงนี้ครับเพื่อนรัก
+    "CUTTING-01": "เครื่องตัด CUTTING #01", 
+    "BENDING-01": "เครื่องพับ BENDING #01", 
     "MIG CO2-01": "เครื่องเชื่อม MIG CO2 #01", "MIG CO2-02": "เครื่องเชื่อม MIG CO2 #02", "MIG CO2-03": "เครื่องเชื่อม MIG CO2 #03",
-    "ARGON-01": "เครื่องเชื่อม ARGON #01",
+    "ARGON-01": "เครื่องเชื่อม ARGON #01", "ARGON-02": "เครื่องเชื่อม ARGON #02", 
+    "WELDING_ALUMINUM-01": "เครื่องเชื่อมอลูมิเนียม WELDING ALUMINUM #01", 
     "BAND SAW-01": "เครื่องเลื่อยสายพาน #01", "BAND SAW-02": "เครื่องเลื่อยสายพาน #02", "BAND SAW-03": "เครื่องเลื่อยสายพาน #03"
 }
 
@@ -103,12 +106,63 @@ CHECKLISTS = {
     "QC-21": ["ตรวจดูสภาพของสายไฟ", "ตรวจดูสภาพ ARM ของเครื่อง", "ตรวจดูสภาพของหัว PROBE คตงอหรือไม่", "ตรวจสอบ STICKER", "ตรวจสอบ NOTEBOOK COMPUTER"],
     "COMP-01": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
     "COMP-02": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
-    "GRINDING": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMP น้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
+    "GRINDING": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงาน of PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMP น้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
     "CUTTER GRINDING": ["การ WORM UP แกน Y พร้อมใช้งาน", "การ WORM UP แกน Z พร้อมใช้งาน", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของมอเตอร์ มีการหมุนปกติ", "ตรวจสอบการจับหัวคอเรต"],
-    "MILLING": ["Worm Spindle ก่อนเริมงาน ตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor", "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคร่องตัวในการเคลื่อนที่ของ Spindle )", "ตรวจสอบการ SLIDE  ของแกน X", "ตรวจสอบการ SLIDE  ของแกน Y", "ตรวจสอบการ SLIDE  ของแกน Z", "ระดับน้ำมันไฮดรอลิค ตรวจสอบน้ำมันในปั้มน้ำมันหล่อ ลื่นแกน  X,Y,Z", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั้ม COOLANT และสภาพของน้ำ  COOLANT", "ตรวจสอบหน้าจอ  DIGITAL READ OUT และการทำ งานของ LINEAR SCALE", "หยอดน้ำมันหล่อลื่นทุกวันจันทร์", "ตรวจสอบการทำงานของไฟฟ้าแสงสว่างของเครื่อง", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร  และอุกรณ์เสริมต่าง ๆ"],
+    "MILLING": [
+        "Worm Spindle ก่อนเริมงาน ตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor", 
+        "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคร่องตัวในการเคลื่อนที่ของ Spindle )", 
+        "ตรวจสอบการ SLIDE  ของแกน X", "ตรวจสอบการ SLIDE  ของแกน Y", "ตรวจสอบการ SLIDE  ของแกน Z", 
+        "ระดับน้ำมันไฮดรอลิค ตรวจสอบน้ำมันในปั้มน้ำมันหล่อ ลื่นแกน  X,Y,Z", 
+        "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั้ม COOLANT และสภาพของน้ำ  COOLANT", 
+        "ตรวจสอบหน้าจอ  DIGITAL READ OUT และการทำ งานของ LINEAR SCALE", "หยอดน้ำมันหล่อลื่นทุกวันจันทร์", 
+        "ตรวจสอบการทำงานของไฟฟ้าแสงสว่างของเครื่อง", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร  และอุกรณ์เสริมต่าง ๆ"
+    ],
+    # 🟢 [NEW CHECKLIST] บันทึกรายหัวข้อเช็คลิสต์ตรวจเช็คประจำวันแผนกเครื่องกลึง LATHE ตัวใหม่เป๊ะๆตามสั่ง
+    "LATHE": [
+        "การ WORM SPINDLE ก่อนเริ่มงาน 15 นาที",
+        "เช็คระดับน้ำมันเครื่องในห้องเกียร์",
+        "เช็คระบบเฟื่องทดลองเปลี่ยนรอบตวามเร็วต่าง ๆ",
+        "เช็ค AUTO แกน X,Y",
+        "เช็คระดับน้ำมันหล่อลื่นใน PUMP",
+        "เช็คน้ำมันหล่อเย็นและการทำงานของปั้ม",
+        "ตรวจสอบหน้าจอ  DIGITAL  READ OUT และการ ทำงานของ  LINEAR  SCALE",
+        "ตรวจเช็คสภาพและความตึงของสายพาน",
+        "ตรวจสอบการทำงานของไฟฟ้าแสงสว่าง",
+        "อัดจาระบีตามหัวอัดจาระบีทุก ๆ จุด",
+        "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง"
+    ],
     "CUTTING": ["การ Worm spindle ก่อนเริ่มงาน เพื่อตรวจ ความผิดปกติของชุด Back gauge และ Motor", "เช็ค Auto Up-Down back gauge และ Manual ( ความคล่องตัวในการเคลื่อนที่ )", "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับในปั้มน้ำมัน หล่อลืนแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด", "ตรวจสอบ Digital  read out และการทำงานของ Linear  scale", "อัดจาระบีตามจุดที่อัดจาระบีทุกๆจุด", "ตรวจสอบใบมีด  บนและล่าง", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง จักรและอุปกรณ์เสริมต่าง ๆ"],
+    "BENDING": [
+        "การ Worm spindle ก่อนเริมงาน เพื่อตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor",
+        "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคร่องตัวในการเคลื่อนที่ของ Spindle )",
+        "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับน้ำมันในปั้ม น้ำมันหล่อลื่นแกน  Back gauge",
+        "ตรวจเช็ค  Switch  เปิด-ปิด",
+        "ตรวจสอบหน้าจอ Digital read out  และการทำงาน ของ Linear  scale",
+        "อัดจาระบีตามจุดหัวอัดจาระบีทุก ๆจุด 1ครั้งตต่อเดือน",
+        "ตรวจสอบการทำงานของไฟฟ้าแสงสว่างของเครื่อง",
+        "ตรวจสอบฟันพับของร่อง  V",
+        "ตรวจสอบความพร้อมและสภาพโดยรวมของเครื่อง จักรและอุกรณ์เสริมต่าง ๆ"
+    ],
     "MIG CO2": ["ตรวจสภาพความพร้อมโดยรวมของเครื่อง", "เช็ค BREAKER เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์ และสวิชท์ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดัน ของก๊าซ CO2 และปรับตั้งอย่างถูกต้อง", "ตรวจจุดต่อของก๊าซ CO2 รั่วหรือไม่", "ตรวจสภาพความพร้อมของสายไฟ สายก๊าซ  CO2 ว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราวด์", "ทำความสะอาดหัวเชื่อมก่อนใช้งาน"],
-    "ARGON": ["ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราว์", "ตรวจสภาพความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"],
+    "ARGON": [
+        "ตรวจสภาพความพรัอมโดยรวมของเครื่อง", 
+        "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", 
+        "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", 
+        "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", 
+        "ตรวจสภาพความพร้อมของสายกราว์", 
+        "ตรวจสภาพความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", 
+        "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", 
+        "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"
+    ],
+    "WELDING_ALUMINUM": [
+        "ตรวจสภาพความพรัอมโดยรวมของเครื่อง",
+        "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ",
+        "ตรวจสภาพความพร้อมของสายกราวด์ให้อยู่ในสภาพ ความพร้อมอยู่เสมอ",
+        "ตรวจจุดต่อของสายท่อแก๊สว่ารั่วหรือไม่",
+        "เช็คระดับน้ำหล่อเย็นให้อยู่ในระดับพร้อมใช้งาน",
+        "เช็คระดับแรงดันในถังแก๊สให้พร้อมใช้งาน",
+        "ทำความสะอาดชุดหัวเชื่อมก่อนใช้งานอย่างสม่ำเสมอ"
+    ],
     "BAND SAW": ["เช็ค Auto Up-Down Back Gauge และ Manual (ความคล่องตัวในการเคลื่อนที่ของ Spindle)", "เช็คระดับน้ำมันไฮดรอลิค", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั๊ม COOLANT และสภาพของน้ำ COOLANT", "ตรวจสอบ Switch (สวิตซ์) หน้า BOX CONTROL", "ตรวจสอบระดับน้ำมันหล่อลื่นในห้องเกียร์"]
 }
 
@@ -119,20 +173,29 @@ PHOTO_RULES = {
     "QC-07": [2, 4], "QC-08": [2, 4], "QC-09": [2, 4], "QC-10": [2], "QC-11": [2], "QC-12": [2],
     "QC-13": [2], "QC-14": [2], "QC-15": [6], "QC-16": [3], "QC-17": [2], "QC-18": [3], "QC-19": [3],
     "QC-20": [3], "QC-21": [3], "COMP-01": [1, 2, 3], "COMP-02": [1, 2, 3], "GRINDING": [2, 4, 7],
-    "CUTTER GRINDING": [], "MILLING": [6, 7], "CUTTING": [3, 5, 7], "MIG CO2": [3, 4, 5],
-    "ARGON": [3, 4, 6], "BAND SAW": [2, 3, 5]
+    "CUTTER GRINDING": [], "MILLING": [6, 7], "LATHE": [2, 5, 6], "CUTTING": [3, 5, 7], "BENDING": [3, 5, 6], "MIG CO2": [3, 4, 5],
+    "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [3, 4, 5], "BAND SAW": [2, 3, 5]
 }
 
-def get_coordinates(m_type):
+def get_coordinates_by_machine(m_id, m_type):
+    if m_id == "ARGON-02": return 14, 16, "B19"
+    if m_id == "ARGON-01": return 11, 13, "B19"
+    
+    # 🟢 [LOCKED COORDINATES] บันทึกและล็อกพิกัดแผนก LATHE: ช่าง 17-18 / หัวหน้า 19-20 / โน้ตอาการเสียสะสม B22 ตามสั่งครับ
+    if m_type == "LATHE": return 17, 19, "B22"
+        
     if m_type == "CNC": return 22, 24, "B28"
     if "CRANE" in m_type.upper(): return 14, 16, "B19"
     if m_type == "QC-01": return 10, 12, "B15"
-    if m_type in ["QC-VERNIER_STD", "QC-MICRO_STD", "QC-ARM_STD", "QC-16", "QC-17", "BAND SAW", "CUTTING", "ARGON", "QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-18", "QC-19", "QC-20", "QC-21", "COMP-01", "COMP-02"]: return 11, 13, "B16"
+    if m_type in ["QC-VERNIER_STD", "QC-MICRO_STD", "QC-ARM_STD", "QC-16", "QC-17", "BAND SAW", "CUTTING", "QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-18", "QC-19", "QC-20", "QC-21", "COMP-01", "COMP-02"]: return 11, 13, "B16"
     if m_type in ["QC-10", "QC-11", "QC-12"]: return 11, 13, "B15"
     if m_type == "QC-15": return 12, 14, "B17"
     if m_type == "GRINDING": return 16, 18, "B21"
     if m_type == "CUTTER GRINDING": return 13, 15, "B18"
-    if m_type == "MILLING": return 20, 22, "B25"
+    if m_type == "MILLING": return 17, 19, "B22" 
+    if m_type == "CUTTING": return 13, 15, "B18"
+    if m_type == "BENDING": return 15, 17, "B20" 
+    if m_type == "WELDING_ALUMINUM": return 13, 15, "B18"
     if m_type == "MIG CO2": return 13, 15, "B18"
     return 11, 13, "B16"
 
@@ -199,34 +262,26 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
         
-        t_row, boss_row, n_cell = get_coordinates(m_type)
+        t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
         
         check_col_1 = get_column_letter(3) 
         first_cell_of_month = get_unmerged_cell(ws, f"{check_col_1}{t_row}")
         
-        # 🟢 [AUTO RESET + AUTO BACKUP MECHANIC] สั่งก๊อปปี้ไฟล์เก็บเป็นประวัติประมวลผลก่อนล้างกระดาน
         if day_num == 1 and (first_cell_of_month.value is None or first_cell_of_month.value == ""):
-            # 1. กลไกสำรองไฟล์อัตโนมัติ (คัดลอกไฟล์เดือนเก่าเก็บไว้ในโฟลเดอร์แยกป้องการข้อมูลหาย)
+            # [AUTO BACKUP MECHANIC]
             backup_folder = os.path.join(BASE_FOLDER, "maintenance_backups")
-            if not os.path.exists(backup_folder): 
-                os.makedirs(backup_folder, exist_ok=True)
-                
-            # หาชื่อเดือนและปีที่พึ่งผ่านมาเพื่อตั้งชื่อไฟล์ประวัติย้อนหลัง
+            if not os.path.exists(backup_folder): os.makedirs(backup_folder, exist_ok=True)
             today = datetime.date.today()
-            first_day_of_current_month = today.replace(day=1)
+            first_day of current month = today.replace(day=1)
             last_day_of_last_month = first_day_of_current_month - datetime.timedelta(days=1)
-            last_month_str = last_day_of_last_month.strftime("%B_%Y") # ได้ชื่อเป็น เช่น June_2026
+            last_month_str = last_day_of_last_month.strftime("%B_%Y")
             
             backup_file_name = f"Backup_{last_month_str}_FM-MN-07_{machine_id}.xlsx"
             backup_excel_path = os.path.join(backup_folder, backup_file_name)
-            
-            # ยิงคำสั่งก๊อปปี้คัดลอกไฟล์ดิบจากคลาวด์ไปเก็บไว้ตู้ประวัติทันทีก่อนรีเซ็ตตาราง
             shutil.copy2(target_excel_path, backup_excel_path)
-            
-            # แจ้งเตือนสัญญานผ่านแชทกลุ่ม LINE บอท เพื่อแจ้งบอสพลวัฒน์ว่าแบ็คอัพตารางเดือนเก่าให้เรียบร้อยแล้ว
-            send_line_alert(f"📦 [Auto-Backup Completed]: ระบบได้ทำการสำรองไฟล์ประวัติประจำเดือน {last_month_str} ของเครื่อง {machine_id} เก็บไว้ในระบบคลาวด์เรียบร้อยแล้วอย่างปลอดภัยก่อนรีเซ็ตหน้าตารางใหม่")
+            send_line_alert(f"📦 [Auto-Backup Completed]: ระบบสำรองไฟล์ของเครื่อง {machine_id} ประจำเดือน {last_month_str} สำเร็จเรียบร้อยแล้ว!")
 
-            # 2. ขั้นตอนเคลียร์หน้ากระดานตารางเก่า 1-31 คลีน ๆ เหมือนเดิม
+            # [AUTO RESET MECHANIC]
             checklist_items = CHECKLISTS[m_type]
             for d in range(1, 32):
                 c_letter = get_column_letter(2 + d)
@@ -279,7 +334,7 @@ def approve_excel_by_boss(machine_id, day_num, boss_name, m_type):
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
         col_letter = get_column_letter(2 + day_num)
-        _, boss_row, _ = get_coordinates(m_type)
+        _, boss_row, _ = get_coordinates_by_machine(machine_id, m_type)
         
         boss_cell = get_unmerged_cell(ws, f"{col_letter}{boss_row}")
         boss_cell.value = boss_name
@@ -294,7 +349,7 @@ def get_current_excel_note(machine_id, m_type):
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
-        _, _, n_cell = get_coordinates(m_type)
+        _, _, n_cell = get_coordinates_by_machine(machine_id, m_type)
         note_cell = get_unmerged_cell(ws, n_cell)
         val = note_cell.value
         return val if val else ""
@@ -306,7 +361,7 @@ def save_custom_excel_note_by_boss(machine_id, m_type, new_text):
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
-        _, _, n_cell = get_coordinates(m_type)
+        _, _, n_cell = get_coordinates_by_machine(machine_id, m_type)
         note_cell = get_unmerged_cell(ws, n_cell)
         
         note_cell.value = new_text.strip() if new_text.strip() else "เครื่องจักรปกติ"
@@ -365,9 +420,12 @@ elif "COMP-02" in machine_id.upper(): m_type_selected = "COMP-02"
 elif "GRINDING" in machine_id.upper(): m_type_selected = "GRINDING"
 elif "CUTTER" in machine_id.upper(): m_type_selected = "CUTTER GRINDING"
 elif "MILLING" in machine_id.upper(): m_type_selected = "MILLING"
+elif "LATHE" in machine_id.upper(): m_type_selected = "LATHE" # 🎯 ผูกตัวรับค่าแผนกเครื่องกลึงใหม่
 elif "CUTTING" in machine_id.upper(): m_type_selected = "CUTTING"
+elif "BENDING" in machine_id.upper(): m_type_selected = "BENDING" 
 elif "MIG" in machine_id.upper(): m_type_selected = "MIG CO2"
 elif "ARGON" in machine_id.upper(): m_type_selected = "ARGON"
+elif "WELDING_ALUMINUM" in machine_id.upper(): m_type_selected = "WELDING_ALUMINUM"
 elif "BAND" in machine_id.upper(): m_type_selected = "BAND SAW"
 else: m_type_selected = "CNC"
 
@@ -375,7 +433,9 @@ else: m_type_selected = "CNC"
 # 🔧 [โหมดที่ 1: ฝั่งช่างเทคนิคส่งฟอร์มประจำวัน]
 # ==========================================
 if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
-    st.image("Logo_Pes.png", width=240)
+    col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
+    with col_logo2:
+        st.image("Logo_Pes.png", width=140)
 
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
@@ -446,8 +506,10 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ล็อกอินตรวจสอบและกดอนุมัติฟอร์ม]
 # ==========================================
 else:
-    st.image("Logo_Pes.png", width=240)
-    st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
+    col_logo_b1, col_logo_b2, col_logo_b3 = st.columns([1, 2, 1])
+    with col_logo_b2:
+        st.image("Logo_Pes.png", width=140)
+        
     st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
     
     selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและรูปภาพยิงย้อนหลัง:", value=datetime.date.today())
@@ -483,16 +545,20 @@ else:
                     st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
                 current_notes = get_current_excel_note(m_id, m_type_flag)
-                if m_type_flag == "CNC": note_label = "ช่อง B28"
+                if m_id == "ARGON-02": note_label = "ช่อง B19" 
+                elif m_id == "ARGON-01": note_label = "ช่อง B19"
+                elif m_type_flag == "WELDING_ALUMINUM": note_label = "ช่อง B18"
+                elif m_type_flag == "CNC": note_label = "ช่อง B28"
                 elif "CRANE" in m_type_flag.upper(): note_label = "ช่อง B19"  
                 elif m_type_flag == "QC-01": note_label = "ช่อง B15"  
                 elif m_type_flag in ["QC-02", "QC-03"]: note_label = "ช่อง B16"  
                 elif m_type_flag == "GRINDING": note_label = "ช่อง B21"
                 elif m_type_flag == "CUTTER GRINDING": note_label = "ช่อง B18"
-                elif m_type_flag == "MILLING": note_label = "ช่อง B25"
-                elif m_type_flag == "CUTTING": note_label = "ช่อง B20"
+                elif m_type_flag == "MILLING": note_label = "ช่อง B22" 
+                elif m_type_flag == "LATHE": note_label = "ช่อง B22" # 🎯 สะท้อนป้ายตารางบอกช่องจดโน้ต B22 ประจำบอร์ดเครื่องกลึงครามๆ
+                elif m_type_flag == "CUTTING": note_label = "ช่อง B18"
+                elif m_type_flag == "BENDING": note_label = "ช่อง B20" 
                 elif m_type_flag == "MIG CO2": note_label = "ช่อง B18"
-                elif m_type_flag == "ARGON": note_label = "ช่อง B19"
                 else: note_label = "ช่อง B16"
                 
                 edited_notes = st.text_area(f"📝 รายการอาการเสียสะสม ({note_label})", value=current_notes, key=f"note_area_{m_id}", height=120)
@@ -506,7 +572,7 @@ else:
             st.divider()
 
         # ---- 1. แผนก CNC ----
-        st.write("#### 🔹 เครื่อง CNC (9 เครื่อง)")
+        st.write("#### 🔹 แผนกเครื่อง CNC (9 เครื่อง)")
         cnc_col1, cnc_col2, cnc_col3 = st.columns(3)
         cnc_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -516,7 +582,7 @@ else:
                 cnc_idx += 1
 
         # ---- 2. แผนก CRANE ----
-        st.write("#### 🔹 เครน CRANE (2 แผนก)")
+        st.write("#### 🔹 แผนกเครน CRANE / HOIST (2 ตัว)")
         crane_col1, crane_col2 = st.columns(2)
         crane_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -526,7 +592,7 @@ else:
                 crane_idx += 1
 
         # ---- 3. แผนก QC ----
-        st.write("#### 🔹 เครื่องมือวัดคุณภาพ QC (19 เครื่องมือวัด, 2 เครื่องจักรทำงาน)")
+        st.write("#### 🔹 แผนกเครื่องมือวัดคุณภาพ QC (ประหยัดพื้นที่ เรียงหน้ากระดาน 3 แถว)")
         qc_col1, qc_col2, qc_col3 = st.columns(3)
         qc_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -536,7 +602,7 @@ else:
                 qc_idx += 1
 
         # ---- 4. แผนก GRINDING ----
-        st.write("#### 🔹 เครื่องเจียรผิว GRINDING (2 เครื่อง)")
+        st.write("#### 🔹 แผนกเครื่องเจียรผิว GRINDING (2 เครื่อง)")
         grind_col1, grind_col2 = st.columns(2)
         grind_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -546,12 +612,12 @@ else:
                 grind_idx += 1
 
         # ---- 5. แผนก CUTTER GRINDING ----
-        st.write("#### 🔹 เครื่องลับคม CUTTER GRINDING (1 เครื่อง)")
+        st.write("#### 🔹 แผนกเครื่องลับคม CUTTER GRINDING (1 เครื่อง)")
         cutter_grind_col1, = st.columns(1)
         with cutter_grind_col1: render_machine_card("CUTTER GRINDING-01", MACHINES["CUTTER GRINDING-01"], "CUTTER GRINDING")
 
         # ---- 6. แผนก MILLING ----
-        st.write("#### 🔹 เครื่องมิลลิ่ง MILLING (3 เครื่อง)")
+        st.write("#### 🔹 แผนกเครื่องมิลลิ่ง MILLING (4 เครื่อง)")
         mill_col1, mill_col2, mill_col3 = st.columns(3)
         mill_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -560,18 +626,24 @@ else:
                     render_machine_card(m_id, m_name, "MILLING")
                 mill_idx += 1
 
-        # ---- 7. แผนก CUTTING ----
-        st.write("#### 🔹 เครื่องตัด CUTTING (2 เครื่อง)")
-        cut_col1, cut_col2 = st.columns(2)
-        cut_idx = 0
-        for m_id, m_name in MACHINES.items():
-            if "CUTTING" in m_id:
-                with (cut_col1 if cut_idx % 2 == 0 else cut_col2):
-                    render_machine_card(m_id, m_name, "CUTTING")
-                cut_idx += 1
+        # ---- 7. แผนก LATHE ----
+        # 🟢 [NEW GRID BLOCK] งอกบอร์ดแสดงผลแดชบอร์ดแผนกเครื่องกลึง LATHE-01 ต่อท้ายแผนกมิลลิ่งตามบรีฟเป๊ะๆครับ
+        st.write("#### 🔹 แผนกเครื่องกลึง LATHE (1 เครื่อง)")
+        lathe_col1, = st.columns(1)
+        with lathe_col1: render_machine_card("LATHE-01", MACHINES["LATHE-01"], "LATHE")
 
-        # ---- 8. แผนก MIG CO2 ----
-        st.write("#### 🔹 เครื่องเชื่อม MIG CO2 (3 เครื่อง)")
+        # ---- 8. แผนก CUTTING ----
+        st.write("#### 🔹 แผนกเครื่องตัด CUTTING (1 เครื่อง)")
+        cut_col1, = st.columns(1)
+        with cut_col1: render_machine_card("CUTTING-01", MACHINES["CUTTING-01"], "CUTTING")
+
+        # ---- 9. แผนก BENDING ----
+        st.write("#### 🔹 แผนกเครื่องพับ BENDING (1 เครื่อง)")
+        bend_col1, = st.columns(1)
+        with bend_col1: render_machine_card("BENDING-01", MACHINES["BENDING-01"], "BENDING")
+
+        # ---- 10. แผนก MIG CO2 ----
+        st.write("#### 🔹 แผนกเครื่องเชื่อม MIG CO2 (3 เครื่อง)")
         mig_col1, mig_col2, mig_col3 = st.columns(3)
         mig_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -580,15 +652,23 @@ else:
                     render_machine_card(m_id, m_name, "MIG CO2")
                 mig_idx += 1
 
-        # ---- 9. แผนก ARGON ----
-        st.write("#### 🔹 เครื่องเชื่อม ARGON (1 เครื่อง)")
-        argon_col1, = st.columns(1)
+        # ---- 11. แผนก ARGON ----
+        st.write("#### 🔹 แผนกเครื่องเชื่อม ARGON (2 เครื่อง)")
+        argon_col1, argon_col2 = st.columns(2)
+        argon_idx = 0
         for m_id, m_name in MACHINES.items():
             if "ARGON" in m_id:
-                with argon_col1: render_machine_card(m_id, m_name, "ARGON")
+                with (argon_col1 if argon_idx % 2 == 0 else argon_col2):
+                    render_machine_card(m_id, m_name, "ARGON")
+                argon_idx += 1
 
-        # ---- 10. แผนก BAND SAW ----
-        st.write("#### 🔹 เครื่องเลื่อยสายพาน BAND SAW (3 เครื่อง)")
+        # ---- 12. แผนก WELDING ALUMINUM ----
+        st.write("#### 🔹 แผนกเครื่องเชื่อมอลูมิเนียม WELDING ALUMINUM (1 เครื่อง)")
+        wel_al_col1, = st.columns(1)
+        with wel_al_col1: render_machine_card("WELDING_ALUMINUM-01", MACHINES["WELDING_ALUMINUM-01"], "WELDING_ALUMINUM")
+
+        # ---- 13. แผนก BAND SAW ----
+        st.write("#### 🔹 แผนกเครื่องเลื่อยสายพาน BAND SAW (3 เครื่อง)")
         saw_col1, saw_col2, saw_col3 = st.columns(3)
         saw_idx = 0
         for m_id, m_name in MACHINES.items():
@@ -597,8 +677,8 @@ else:
                     render_machine_card(m_id, m_name, "BAND SAW")
                 saw_idx += 1
 
-        # ---- 11. แผนกปั๊มลม COMPRESSOR ----
-        st.write("#### 🔹 เครื่องปั๊มลม AIR COMPRESSOR (2 เครื่อง)")
+        # ---- 14. แผนกปั๊มลม COMPRESSOR ----
+        st.write("#### 🔹 แผนกปั๊มลม AIR COMPRESSOR (2 เครื่อง)")
         comp_col1, comp_col2, comp_col3 = st.columns(3)
         comp_idx = 0
         for m_id, m_name in MACHINES.items():
