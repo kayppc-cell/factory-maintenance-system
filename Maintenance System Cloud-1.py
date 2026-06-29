@@ -566,27 +566,7 @@ else:
                     render_machine_card(m_id, m_name, "CNC")
                 cnc_idx += 1
 
-        # ---- 2. แผนก CRANE ----
-        st.write("#### 🔹 เครน CRANE (2 แผนก)")
-        crane_col1, crane_col2 = st.columns(2)
-        crane_idx = 0
-        for m_id, m_name in MACHINES.items():
-            if "CRANE" in m_id.upper():
-                with (crane_col1 if crane_idx % 2 == 0 else crane_col2):
-                    render_machine_card(m_id, m_name, "COMP-01")
-                crane_idx += 1
-
-        # ---- 3. แผนก QC ----
-        st.write("#### 🔹 เครื่องมือวัดคุณภาพ QC (19 เครื่องมือวัด, 2 เครื่องจักรทำงาน)")
-        qc_col1, qc_col2, qc_col3 = st.columns(3)
-        qc_idx = 0
-        for m_id, m_name in MACHINES.items():
-            if "QC-" in m_id.upper():
-                with (qc_col1 if qc_idx % 3 == 0 else (qc_col2 if qc_idx % 3 == 1 else qc_col3)):
-                    render_machine_card(m_id, m_name, "COMP-01")
-                qc_idx += 1
-
-        # ---- 4. แผนก GRINDING ----
+        # ---- 2. แผนก GRINDING ----
         st.write("#### 🔹 เครื่องเจียรผิว GRINDING (2 เครื่อง)")
         grind_col1, grind_col2 = st.columns(2)
         grind_idx = 0
@@ -596,12 +576,42 @@ else:
                     render_machine_card(m_id, m_name, "GRINDING")
                 grind_idx += 1
 
-        # ---- 5. แผนก CUTTER GRINDING ----
+        # ---- 3. แผนก CUTTER GRINDING ----
         st.write("#### 🔹 เครื่องลับคม CUTTER GRINDING (1 เครื่อง)")
         cutter_grind_col1, = st.columns(1)
         with cutter_grind_col1: render_machine_card("CUTTER GRINDING-01", MACHINES["CUTTER GRINDING-01"], "CUTTER GRINDING")
 
-        # ---- 6. แผนก MILLING ----
+        # ---- 4. แผนกปั๊มลม COMPRESSOR ----
+        st.write("#### 🔹 เครื่องปั๊มลม AIR COMPRESSOR (2 เครื่อง)")
+        comp_col1, comp_col2, comp_col3 = st.columns(3)
+        comp_idx = 0
+        for m_id, m_name in MACHINES.items():
+            if "COMP-" in m_id.upper():
+                with (comp_col1 if comp_idx % 3 == 0 else (comp_col2 if comp_idx % 3 == 1 else comp_col3)):
+                    render_machine_card(m_id, m_name, "COMP-01") 
+                comp_idx += 1
+
+        # ---- 5. แผนก CRANE ----
+        st.write("#### 🔹 เครน CRANE (2 แผนก)")
+        crane_col1, crane_col2 = st.columns(2)
+        crane_idx = 0
+        for m_id, m_name in MACHINES.items():
+            if "CRANE" in m_id.upper():
+                with (crane_col1 if crane_idx % 2 == 0 else crane_col2):
+                    render_machine_card(m_id, m_name, "COMP-01")
+                crane_idx += 1
+
+        # ---- 6. แผนก QC ----
+        st.write("#### 🔹 เครื่องมือวัดคุณภาพ QC (19 เครื่องมือวัด, 2 เครื่องจักรทำงาน)")
+        qc_col1, qc_col2, qc_col3 = st.columns(3)
+        qc_idx = 0
+        for m_id, m_name in MACHINES.items():
+            if "QC-" in m_id.upper():
+                with (qc_col1 if qc_idx % 3 == 0 else (qc_col2 if qc_idx % 3 == 1 else qc_col3)):
+                    render_machine_card(m_id, m_name, "COMP-01")
+                qc_idx += 1
+
+        # ---- 7. แผนก MILLING ----
         st.write("#### 🔹 เครื่องมิลลิ่ง MILLING (4 เครื่อง)")
         mill_col1, mill_col2, mill_col3 = st.columns(3)
         mill_idx = 0
@@ -611,22 +621,22 @@ else:
                     render_machine_card(m_id, m_name, "MILLING")
                 mill_idx += 1
 
-        # ---- 7. แผนก LATHE ----
+        # ---- 8. แผนก LATHE ----
         st.write("#### 🔹 เครื่องกลึง LATHE (1 เครื่อง)")
         lathe_col1, = st.columns(1)
         with lathe_col1: render_machine_card("LATHE-01", MACHINES["LATHE-01"], "LATHE")
 
-        # ---- 8. แผนก CUTTING ----
+        # ---- 9. แผนก CUTTING ----
         st.write("#### 🔹 เครื่องตัด CUTTING (1 เครื่อง)")
         cut_col1, = st.columns(1)
         with cut_col1: render_machine_card("CUTTING-01", MACHINES["CUTTING-01"], "CUTTING")
 
-        # ---- 9. แผนก BENDING ----
+        # ---- 10. แผนก BENDING ----
         st.write("#### 🔹 เครื่องพับ BENDING (1 เครื่อง)")
         bend_col1, = st.columns(1)
         with bend_col1: render_machine_card("BENDING-01", MACHINES["BENDING-01"], "BENDING")
 
-        # ---- 10. แผนก MIG CO2 ----
+        # ---- 11. แผนก MIG CO2 ----
         st.write("#### 🔹 เครื่องเชื่อม MIG CO2 (3 เครื่อง)")
         mig_col1, mig_col2, mig_col3 = st.columns(3)
         mig_idx = 0
@@ -636,7 +646,7 @@ else:
                     render_machine_card(m_id, m_name, "MIG CO2")
                 mig_idx += 1
 
-        # ---- 11. แผนก ARGON ----
+        # ---- 12. แผนก ARGON ----
         st.write("#### 🔹 เครื่องเชื่อม ARGON (2 เครื่อง)")
         argon_col1, argon_col2 = st.columns(2)
         argon_idx = 0
@@ -646,20 +656,10 @@ else:
                     render_machine_card(m_id, m_name, "ARGON")
                 argon_idx += 1
 
-        # ---- 12. แผนก WELDING ALUMINUM ----
+        # ---- 13. แผนก WELDING ALUMINUM ----
         st.write("#### 🔹 เครื่องเชื่อมอลูมิเนียม WELDING ALUMINUM (1 เครื่อง)")
         wel_al_col1, = st.columns(1)
         with wel_al_col1: render_machine_card("WELDING_ALUMINUM-01", MACHINES["WELDING_ALUMINUM-01"], "WELDING_ALUMINUM")
-
-        # ---- 13. แผนกปั๊มลม COMPRESSOR ----
-        st.write("#### 🔹 เครื่องปั๊มลม AIR COMPRESSOR (2 เครื่อง)")
-        comp_col1, comp_col2, comp_col3 = st.columns(3)
-        comp_idx = 0
-        for m_id, m_name in MACHINES.items():
-            if "COMP-" in m_id.upper():
-                with (comp_col1 if comp_idx % 3 == 0 else (comp_col2 if comp_idx % 3 == 1 else comp_col3)):
-                    render_machine_card(m_id, m_name, "COMP-01") 
-                comp_idx += 1
 
         # ---- 14. แผนก BAND SAW ----
         st.write("#### 🔹 เครื่องเลื่อยสายพาน BAND SAW (3 เครื่อง)")
