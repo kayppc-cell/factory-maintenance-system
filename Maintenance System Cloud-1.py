@@ -447,6 +447,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
 # ==========================================
 else:
     st.image("Logo_Pes.png", width=240)
+    st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
     
     selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและรูปภาพยิงย้อนหลัง:", value=datetime.date.today())
