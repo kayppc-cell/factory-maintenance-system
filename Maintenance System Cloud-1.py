@@ -676,6 +676,29 @@ else:
         fork_col1, = st.columns(1)
         with fork_col1: render_machine_card("FORKLIFT-01", MACHINES["FORKLIFT-01"], "FORKLIFT")
 
+        # 🟢 [ADDED BACKUP ARCHIVE BOX] เพิ่มกล่องดูดไฟล์ประวัติย้อนหลังถาวร ป้องกันคนลืมโดยสิ้นเชิง
+        st.markdown("---")
+        with st.expander("📦 ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
+            st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ สิ้นเดือน")
+            backup_folder_path = os.path.join(BASE_FOLDER, "maintenance_backups")
+            if os.path.exists(backup_folder_path):
+                all_backups = [f for f in os.listdir(backup_folder_path) if f.lower().endswith('.xlsx')]
+                if all_backups:
+                    for b_file in sorted(all_backups):
+                        b_file_path = os.path.join(backup_folder_path, b_file)
+                        with open(b_file_path, "rb") as f_data:
+                            st.download_button(
+                                label=f"📥 ดาวน์โหลดไฟล์สำรอง: {b_file}",
+                                data=f_data,
+                                file_name=b_file,
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                key=f"dl_backup_{b_file}"
+                            )
+                else:
+                    st.caption("ℹ️ ยังไม่มีไฟล์สำรองประวัติเดือนเก่าจัดเก็บในตู้นี้")
+            else:
+                st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ (จะปรากฏไฟล์แรกเมื่อช่างส่งฟอร์มประเดิมคนแรกในวันที่ 1 ของเดือนถัดไปครับ)")
+
         # กล่องระบบล้างภาพถ่ายทดสอบสำหรับผู้ดูแลระบบ ยัดท้ายตาราง
         st.markdown("---")
         with st.expander("🧹 กล่องเครื่องมือผู้ดูแลระบบ: ล้างระบบภาพถ่ายทดสอบ (RESET SYSTEM)"):
