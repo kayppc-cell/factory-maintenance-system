@@ -676,52 +676,51 @@ else:
         fork_col1, = st.columns(1)
         with fork_col1: render_machine_card("FORKLIFT-01", MACHINES["FORKLIFT-01"], "FORKLIFT")
 
-        # 🟢 [ADDED BACKUP ARCHIVE BOX] เพิ่มกล่องดูดไฟล์ประวัติย้อนหลังถาวร ป้องกันคนลืมโดยสิ้นเชิง
-        st.markdown("---")
-        with st.expander("📦 ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
-            st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ สิ้นเดือน")
-            backup_folder_path = os.path.join(BASE_FOLDER, "maintenance_backups")
-            if os.path.exists(backup_folder_path):
-                all_backups = [f for f in os.listdir(backup_folder_path) if f.lower().endswith('.xlsx')]
-                if all_backups:
-                    for b_file in sorted(all_backups):
-                        b_file_path = os.path.join(backup_folder_path, b_file)
-                        with open(b_file_path, "rb") as f_data:
-                            st.download_button(
-                                label=f"📥 ดาวน์โหลดไฟล์สำรอง: {b_file}",
-                                data=f_data,
-                                file_name=b_file,
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                key=f"dl_backup_{b_file}"
-                            )
+        # 🟢 [ROLE-BASED ENTRY: BIG BOSS ONLY] ย้ายกล่องดูไฟล์และปุ่มเคลียร์ระบบมาดักเงื่อนไข "เฉพาะบิ๊กบอสล็อกอิน" ถึงจะเห็นเท่านั้นครับ
+        if is_bigboss:
+            st.markdown("---")
+            with st.expander("👑 [เฉพาะผู้บริหารสูงสุด] ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
+                st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ สิ้นเดือน")
+                backup_folder_path = os.path.join(BASE_FOLDER, "maintenance_backups")
+                if os.path.exists(backup_folder_path):
+                    all_backups = [f for f in os.listdir(backup_folder_path) if f.lower().endswith('.xlsx')]
+                    if all_backups:
+                        for b_file in sorted(all_backups):
+                            b_file_path = os.path.join(backup_folder_path, b_file)
+                            with open(b_file_path, "rb") as f_data:
+                                st.download_button(
+                                    label=f"📥 ดาวน์โหลดไฟล์สำรอง: {b_file}",
+                                    data=f_data,
+                                    file_name=b_file,
+                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                    key=f"dl_backup_{b_file}"
+                                )
+                    else:
+                        st.caption("ℹ️ ยังไม่มีไฟล์สำรองประวัติเดือนเก่าจัดเก็บในตู้นี้")
                 else:
-                    st.caption("ℹ️ ยังไม่มีไฟล์สำรองประวัติเดือนเก่าจัดเก็บในตู้นี้")
-            else:
-                st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ (จะปรากฏไฟล์แรกเมื่อช่างส่งฟอร์มประเดิมคนแรกในวันที่ 1 ของเดือนถัดไปครับ)")
+                    st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ (จะปรากฏไฟล์แรกเมื่อช่างส่งฟอร์มประเดิมคนแรกในวันที่ 1 ของเดือนถัดไปครับ)")
 
-        # กล่องระบบล้างภาพถ่ายทดสอบสำหรับผู้ดูแลระบบ ยัดท้ายตาราง
-        st.markdown("---")
-        with st.expander("🧹 กล่องเครื่องมือผู้ดูแลระบบ: ล้างระบบภาพถ่ายทดสอบ (RESET SYSTEM)"):
-            st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานที่ส่งทดสอบก่อนหน้านี้ทั้งหมดออกไปอย่างถาวร เพื่อให้ระบบสะอาดพร้อมเปิดใช้งานจริง")
-            admin_pass = st.text_input("🔑 กรอกรหัสผ่านเพื่อยืนยันสิทธิ์ความปลอดภัยการลบ:", type="password", key="admin_del_pass")
-            if st.button("🚨 สั่งลบรูปภาพทดสอบทั้งหมดกริบ 100%", type="primary"):
-                if admin_pass == BOSS_PASSWORD:
+            st.markdown("---")
+            with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายทดสอบ (RESET SYSTEM)"):
+                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานที่ส่งทดสอบก่อนหน้านี้ทั้งหมดออกไปอย่างถาวร เพื่อให้ระบบสะอาดพร้อมเปิดใช้งานจริง")
+                if st.button("🚨 สั่งลบรูปภาพทดสอบทั้งหมดกริบ 100%", type="primary"):
                     target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
                     if os.path.exists(target_photo_folder):
                         shutil.rmtree(target_photo_folder) 
-                        st.success("🧹 ลบโฟลเดอร์รูปภาพทดสอบทั้งหมดออกไปจากระบบคลาวด์สะอาดบริสุทธิ์เรียบร้อยแล้วครับเพื่อนรัก!")
+                        st.success("🧹 ลบโฟลเดอร์รูปภาพทดสอบทั้งหมดออกไปจากระบบคลาวด์สะอาดบริสุทธิ์เรียบร้อยแล้วครับ!")
                         st.balloons()
                     else:
                         st.info("✨ ระบบสะอาดอยู่แล้ว ไม่มีโฟลเดอร์ภาพเก่าค้างให้ลบครับ")
-                else:
-                    st.error("❌ รหัสอนุมัติไม่ถูกต้อง ไม่ได้รับอนุญาตให้ลบประวัติไฟล์ครับ")
 
-    elif password_input != "": st.error("❌ รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบรหัสผ่านใหม่อีกครั้งครับเพื่อนรัก")
+    elif password_input != "": 
+        st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับเพื่อนรัก")
 
-    with st.expander("🖨️ เครื่องมือหัวหน้างาน: พิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
-        sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()))
-        qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" 
-        qr = qrcode.make(qr_url)
-        buf = BytesIO()
-        qr.save(buf)
-        st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
+    # ส่วนพิมพ์ QR code ให้หัวหน้างานเข้าถึงได้ปกติ
+    if is_supervisor or is_bigboss:
+        with st.expander("🖨️ เครื่องมือหัวหน้างาน: พิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
+            sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()))
+            qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" 
+            qr = qrcode.make(qr_url)
+            buf = BytesIO()
+            qr.save(buf)
+            st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
