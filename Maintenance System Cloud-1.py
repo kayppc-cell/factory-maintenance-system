@@ -162,7 +162,7 @@ PHOTO_RULES = {
     "QC-13": [2], "QC-14": [2], "QC-15": [6], "QC-16": [3], "QC-17": [2], "QC-18": [3], "QC-19": [3],
     "QC-20": [3], "QC-21": [3], "COMP-01": [1, 2, 3], "COMP-02": [1, 2, 3], "GRINDING": [2, 4, 7],
     "CUTTER GRINDING": [], "MILLING": [6, 7], "LATHE": [2, 5, 6], "CUTTING": [3, 5, 7], "BENDING": [3, 5, 6], "MIG CO2": [3, 4, 5],
-    "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [3, 4, 5], "BAND SAW": [2, 3, 5], "FORKLIFT": [1, 4, 5]
+    "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [2, 3, 5], "FORKLIFT": [1, 2, 5]
 }
 
 def get_coordinates_by_machine(m_id, m_type):
