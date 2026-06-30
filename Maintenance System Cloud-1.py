@@ -18,9 +18,9 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 
-# 🔑 รหัสความปลอดภัยแยก 2 โหมดสิทธิ์เข้าถึง 
-BOSS_PASSWORD = "boss1234"       # รหัสผ่านสำหรับหัวหน้างาน/ผู้ตรวจสอบประจำวัน
-BIGBOSS_PASSWORD = "bigboss9999" # รหัสผ่านสำหรับบิ๊กบอส/ผู้บริหารสูงสุด (ดูประวัติย้อนหลัง + ล้างระบบภาพถ่าย) 
+# 🔑 รหัสความปลอดภัยประจำโรงงาน
+BOSS_PASSWORD = "boss1234"       # รหัสผ่านหลักสิทธิ์หัวหน้างาน (สำหรับเข้าหน้าเพจบอร์ดควบคุม)
+BIGBOSS_PASSWORD = "bigboss9999" # รหัสผ่านลับสิทธิ์บิ๊กบอส (สำหรับใส่ในกล่องปลดล็อกด้านล่าง)
 
 # ทะเบียนเครื่องจักรกลางประจำโรงงาน (🔒 FIX KEY: ตรวจสอบและใส่คีย์ "FORKLIFT-01" กลับเข้ามาให้เต็มระบบเรียบร้อยแล้วครับ)
 MACHINES = {
@@ -504,22 +504,14 @@ else:
     
     st.subheader(f"📅 ประจำวันที่เลือก: {selected_date.strftime('%d/%m/%Y')} (คอลัมน์ Excel ช่องวันที่ {target_day_check})")
     
-   # 🟢 [2-MODE SECURITY LOGIN MECHANIC] ปรับปรุงกลไกตรวจสอบรหัสผ่านเพื่อแยก 2 ชั้นความปลอดภัยตามสั่ง
-    password_input = st.text_input("🔑 กรุณากรอกรหัสผ่านเพื่อยืนยันสิทธิ์การเข้าใช้งานระบบ:", type="password")
-    
-    is_supervisor = (password_input == BOSS_PASSWORD)
-    is_bigboss = (password_input == BIGBOSS_PASSWORD)
-
-    if is_supervisor or is_bigboss:
-        if is_bigboss:
-            st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ปลดล็อกเข้าถึงระบบลางคลาวด์และตู้เซฟประวัติย้อนหลังถาวรสำเร็จ")
-            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/บิ๊กบอส:", value="พลวัฒน์ (Big Boss)")
-        else:
-            st.success("🔓 [สิทธิ์หัวหน้างาน]: เข้าสู่ระบบตรวจสอบและลงนามดิจิทัลประจำวันสำเร็จ")
-            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
-            
+    # 🟢 [TOP LOGIN] กล่องใส่รหัสสำหรับหัวหน้างานหลักเพื่อเปิดหน้าเว็บควบคุม
+    password_input = st.text_input("🔑 กรุณากรอกรหัสผ่านผู้เข้าตรวจสอบเพื่อเข้าถึงระบบควบคุมแอป:", type="password")
+    if password_input == BOSS_PASSWORD:
+        st.success("🔓 รหัสผ่านถูกต้อง เข้าสู่ระบบแดชบอร์ดจัดการโรงงานสำเร็จ")
+        boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
         st.divider()
-        st.write("### 📊 บอร์ดควบคุมควบคุมใบงานรวม (แยกรายแผนก)")
+        st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
+   
         
         def render_machine_card(m_id, m_name, m_type_flag):
             st.info(f"⚙️ **{m_id}**\n{m_name}")
@@ -689,10 +681,27 @@ else:
         fork_col1, = st.columns(1)
         with fork_col1: render_machine_card("FORKLIFT-01", MACHINES["FORKLIFT-01"], "FORKLIFT")
 
-        # 🟢 [ROLE-BASED ENTRY: BIG BOSS ONLY] ย้ายกล่องดูไฟล์และปุ่มเคลียร์ระบบมาดักเงื่อนไข "เฉพาะบิ๊กบอสล็อกอิน" ถึงจะเห็นเท่านั้นครับ
-        if is_bigboss:
-            st.markdown("---")
-            with st.expander("👑 [เฉพาะผู้บริหารสูงสุด] ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
+        # 🖨️ แผงพิมพ์ QR code แปะท้ายบอร์ดเครื่องจักรให้สิทธิ์หัวหน้าเข้าถึงได้ทันที
+        st.markdown("---")
+        with st.expander("🖨️ เครื่องมือหัวหน้างาน: พิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
+            sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()))
+            qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" 
+            qr = qrcode.make(qr_url)
+            buf = BytesIO()
+            qr.save(buf)
+            st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
+
+        # 🟢 [BOTTOM BIG BOSS PANEL WITH EXTRA PASSWORD FIELD] 
+        # ยื่นกล่องข้อความสำหรับกรอกรหัสผ่านลับระดับ Big Boss แปะแยกไว้ด้านล่างสุดของหน้าจอตามสั่งครับ!
+        st.markdown("---")
+        st.write("### 👑 พื้นที่ควบคุมระดับความปลอดภัยสูงสุด (สำหรับผู้บริหารสูงสุด)")
+        bigboss_code_input = st.text_input("🔐 กรุณากรอกรหัสผ่านบิ๊กบอส เพื่อเปิดตู้นิรภัยและระบบล้างประวัติหลังบ้าน:", type="password", key="bigboss_secret_key_field")
+        
+        # ถ้ารหัสล่างสุดนี้ถูกต้อง... ฟังก์ชันตู้เซฟและปุ่มลบประวัติถึงจะเปิดวาร์ปเด้งขึ้นมาให้ใช้งานครับ
+        if bigboss_code_input == BIGBOSS_PASSWORD:
+            st.success("🎯 ยืนยันสิทธิ์ Big Boss สำเร็จ ปลดล็อกตู้นิรภัย Archives และ Reset Tool เรียบร้อยแล้วครับ!")
+            
+            with st.expander("📦 ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
                 st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ สิ้นเดือน")
                 backup_folder_path = os.path.join(BASE_FOLDER, "maintenance_backups")
                 if os.path.exists(backup_folder_path):
@@ -713,8 +722,7 @@ else:
                 else:
                     st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ (จะปรากฏไฟล์แรกเมื่อช่างส่งฟอร์มประเดิมคนแรกในวันที่ 1 ของเดือนถัดไปครับ)")
 
-            st.markdown("---")
-            with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายทดสอบ (RESET SYSTEM)"):
+            with st.expander("🧹 กล่องเครื่องมือล้างระบบภาพถ่ายทดสอบ (RESET SYSTEM)"):
                 st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานที่ส่งทดสอบก่อนหน้านี้ทั้งหมดออกไปอย่างถาวร เพื่อให้ระบบสะอาดพร้อมเปิดใช้งานจริง")
                 if st.button("🚨 สั่งลบรูปภาพทดสอบทั้งหมดกริบ 100%", type="primary"):
                     target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
@@ -724,16 +732,8 @@ else:
                         st.balloons()
                     else:
                         st.info("✨ ระบบสะอาดอยู่แล้ว ไม่มีโฟลเดอร์ภาพเก่าค้างให้ลบครับ")
+        elif bigboss_code_input != "":
+            st.error("❌ รหัสผ่าน Big Boss ไม่ถูกต้อง! ปฏิเสธสิทธิ์การเข้าถึงไฟล์ประวัติย้อนหลังและปุ่มล้างระบบ")
 
     elif password_input != "": 
-        st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับเพื่อนรัก")
-
-    # ส่วนพิมพ์ QR code ให้หัวหน้างานเข้าถึงได้ปกติ
-    if is_supervisor or is_bigboss:
-        with st.expander("🖨️ เครื่องมือหัวหน้างาน: พิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
-            sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()))
-            qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" 
-            qr = qrcode.make(qr_url)
-            buf = BytesIO()
-            qr.save(buf)
-            st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
+        st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับ")
