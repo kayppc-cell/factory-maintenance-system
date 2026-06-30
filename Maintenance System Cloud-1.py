@@ -504,11 +504,25 @@ else:
     
     st.subheader(f"📅 ประจำวันที่เลือก: {selected_date.strftime('%d/%m/%Y')} (คอลัมน์ Excel ช่องวันที่ {target_day_check})")
     
-    # 🟢 [TOP LOGIN] กล่องใส่รหัสสำหรับหัวหน้างานหลักเพื่อเปิดหน้าเว็บควบคุม
-    password_input = st.text_input("🔑 กรุณากรอกรหัสผ่านผู้เข้าตรวจสอบเพื่อเข้าถึงระบบควบคุมแอป:", type="password")
-    if password_input == BOSS_PASSWORD:
-        st.success("🔓 รหัสผ่านถูกต้อง เข้าสู่ระบบแดชบอร์ดจัดการโรงงานสำเร็จ")
-        boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
+    # ประกาศค่าตัวแปรสิทธิ์ให้อยู่ระดับบนสุด (Top-level)
+    is_supervisor = False
+    is_bigboss = False
+    
+    password_input = st.text_input("🔑 กรุณากรอกรหัสผ่านหลักเพื่อเข้าสู่ระบบบอร์ดควบคุมหลัก:", type="password")
+    
+    if password_input != "":
+        is_supervisor = (password_input == BOSS_PASSWORD)
+        is_bigboss = (password_input == BIGBOSS_PASSWORD)
+
+    if is_supervisor or is_bigboss:
+        # ยึดชื่อตามรหัสผ่านหลักด้านบน
+        if is_bigboss:
+            st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ล็อกอินผ่านรหัสแอดมินหลักเรียบร้อย")
+            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/บิ๊กบอส:", value="พลวัฒน์ (Big Boss)")
+        else:
+            st.success("🔓 [สิทธิ์หัวหน้างาน]: เข้าสู่ระบบตรวจสอบและลงนามดิจิทัลประจำวันสำเร็จ")
+            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
+            
         st.divider()
         st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
    
@@ -681,27 +695,26 @@ else:
         fork_col1, = st.columns(1)
         with fork_col1: render_machine_card("FORKLIFT-01", MACHINES["FORKLIFT-01"], "FORKLIFT")
 
-        # 🖨️ แผงพิมพ์ QR code แปะท้ายบอร์ดเครื่องจักรให้สิทธิ์หัวหน้าเข้าถึงได้ทันที
-        st.markdown("---")
-        with st.expander("🖨️ เครื่องมือหัวหน้างาน: พิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
-            sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()))
-            qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" 
-            qr = qrcode.make(qr_url)
-            buf = BytesIO()
-            qr.save(buf)
-            st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
-
-        # 🟢 [BOTTOM BIG BOSS PANEL WITH EXTRA PASSWORD FIELD] 
-        # ยื่นกล่องข้อความสำหรับกรอกรหัสผ่านลับระดับ Big Boss แปะแยกไว้ด้านล่างสุดของหน้าจอตามสั่งครับ!
+        # 🟢 [BOTTOM BIG BOSS PANEL - SUPER SECURE FINALE] 
+        # กล่องกรอกรหัสผ่านลับระดับ Big Boss แปะแยกไว้ท้ายสุดของหน้าจอตามสั่ง
         st.markdown("---")
         st.write("### 👑 พื้นที่ควบคุมระดับความปลอดภัยสูงสุด (สำหรับผู้บริหารสูงสุด)")
-        bigboss_code_input = st.text_input("🔐 กรุณากรอกรหัสผ่านบิ๊กบอส เพื่อเปิดตู้นิรภัยและระบบล้างประวัติหลังบ้าน:", type="password", key="bigboss_secret_key_field")
+        bigboss_code_input = st.text_input("🔐 กรุณากรอกรหัสผ่านบิ๊กบอส เพื่อเปิดตู้นิรภัย พิมพ์คิวอาร์โค้ด และระบบล้างประวัติหลังบ้าน:", type="password", key="bigboss_secret_key_field")
         
-        # ถ้ารหัสล่างสุดนี้ถูกต้อง... ฟังก์ชันตู้เซฟและปุ่มลบประวัติถึงจะเปิดวาร์ปเด้งขึ้นมาให้ใช้งานครับ
+        # ถ้ารหัสล่างสุดนี้ถูกต้อง... ฟังก์ชันพิมพ์ QR, ตู้เซฟ และปุ่มลบประวัติถึงจะเด้งเปิดวาร์ปขึ้นมาใช้งานพร้อมกันครับ
         if bigboss_code_input == BIGBOSS_PASSWORD:
-            st.success("🎯 ยืนยันสิทธิ์ Big Boss สำเร็จ ปลดล็อกตู้นิรภัย Archives และ Reset Tool เรียบร้อยแล้วครับ!")
+            st.success("🎯 ยืนยันสิทธิ์ Big Boss สำเร็จ ปลดล็อกตู้คิวอาร์โค้ด ตู้นิรภัย Archives และ Reset Tool เรียบร้อยแล้วครับ!")
             
-            with st.expander("📦 ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
+            # 🟢 [MOVED QR CODE COMPONENT] ย้ายแผงพิมพ์คิวอาร์โค้ดมาฝังไว้ตรงนี้เรียบร้อย ช่างและหัวหน้าปกติจะไม่เห็นแน่นอน
+            with st.expander("🖨️ [เฉพาะผู้บริหารสูงสุด] เครื่องมือพิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
+                sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()), key="bigboss_qr_select_box")
+                qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" 
+                qr = qrcode.make(qr_url)
+                buf = BytesIO()
+                qr.save(buf)
+                st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
+
+            with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
                 st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ สิ้นเดือน")
                 backup_folder_path = os.path.join(BASE_FOLDER, "maintenance_backups")
                 if os.path.exists(backup_folder_path):
@@ -722,7 +735,7 @@ else:
                 else:
                     st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ (จะปรากฏไฟล์แรกเมื่อช่างส่งฟอร์มประเดิมคนแรกในวันที่ 1 ของเดือนถัดไปครับ)")
 
-            with st.expander("🧹 กล่องเครื่องมือล้างระบบภาพถ่ายทดสอบ (RESET SYSTEM)"):
+            with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายทดสอบ (RESET SYSTEM)"):
                 st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานที่ส่งทดสอบก่อนหน้านี้ทั้งหมดออกไปอย่างถาวร เพื่อให้ระบบสะอาดพร้อมเปิดใช้งานจริง")
                 if st.button("🚨 สั่งลบรูปภาพทดสอบทั้งหมดกริบ 100%", type="primary"):
                     target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
@@ -733,7 +746,7 @@ else:
                     else:
                         st.info("✨ ระบบสะอาดอยู่แล้ว ไม่มีโฟลเดอร์ภาพเก่าค้างให้ลบครับ")
         elif bigboss_code_input != "":
-            st.error("❌ รหัสผ่าน Big Boss ไม่ถูกต้อง! ปฏิเสธสิทธิ์การเข้าถึงไฟล์ประวัติย้อนหลังและปุ่มล้างระบบ")
+            st.error("❌ รหัสผ่าน Big Boss ไม่ถูกต้อง! ปฏิเสธสิทธิ์การพิมพ์คิวอาร์ เข้าถึงไฟล์ประวัติย้อนหลัง และปุ่มล้างระบบ")
 
     elif password_input != "": 
         st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับ")
