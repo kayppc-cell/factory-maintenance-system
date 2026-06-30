@@ -17,7 +17,10 @@ LINE_ACCESS_TOKEN = "RRtpOuJT8oWgvglsSFUqc7LC1zZqL2jD8qTdJx5iIpAkG4GiJjAkaetvEKL
 LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"  
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
-BOSS_PASSWORD = "boss1234"  
+
+# 🔑 รหัสความปลอดภัยแยก 2 โหมดสิทธิ์เข้าถึง 
+BOSS_PASSWORD = "boss1234"       # รหัสผ่านสำหรับหัวหน้างาน/ผู้ตรวจสอบประจำวัน
+BIGBOSS_PASSWORD = "bigboss9999" # รหัสผ่านสำหรับบิ๊กบอส/ผู้บริหารสูงสุด (ดูประวัติย้อนหลัง + ล้างระบบภาพถ่าย) 
 
 # ทะเบียนเครื่องจักรกลางประจำโรงงาน (🔒 FIX KEY: ตรวจสอบและใส่คีย์ "FORKLIFT-01" กลับเข้ามาให้เต็มระบบเรียบร้อยแล้วครับ)
 MACHINES = {
@@ -501,12 +504,22 @@ else:
     
     st.subheader(f"📅 ประจำวันที่เลือก: {selected_date.strftime('%d/%m/%Y')} (คอลัมน์ Excel ช่องวันที่ {target_day_check})")
     
-    password_input = st.text_input("🔑 กรุณากรอกรหัสผ่านผู้เข้าตรวจสอบเพื่อเข้าถึงระบบอนุมัติ:", type="password")
-    if password_input == BOSS_PASSWORD:
-        st.success("🔓 รหัสผ่านถูกต้อง เข้าสู่ระบบลงนามดิจิทัลมาตรฐาน ISO สำเร็จ")
-        boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
+   # 🟢 [2-MODE SECURITY LOGIN MECHANIC] ปรับปรุงกลไกตรวจสอบรหัสผ่านเพื่อแยก 2 ชั้นความปลอดภัยตามสั่ง
+    password_input = st.text_input("🔑 กรุณากรอกรหัสผ่านเพื่อยืนยันสิทธิ์การเข้าใช้งานระบบ:", type="password")
+    
+    is_supervisor = (password_input == BOSS_PASSWORD)
+    is_bigboss = (password_input == BIGBOSS_PASSWORD)
+
+    if is_supervisor or is_bigboss:
+        if is_bigboss:
+            st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ปลดล็อกเข้าถึงระบบลางคลาวด์และตู้เซฟประวัติย้อนหลังถาวรสำเร็จ")
+            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/บิ๊กบอส:", value="พลวัฒน์ (Big Boss)")
+        else:
+            st.success("🔓 [สิทธิ์หัวหน้างาน]: เข้าสู่ระบบตรวจสอบและลงนามดิจิทัลประจำวันสำเร็จ")
+            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
+            
         st.divider()
-        st.write("### 📊 บอร์ดควบคุมรายงานการตรวจเช็ค ทั้งโรงงาน")
+        st.write("### 📊 บอร์ดควบคุมควบคุมใบงานรวม (แยกรายแผนก)")
         
         def render_machine_card(m_id, m_name, m_type_flag):
             st.info(f"⚙️ **{m_id}**\n{m_name}")
