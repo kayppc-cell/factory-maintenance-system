@@ -139,7 +139,7 @@ CHECKLISTS = {
     "MIG CO2": ["ตรวจสภาพความพร้อมโดยรวมของเครื่อง", "เช็ค BREAKER เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์ และสวิชท์ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดัน ของก๊าซ CO2 และปรับตั้งอย่างถูกต้อง", "ตรวจจุดต่อของก๊าซ CO2 รั่วหรือไม่", "ตรวจสภาพความพร้อมของสายไฟ สายก๊าซ  CO2 ว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราวด์", "ทำความสะอาดหัวเชื่อมก่อนใช้งาน"],
     "ARGON": [
         "ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", 
-        "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", 
+        "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่า่วหรือไม่", 
         "ตรวจสภาพความพร้อมของสายกราว์", "ตรวจสภาพความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", 
         "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"
     ],
@@ -169,24 +169,28 @@ PHOTO_RULES = {
 }
 
 def get_coordinates_by_machine(m_id, m_type):
+    # 🔒 [DYNAMIC REWRITE] ผ่าตัดกลไกดักจับพิกัดตระกูลเครื่องวัด QC ทั้งยึดโยงราย ID เครื่องตัวจริงทั้งหมดให้ลงแถวตามระบบอย่างแม่นยำ
+    u_id = str(m_id).upper()
+    if "QC-01" in u_id: return 10, 12, "B15"
+    if any(k in u_id for k in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-16", "QC-17", "QC-18", "QC-19", "QC-20", "QC-21"]): return 11, 13, "B16"
+    if any(k in u_id for k in ["QC-10", "QC-11", "QC-12"]): return 11, 13, "B15"
+    if "QC-15" in u_id: return 12, 14, "B17"
+    
     if m_id == "ARGON-02": return 14, 16, "B19"
     if m_id == "ARGON-01": return 11, 13, "B19"
-    if m_type == "FORKLIFT": return 13, 15, "B18"
-        
-    if m_type == "CNC": return 22, 24, "B28"
-    if "CRANE" in m_type.upper(): return 14, 16, "B19"
-    if m_type == "QC-01": return 10, 12, "B15"
-    if m_type in ["QC-VERNIER_STD", "QC-MICRO_STD", "QC-ARM_STD", "QC-16", "QC-17", "BAND SAW", "CUTTING", "QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-18", "QC-19", "QC-20", "QC-21", "COMP-01", "COMP-02"]: return 11, 13, "B16"
-    if m_type in ["QC-10", "QC-11", "QC-12"]: return 11, 13, "B15"
-    if m_type == "QC-15": return 12, 14, "B17"
-    if m_type == "GRINDING": return 16, 18, "B21"
-    if m_type == "CUTTER GRINDING": return 13, 15, "B18"
-    if m_type == "MILLING": return 17, 19, "B22" 
-    if m_type == "LATHE": return 17, 19, "B22"
-    if m_type == "CUTTING": return 13, 15, "B18"
-    if m_type == "BENDING": return 15, 17, "B20" 
-    if m_type == "WELDING_ALUMINUM": return 13, 15, "B18"
-    if m_type == "MIG CO2": return 13, 15, "B18"
+    if m_type == "FORKLIFT" or "FORKLIFT" in u_id: return 13, 15, "B18"
+    
+    if m_type == "CNC" or "CNC" in u_id: return 22, 24, "B28"
+    if "CRANE" in u_id: return 14, 16, "B19"
+    if m_type == "GRINDING" or "GRINDING" in u_id: return 16, 18, "B21"
+    if m_type == "CUTTER GRINDING" or "CUTTER" in u_id: return 13, 15, "B18"
+    if m_type == "MILLING" or "MILLING" in u_id: return 17, 19, "B22" 
+    if m_type == "LATHE" or "LATHE" in u_id: return 17, 19, "B22"
+    if m_type == "CUTTING" or "CUTTING" in u_id: return 13, 15, "B18"
+    if m_type == "BENDING" or "BENDING" in u_id: return 15, 17, "B20" 
+    if m_type == "WELDING_ALUMINUM" or "WELDING_ALUMINUM" in u_id: return 13, 15, "B18"
+    if m_type == "MIG CO2" or "MIG" in u_id: return 13, 15, "B18"
+    if m_type == "BAND SAW" or "BAND" in u_id: return 11, 13, "B16"
     return 11, 13, "B16"
 
 def get_unmerged_cell(ws, coordinate_str):
@@ -425,7 +429,6 @@ else: m_type_selected = "CNC"
 # ==========================================
 if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
     st.image("Logo_Pes.png", width=240)
-
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
     st.info("📄 มาตรฐานระบบคุณภาพโรงงาน: **FM-MN-07 Rev.00**")
@@ -526,7 +529,6 @@ else:
         st.divider()
         st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
    
-        
         def render_machine_card(m_id, m_name, m_type_flag):
             st.info(f"⚙️ **{m_id}**\n{m_name}")
             target_file = os.path.join(BASE_FOLDER, f"FM-MN-07_{m_id}.xlsx")
@@ -548,21 +550,17 @@ else:
                     st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
                 current_notes = get_current_excel_note(m_id, m_type_flag)
-                if m_id == "ARGON-02": note_label = "ช่อง B19" 
-                elif m_id == "ARGON-01": note_label = "ช่อง B19"
-                elif m_type_flag == "WELDING_ALUMINUM": note_label = "ช่อง B18"
-                elif m_type_flag == "CNC": note_label = "ช่อง B28"
-                elif "CRANE" in m_type_flag.upper(): note_label = "ช่อง B19"  
-                elif m_type_flag == "QC-01": note_label = "ช่อง B15"  
-                elif m_type_flag in ["QC-02", "QC-03"]: note_label = "ช่อง B16"  
-                elif m_type_flag == "GRINDING": note_label = "ช่อง B21"
-                elif m_type_flag == "CUTTER GRINDING": note_label = "ช่อง B18"
-                elif m_type_flag == "MILLING": note_label = "ช่อง B22" 
-                elif m_type_flag == "LATHE": note_label = "ช่อง B22"
-                elif m_type_flag == "CUTTING": note_label = "ช่อง B18"
-                elif m_type_flag == "BENDING": note_label = "ช่อง B20" 
-                elif m_type_flag == "MIG CO2": note_label = "ช่อง B18"
-                elif m_type_flag == "FORKLIFT": note_label = "ช่อง B18"
+                
+                # Dynamic Labeling for custom fields
+                u_id = str(m_id).upper()
+                if "ARGON-02" in u_id or "ARGON-01" in u_id or "CRANE" in u_id: note_label = "ช่อง B19"
+                elif "WELDING_ALUMINUM" in u_id or "FORKLIFT" in u_id or "CUTTER" in u_id or "CUTTING" in u_id: note_label = "ช่อง B18"
+                elif "CNC" in u_id: note_label = "ช่อง B28"
+                elif "QC-01" in u_id or "QC-10" in u_id or "QC-11" in u_id or "QC-12" in u_id: note_label = "ช่อง B15"
+                elif "QC-15" in u_id: note_label = "ช่อง B17"
+                elif "GRINDING" in u_id: note_label = "ช่อง B21"
+                elif "MILLING" in u_id or "LATHE" in u_id: note_label = "ช่อง B22"
+                elif "BENDING" in u_id: note_label = "ช่อง B20"
                 else: note_label = "ช่อง B16"
                 
                 edited_notes = st.text_area(f"📝 รายการอาการเสียสะสม ({note_label})", value=current_notes, key=f"note_area_{m_id}", height=120)
@@ -695,17 +693,14 @@ else:
         fork_col1, = st.columns(1)
         with fork_col1: render_machine_card("FORKLIFT-01", MACHINES["FORKLIFT-01"], "FORKLIFT")
 
-        # 🟢 [BOTTOM BIG BOSS PANEL - SUPER SECURE FINALE] 
-        # กล่องกรอกรหัสผ่านลับระดับ Big Boss แปะแยกไว้ท้ายสุดของหน้าจอตามสั่ง
+        # 👑 พื้นที่ควบคุมระดับความปลอดภัยสูงสุด (สำหรับผู้บริหารสูงสุด)
         st.markdown("---")
         st.write("### 👑 พื้นที่ควบคุมระดับความปลอดภัยสูงสุด (สำหรับผู้บริหาร)")
         bigboss_code_input = st.text_input("🔐 กรุณากรอกรหัสผ่านผู้บริหาร เพื่อเปิดตู้นิรภัย พิมพ์คิวอาร์โค้ด และระบบล้างประวัติหลังบ้าน:", type="password", key="bigboss_secret_key_field")
         
-        # ถ้ารหัสล่างสุดนี้ถูกต้อง... ฟังก์ชันพิมพ์ QR, ตู้เซฟ และปุ่มลบประวัติถึงจะเด้งเปิดวาร์ปขึ้นมาใช้งานพร้อมกันครับ
         if bigboss_code_input == BIGBOSS_PASSWORD:
             st.success("🎯 ยืนยันสิทธิ์ สำเร็จ ปลดล็อกเรียบร้อยแล้วครับ!")
             
-            # 🟢 [MOVED QR CODE COMPONENT] ย้ายแผงพิมพ์คิวอาร์โค้ดมาฝังไว้ตรงนี้เรียบร้อย ช่างและหัวหน้าปกติจะไม่เห็นแน่นอน
             with st.expander("🖨️ [เฉพาะผู้บริหารสูงสุด] เครื่องมือพิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
                 sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()), key="bigboss_qr_select_box")
                 qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" 
