@@ -371,7 +371,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
         elif any(uploaded_photos[idx]["file"] is None for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วน")
         else:
-            # บันทึกรูปภาพเก็บไว้ในคลาวด์ภายในตัวแอปอย่างเดียว (ไม่ส่งไฟล์สดเข้า LINE)
             for idx in required_photo_indexes:
                 save_uploaded_photo(machine_id, current_day, idx, uploaded_photos[idx]["file"])
                 
@@ -384,7 +383,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                     if status_val == "ใช้งานไม่ได้ต้องแก้ไข": fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
                     elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
                 
-                # 🔗 ไฮไลท์เด็ด: สร้างลิงก์เปิดหน้าตรวจสอบของหัวหน้างานตรงเครื่องนั้น ๆ อัตโนมัติ
                 boss_review_url = f"https://pes-maintenance.streamlit.app/?role=boss&id={machine_id}"
                 audit_tag = f"\n\n📂 [คลิกเพื่อตรวจเช็คและดูรูปหลักฐานทั้งหมด]:\n👉 {boss_review_url}"
                 
@@ -431,7 +429,6 @@ else:
                         st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!")
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจวันที่ {target_day_check} ของเครื่อง {m_id} เรียบร้อยแล้ว")
                 
-                # ดึงรูปภาพที่บันทึกไว้ในตัวแอปคลาวด์มาเปิดให้หัวหน้างานส่องเช็คตรงนี้ได้ทันที!
                 img_dir = os.path.join(BASE_FOLDER, f"maintenance_photos/{m_id}_Day_{target_day_check}")
                 if os.path.exists(img_dir):
                     valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
@@ -439,15 +436,119 @@ else:
                         with st.expander(f"📸 ตรวจรูปภาพหลักฐานข้อบังคับ ({len(valid_photos)} รูป)"):
                             for p_path in valid_photos:
                                 st.image(p_path, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
-                else: st.caption("ℹ️ วันนี้ไม่มีรูปภาพหลักฐาน")
+                else: st.caption("ℹ migratory; ไม่มีรูปภาพหลักฐาน")
                 
+                current_notes = get_current_excel_note(m_id, m_type_flag)
+                u_id = str(m_id).upper()
+                if "ARGON-02" in u_id or "ARGON-01" in u_id or "CRANE" in u_id: note_label = "ช่อง B19"
+                elif "WELDING_ALUMINUM" in u_id or "FORKLIFT" in u_id or "CUTTER" in u_id or "CUTTING" in u_id: note_label = "ช่อง B18"
+                elif "CNC" in u_id: note_label = "ช่อง B28"
+                elif "QC-01" in u_id or "QC-10" in u_id or "QC-11" in u_id or "QC-12" in u_id: note_label = "ช่อง B15"
+                elif "QC-15" in u_id: note_label = "ช่อง B17"
+                elif "GRINDING" in u_id: note_label = "ช่อง B21"
+                elif "MILLING" in u_id or "LATHE" in u_id: note_label = "ช่อง B22"
+                elif "BENDING" in u_id: note_label = "ช่อง B20"
+                else: note_label = "ช่อง B16"
+                
+                edited_notes = st.text_area(f"📝 รายการอาการเสียสะสม ({note_label})", value=current_notes, key=f"note_area_{m_id}", height=120)
+                if st.button(f"💾 เซฟบันทึก {note_label} ของ {m_id}", key=f"save_note_{m_id}"):
+                    if save_custom_excel_note_by_boss(m_id, m_type_flag, edited_notes):
+                        st.toast(f"อัปเดตรายการอาการเสียเครื่อง {m_id} สำเร็จ!", icon="💾")
+                        st.rerun()
+
                 with open(target_file, "rb") as f:
                     st.download_button(label=f"📥 ดึงไฟล์ Excel ของ {m_id}", data=f, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
             else: st.error("ยังไม่มีไฟล์ฟอร์มบนระบบ")
             st.divider()
 
-        # ---- บอร์ดแสดงรายแผนก ----
-        st.write("#### 🔹 เครื่องจักรและเครื่องมือวัดทั้งหมด")
-        for m_id, m_name in MACHINES.items():
-            if machine_id == m_id: # แสดงไฮไลท์เครื่องที่กดมาจากลิงก์ไลน์ก่อนเป็นอันดับแรก
-                render_machine_card(m_id, m_name, m_type_selected)
+        # ---- 📊 การแบ่งแท็บแผนกทั้งหมด (กลับมาครบถ้วนเพื่อความสมบูรณ์แบบครับ) ----
+        st.write("#### 📊 รายชื่อเครื่องแยกตามแผนก")
+        
+        tab_cnc, tab_grind, tab_comp, tab_crane, tab_qc, tab_mill, tab_other = st.tabs([
+            "🔹 เครื่อง CNC", "🔹 เครื่องเจียรผิว", "🔹 ปั๊มลม COMP", 
+            "🔹 เครน CRANE", "🔹 เครื่องมือวัด QC", "🔹 มิลลิ่ง MILLING", "🔹 แผนกอื่น ๆ"
+        ])
+        
+        with tab_cnc:
+            st.write("##### รายชื่อเครื่องจักร CNC (9 เครื่อง)")
+            c_col1, c_col2, c_col3 = st.columns(3)
+            c_idx = 0
+            for m_id, m_name in MACHINES.items():
+                if "CNC" in m_id and "CRANE" not in m_id.upper() and "QC-" not in m_id.upper():
+                    with (c_col1 if c_idx % 3 == 0 else (c_col2 if c_idx % 3 == 1 else c_col3)):
+                        render_machine_card(m_id, m_name, "CNC")
+                    c_idx += 1
+
+        with tab_grind:
+            st.write("##### รายชื่อเครื่องเจียรผิว GRINDING")
+            g_col1, g_col2 = st.columns(2)
+            g_idx = 0
+            for m_id, m_name in MACHINES.items():
+                if "GRINDING" in m_id and "CUTTER" not in m_id:
+                    with (g_col1 if g_idx % 2 == 0 else g_col2):
+                        render_machine_card(m_id, m_name, "GRINDING")
+                    g_idx += 1
+
+        with tab_comp:
+            st.write("##### รายชื่อเครื่องปั๊มลม AIR COMPRESSOR")
+            cp_col1, cp_col2 = st.columns(2)
+            cp_idx = 0
+            for m_id, m_name in MACHINES.items():
+                if "COMP-" in m_id.upper():
+                    with (cp_col1 if cp_idx % 2 == 0 else cp_col2):
+                        render_machine_card(m_id, m_name, m_id)
+                    cp_idx += 1
+
+        with tab_crane:
+            st.write("##### รายชื่อเครนโรงงาน CRANE")
+            cr_col1, cr_col2 = st.columns(2)
+            cr_idx = 0
+            for m_id, m_name in MACHINES.items():
+                if "CRANE" in m_id.upper() or "Crane" in m_id:
+                    with (cr_col1 if cr_idx % 2 == 0 else cr_col2):
+                        render_machine_card(m_id, m_name, m_id)
+                    cr_idx += 1
+
+        with tab_qc:
+            st.write("##### รายชื่อเครื่องมือวัดแผนก QC (21 เครื่องมือวัด)")
+            q_col1, q_col2, q_col3 = st.columns(3)
+            q_idx = 0
+            for m_id, m_name in MACHINES.items():
+                if "QC-" in m_id.upper():
+                    with (q_col1 if q_idx % 3 == 0 else (q_col2 if q_idx % 3 == 1 else q_col3)):
+                        render_machine_card(m_id, m_name, m_id)
+                    q_idx += 1
+
+        with tab_mill:
+            st.write("##### รายชื่อเครื่องมิลลิ่ง MILLING")
+            ml_col1, ml_col2, ml_col3 = st.columns(3)
+            ml_idx = 0
+            for m_id, m_name in MACHINES.items():
+                if "MILLING" in m_id:
+                    with (ml_col1 if ml_idx % 3 == 0 else (ml_col2 if ml_idx % 3 == 1 else ml_col3)):
+                        render_machine_card(m_id, m_name, "MILLING")
+                    ml_idx += 1
+
+        with tab_other:
+            st.write("##### เครื่องจักรแผนกสนับสนุนอื่น ๆ")
+            ot_col1, ot_col2, ot_col3 = st.columns(3)
+            ot_idx = 0
+            other_keywords = ["LATHE", "CUTTING", "BENDING", "MIG", "ARGON", "WELDING_ALUMINUM", "BAND", "FORKLIFT", "CUTTER GRINDING"]
+            for m_id, m_name in MACHINES.items():
+                if any(k in m_id for k in other_keywords):
+                    with (ot_col1 if ot_idx % 3 == 0 else (ot_col2 if ot_idx % 3 == 1 else ot_col3)):
+                        # ตรวจสอบประเภทแฟล็กรายตัวเพื่อความแม่นยำของพิกัดใน Excel
+                        f_type = "LATHE" if "LATHE" in m_id else ("CUTTING" if "CUTTING" in m_id else ("BENDING" if "BENDING" in m_id else ("MIG CO2" if "MIG" in m_id else ("ARGON" if "ARGON" in m_id else ("WELDING_ALUMINUM" if "WELDING" in m_id else ("BAND SAW" if "BAND" in m_id else ("FORKLIFT" if "FORKLIFT" in m_id else "CUTTER GRINDING")))))))
+                        render_machine_card(m_id, m_name, f_type)
+                    ot_idx += 1
+
+        # 👑 บอร์ดควบคุมความปลอดภัยสูงสุดของผู้บริหาร
+        st.markdown("---")
+        bigboss_code_input = st.text_input("🔐 ฟังก์ชันผู้บริหารระดับสูง (พิมพ์ QR Code / ดูประวัติสำรองข้อมูล / ลบข้อมูลทดสอบ):", type="password", key="bb_panel")
+        if bigboss_code_input == BIGBOSS_PASSWORD:
+            st.success("👑 ปลดล็อกระบบแอดมินบริหารสูงสุดสำเร็จ")
+            with st.expander("🖨️ เครื่องมือพิมพ์ QR Code"):
+                sel_m = st.selectbox("เลือกเครื่อง:", list(MACHINES.keys()))
+                qr = qrcode.make(f"https://pes-maintenance.streamlit.app/?id={sel_m}")
+                buf = BytesIO(); qr.save(buf)
+                st.image(buf, caption=f"QR Code: {MACHINES[sel_m]}")
