@@ -19,10 +19,10 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 
 # 🔑 รหัสความปลอดภัยประจำโรงงาน
-BOSS_PASSWORD = "boss1234"       # รหัสผ่านหลักสิทธิ์หัวหน้างาน (สำหรับเข้าหน้าเพจบอร์ดควบคุม)
-BIGBOSS_PASSWORD = "bigboss9999" # รหัสผ่านลับสิทธิ์บิ๊กบอส (สำหรับใส่ในกล่องปลดล็อกด้านล่าง)
+BOSS_PASSWORD = "boss1234"       
+BIGBOSS_PASSWORD = "bigboss9999" 
 
-# ทะเบียนเครื่องจักรกลางประจำโรงงาน (🔒 FIX KEY: ตรวจสอบและใส่คีย์ "FORKLIFT-01" กลับเข้ามาให้เต็มระบบเรียบร้อยแล้วครับ)
+# ทะเบียนเครื่องจักรกลางประจำโรงงาน
 MACHINES = {
     "CNC3X-01": "CNC 3 แกน #01", "CNC3X-02": "CNC 3 แกน #02",
     "CNC3X-03": "CNC 3 แกน #03", "CNC3X-04": "CNC 3 แกน #04",
@@ -73,7 +73,7 @@ CHECKLISTS = {
         "ทำความสะอาด Air filter Mesh ทุกวัน", "ตรวจเช็คแรงดัน Air Control Unit ปกติเฉลี่ยที่ 0.5 Mpa",
         "เช็คน้ำมันชุด Gear ของ ATC ทุกวัน(เปลี่ยนถ่ายทุกปี)", "อัดจารบี Ballscrew และ Linear Guideทุก 1000 ชม.",
         "ตรวจสอบการเคลื่อนที่ของแกนทุกแกน (X,Y,Z)", "ตรวจสอบสภาพของน้ำ Coolant ถ่ายรูปค่าที่วัดได้ส่งเข้าระบบ",
-        "การทำงานของ Coolant pump", "การทำงาน of Unclamp และการเปลี่ยน Tool", "การทำงานของ Spindle",
+        "การทำงานของ Coolant pump", "การทำงานของ Unclamp และการเปลี่ยน Tool", "การทำงานของ Spindle",
         "การทำงานของ Arm เปลี่ยน Tool", "ตรวจสอบระดับของน้ำ Coolant เติมเมื่ออยู่ระดับที่ต่ำ",
         "ความสะอาดทั่วไปของเครื่องจักรโดยรวม", "ตรวจสอบความพร้อมสภาพโดยรวม(ฟังด้วยหู ดูด้วยตา)", "ตรวจสอบสายไฮโดรลิกส์ และสายลม"
     ],
@@ -110,7 +110,7 @@ CHECKLISTS = {
     "QC-21": ["ตรวจดูสภาพของสายไฟ", "ตรวจดูสภาพ ARM ของเครื่อง", "ตรวจดูสภาพของหัว PROBE คตงอหรือไม่", "ตรวจสอบ STICKER", "ตรวจสอบ NOTEBOOK COMPUTER"],
     "COMP-01": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
     "COMP-02": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
-    "GRINDING": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวม of เครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMP น้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
+    "GRINDING": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMP น้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
     "CUTTER GRINDING": ["การ WORM UP แกน Y พร้อมใช้งาน", "การ WORM UP แกน Z พร้อมใช้งาน", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของมอเตอร์ มีการหมุนปกติ", "ตรวจสอบการจับหัวคอเรต"],
     "MILLING": [
         "Worm Spindle ก่อนเริมงาน ตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor", 
@@ -134,7 +134,7 @@ CHECKLISTS = {
         "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับน้ำมันในปั้ม น้ำมันหล่อลื่นแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด",
         "ตรวจสอบหน้าจอ Digital read out  และการทำงาน ของ Linear  scale", "อัดจาระบีตามจุดหัวอัดจาระบีทุก ๆจุด 1ครั้งตต่อเดือน",
         "ตรวจสอบการทำงานของไฟฟ้าแสงสว่างของเครื่อง", "ตรวจสอบฟันพับของร่อง  V",
-        "ตรวจสอบความพร้อมและสภาพโดยรวมofเครื่อง จักรและอุกรณ์เสริมต่าง ๆ"
+        "ตรวจสอบความพร้อมและสภาพโดยรวมของเครื่องจักรและอุกรณ์เสริมต่าง ๆ"
     ],
     "MIG CO2": ["ตรวจสภาพความพร้อมโดยรวมของเครื่อง", "เช็ค BREAKER เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์ และสวิชท์ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดัน ของก๊าซ CO2 และปรับตั้งอย่างถูกต้อง", "ตรวจจุดต่อของก๊าซ CO2 รั่วหรือไม่", "ตรวจสภาพความพร้อมของสายไฟ สายก๊าซ  CO2 ว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราวด์", "ทำความสะอาดหัวเชื่อมก่อนใช้งาน"],
     "ARGON": [
@@ -169,7 +169,6 @@ PHOTO_RULES = {
 }
 
 def get_coordinates_by_machine(m_id, m_type):
-    # 🔒 [🔒 SECURE FIX IN DAY 1] ซ่อมพิกัดผังรายชื่อเครื่องวัด QC ทั้งยึดโยงราย ID เครื่องตัวจริงทั้งหมดให้รู้จักประเภทล็อกกระดานได้ถูกต้อง ป้องกันท่อส่งไลน์สะดุดวันที่ 1 สำเร็จ
     u_id = str(m_id).upper()
     if "QC-01" in u_id: return 10, 12, "B15"
     if any(k in u_id for k in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-16", "QC-17", "QC-18", "QC-19", "QC-20", "QC-21"]): return 11, 13, "B16"
@@ -272,7 +271,10 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             backup_file_name = f"Backup_{last_month_str}_FM-MN-07_{machine_id}.xlsx"
             backup_excel_path = os.path.join(backup_folder, backup_file_name)
             shutil.copy2(target_excel_path, backup_excel_path)
-            send_line_alert(f"📦 [Auto-Backup Completed]: ระบบสำรองไฟล์ของเครื่อง {machine_id} ประจำเดือน {last_month_str} สำเร็จเรียบร้อยแล้ว!")
+            
+            # 🛡️ SAFE GUARD: ป้องกันถ้าท่อส่งสัญญานเตือนจุดนี้เอ๋อ ให้เซฟข้อความข้ามผ่านไปทำส่วนถัดไป
+            try: send_line_alert(f"📦 [Auto-Backup Completed]: ระบบสำรองไฟล์ของเครื่อง {machine_id} ประจำเดือน {last_month_str} สำเร็จเรียบร้อยแล้ว!")
+            except: pass
 
             checklist_items = CHECKLISTS[m_type]
             for d in range(1, 32):
@@ -460,12 +462,14 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
         elif any(uploaded_photos[idx]["file"] is None for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
         else:
+            # 📷 🛡️ ท่อน้ำยาแยกฝั่งอัปโหลดรูปภาพครอบ try-except ป้องกันรูปภาพล่มแล้วดึงข้อความไลน์พัง
             photo_logs = []
             for idx in required_photo_indexes:
                 saved_path = save_uploaded_photo(machine_id, current_day, idx, uploaded_photos[idx]["file"])
                 if saved_path: 
                     photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ")
-                    send_line_image(saved_path, f"📷 [หลักฐานข้อ {idx}] เครื่อง: {machine_id} โดยช่าง {tech_name}")
+                    try: send_line_image(saved_path, f"📷 [หลักฐานข้อ {idx}] เครื่อง: {machine_id} โดยช่าง {tech_name}")
+                    except: pass
             
             fails, fixed_items = [], []
             for i, item in enumerate(current_checklist, 1):
@@ -478,6 +482,8 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             if success:
                 photo_status_str = "\n".join(photo_logs)
                 audit_tag = f"\n\n🔒 [ISO Status]: บันทึกรายงานเครื่อง {machine_id} แล้ว (รอหัวหน้าลงนามดิจิทัล)"
+                
+                # 🚀 FORCE LINE DISPATCH: บังคับยิงสัญญานข้อความหลักทันที ไร้เงื่อนไขบล็อกจากรูปภาพล่ม
                 if fails:
                     summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ รายการที่ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
                     if fixed_items: summary_msg += "\n\n🛠️ รายการที่ช่างแก้ไขเสร็จทันที:\n" + "\n".join(fixed_items)
