@@ -73,7 +73,7 @@ CHECKLISTS = {
         "ทำความสะอาด Air filter Mesh ทุกวัน", "ตรวจเช็คแรงดัน Air Control Unit ปกติเฉลี่ยที่ 0.5 Mpa",
         "เช็คน้ำมันชุด Gear ของ ATC ทุกวัน(เปลี่ยนถ่ายทุกปี)", "อัดจารบี Ballscrew และ Linear Guideทุก 1000 ชม.",
         "ตรวจสอบการเคลื่อนที่ของแกนทุกแกน (X,Y,Z)", "ตรวจสอบสภาพของน้ำ Coolant ถ่ายรูปค่าที่วัดได้ส่งเข้าระบบ",
-        "การทำงานของ Coolant pump", "การทำงานของ Unclamp และการเปลี่ยน Tool", "การทำงานของ Spindle",
+        "การทำงานของ Coolant pump", "การทำงาน of Unclamp และการเปลี่ยน Tool", "การทำงานของ Spindle",
         "การทำงานของ Arm เปลี่ยน Tool", "ตรวจสอบระดับของน้ำ Coolant เติมเมื่ออยู่ระดับที่ต่ำ",
         "ความสะอาดทั่วไปของเครื่องจักรโดยรวม", "ตรวจสอบความพร้อมสภาพโดยรวม(ฟังด้วยหู ดูด้วยตา)", "ตรวจสอบสายไฮโดรลิกส์ และสายลม"
     ],
@@ -110,7 +110,7 @@ CHECKLISTS = {
     "QC-21": ["ตรวจดูสภาพของสายไฟ", "ตรวจดูสภาพ ARM ของเครื่อง", "ตรวจดูสภาพของหัว PROBE คตงอหรือไม่", "ตรวจสอบ STICKER", "ตรวจสอบ NOTEBOOK COMPUTER"],
     "COMP-01": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
     "COMP-02": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
-    "GRINDING": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMP น้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
+    "GRINDING": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวม of เครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMP น้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
     "CUTTER GRINDING": ["การ WORM UP แกน Y พร้อมใช้งาน", "การ WORM UP แกน Z พร้อมใช้งาน", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของมอเตอร์ มีการหมุนปกติ", "ตรวจสอบการจับหัวคอเรต"],
     "MILLING": [
         "Worm Spindle ก่อนเริมงาน ตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor", 
@@ -130,16 +130,16 @@ CHECKLISTS = {
     "CUTTING": ["การ Worm spindle ก่อนเริ่มงาน เพื่อตรวจ ความผิดปกติของชุด Back gauge และ Motor", "เช็ค Auto Up-Down back gauge และ Manual ( ความคล่องตัวในการเคลื่อนที่ )", "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับในปั้มน้ำมัน หล่อลืนแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด", "ตรวจสอบ Digital  read out และการทำงานของ Linear  scale", "อัดจาระบีตามจุดที่อัดจาระบีทุกๆจุด", "ตรวจสอบใบมีด  บนและล่าง", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง จักรและอุปกรณ์เสริมต่าง ๆ"],
     "BENDING": [
         "การ Worm spindle ก่อนเริมงาน เพื่อตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor",
-        "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคร่องตัวในการเคลื่อนที่ของ Spindle )",
+        "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคล่องตัวในการเคลื่อนที่ของ Spindle )",
         "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับน้ำมันในปั้ม น้ำมันหล่อลื่นแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด",
         "ตรวจสอบหน้าจอ Digital read out  และการทำงาน ของ Linear  scale", "อัดจาระบีตามจุดหัวอัดจาระบีทุก ๆจุด 1ครั้งตต่อเดือน",
         "ตรวจสอบการทำงานของไฟฟ้าแสงสว่างของเครื่อง", "ตรวจสอบฟันพับของร่อง  V",
-        "ตรวจสอบความพร้อมและสภาพโดยรวมของเครื่อง จักรและอุกรณ์เสริมต่าง ๆ"
+        "ตรวจสอบความพร้อมและสภาพโดยรวมofเครื่อง จักรและอุกรณ์เสริมต่าง ๆ"
     ],
     "MIG CO2": ["ตรวจสภาพความพร้อมโดยรวมของเครื่อง", "เช็ค BREAKER เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์ และสวิชท์ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดัน ของก๊าซ CO2 และปรับตั้งอย่างถูกต้อง", "ตรวจจุดต่อของก๊าซ CO2 รั่วหรือไม่", "ตรวจสภาพความพร้อมของสายไฟ สายก๊าซ  CO2 ว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราวด์", "ทำความสะอาดหัวเชื่อมก่อนใช้งาน"],
     "ARGON": [
         "ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", 
-        "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่า่วหรือไม่", 
+        "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", 
         "ตรวจสภาพความพร้อมของสายกราว์", "ตรวจสภาพความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", 
         "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"
     ],
@@ -169,7 +169,7 @@ PHOTO_RULES = {
 }
 
 def get_coordinates_by_machine(m_id, m_type):
-    # 🔒 [DYNAMIC REWRITE] ผ่าตัดกลไกดักจับพิกัดตระกูลเครื่องวัด QC ทั้งยึดโยงราย ID เครื่องตัวจริงทั้งหมดให้ลงแถวตามระบบอย่างแม่นยำ
+    # 🔒 [🔒 SECURE FIX IN DAY 1] ซ่อมพิกัดผังรายชื่อเครื่องวัด QC ทั้งยึดโยงราย ID เครื่องตัวจริงทั้งหมดให้รู้จักประเภทล็อกกระดานได้ถูกต้อง ป้องกันท่อส่งไลน์สะดุดวันที่ 1 สำเร็จ
     u_id = str(m_id).upper()
     if "QC-01" in u_id: return 10, 12, "B15"
     if any(k in u_id for k in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-16", "QC-17", "QC-18", "QC-19", "QC-20", "QC-21"]): return 11, 13, "B16"
@@ -262,7 +262,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         first_cell_of_month = get_unmerged_cell(ws, f"{check_col_1}{t_row}")
         
         if day_num == 1 and (first_cell_of_month.value is None or first_cell_of_month.value == ""):
-            # [AUTO BACKUP MECHANIC]
             backup_folder = os.path.join(BASE_FOLDER, "maintenance_backups")
             if not os.path.exists(backup_folder): os.makedirs(backup_folder, exist_ok=True)
             today = datetime.date.today()
@@ -275,7 +274,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             shutil.copy2(target_excel_path, backup_excel_path)
             send_line_alert(f"📦 [Auto-Backup Completed]: ระบบสำรองไฟล์ของเครื่อง {machine_id} ประจำเดือน {last_month_str} สำเร็จเรียบร้อยแล้ว!")
 
-            # [AUTO RESET MECHANIC]
             checklist_items = CHECKLISTS[m_type]
             for d in range(1, 32):
                 c_letter = get_column_letter(2 + d)
@@ -386,8 +384,8 @@ if isinstance(raw_machine_id, list): machine_id = str(raw_machine_id[0]).strip()
 else: machine_id = str(raw_machine_id).strip()
 machine_id = machine_id.replace("%20", " ")
 
-if "CRANE NO.1" in machine_id.upper() or "CRANE NO.1" in machine_id: m_type_selected = "Crane no.1"
-elif "CRANE NO.2" in machine_id.upper() or "CRANE NO.2" in machine_id: m_type_selected = "Crane no.2"
+if "CRANE NO.1" in machine_id.upper() or "CRANE no.1" in machine_id: m_type_selected = "Crane no.1"
+elif "CRANE NO.2" in machine_id.upper() or "CRANE no.2" in machine_id: m_type_selected = "Crane no.2"
 elif "QC-01" in machine_id.upper() or "QC-01" in machine_id: m_type_selected = "QC-01"
 elif "QC-02" in machine_id.upper() or "QC-02" in machine_id: m_type_selected = "QC-02"
 elif "QC-03" in machine_id.upper() or "QC-03" in machine_id: m_type_selected = "QC-03"
@@ -507,7 +505,6 @@ else:
     
     st.subheader(f"📅 ประจำวันที่เลือก: {selected_date.strftime('%d/%m/%Y')} (คอลัมน์ Excel ช่องวันที่ {target_day_check})")
     
-    # ประกาศค่าตัวแปรสิทธิ์ให้อยู่ระดับบนสุด (Top-level)
     is_supervisor = False
     is_bigboss = False
     
@@ -518,7 +515,6 @@ else:
         is_bigboss = (password_input == BIGBOSS_PASSWORD)
 
     if is_supervisor or is_bigboss:
-        # ยึดชื่อตามรหัสผ่านหลักด้านบน
         if is_bigboss:
             st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ล็อกอินผ่านรหัสแอดมินหลักเรียบร้อย")
             boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/บิ๊กบอส:", value="พลวัฒน์ (Big Boss)")
@@ -551,7 +547,6 @@ else:
 
                 current_notes = get_current_excel_note(m_id, m_type_flag)
                 
-                # Dynamic Labeling for custom fields
                 u_id = str(m_id).upper()
                 if "ARGON-02" in u_id or "ARGON-01" in u_id or "CRANE" in u_id: note_label = "ช่อง B19"
                 elif "WELDING_ALUMINUM" in u_id or "FORKLIFT" in u_id or "CUTTER" in u_id or "CUTTING" in u_id: note_label = "ช่อง B18"
@@ -605,7 +600,7 @@ else:
         for m_id, m_name in MACHINES.items():
             if "COMP-" in m_id.upper():
                 with (comp_col1 if comp_idx % 3 == 0 else (comp_col2 if comp_idx % 3 == 1 else comp_col3)):
-                    render_machine_card(m_id, m_name, "COMP-01") 
+                    render_machine_card(m_id, m_name, m_id) 
                 comp_idx += 1
 
         # ---- 5. แผนก CRANE ----
@@ -613,9 +608,9 @@ else:
         crane_col1, crane_col2 = st.columns(2)
         crane_idx = 0
         for m_id, m_name in MACHINES.items():
-            if "CRANE" in m_id.upper():
+            if "CRANE" in m_id.upper() or "Crane" in m_id:
                 with (crane_col1 if crane_idx % 2 == 0 else crane_col2):
-                    render_machine_card(m_id, m_name, "COMP-01")
+                    render_machine_card(m_id, m_name, m_id) 
                 crane_idx += 1
 
         # ---- 6. แผนก QC ----
@@ -625,7 +620,7 @@ else:
         for m_id, m_name in MACHINES.items():
             if "QC-" in m_id.upper():
                 with (qc_col1 if qc_idx % 3 == 0 else (qc_col2 if qc_idx % 3 == 1 else qc_col3)):
-                    render_machine_card(m_id, m_name, "COMP-01")
+                    render_machine_card(m_id, m_name, m_id) 
                 qc_idx += 1
 
         # ---- 7. แผนก MILLING ----
