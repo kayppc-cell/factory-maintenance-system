@@ -13,12 +13,13 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment
 
 # --- 1. CONFIGURATION ---
-LINE_ACCESS_TOKEN = "RRtpOuJT8oWgvglsSFUqc7LC1zZqL2jD8qTdJx5iIpAkG4GiJjAkaetvEKLGLuNOJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lZzKy78CvGLfGAWjFSOtyj89Bu3nm8iVlTh0pNQtc737gdB04t89/1O/w1cDnyilFU=" 
+# 🔑 [🔒 UPDATE: สัญญาณ Token ใหม่เอี่ยมอัปเดตเข้าท่อหลักเรียบร้อย]
+LINE_ACCESS_TOKEN = "SOs7DeGwVsFpuK/JN8zm58Wn3EOiB75Ww0q57z1/yht4H1imzYonre4QuPfQ3cxbJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lYwCp4biq7N20ffJqzGm+ZYNgtEzt2rYZ/GYVRV725EiAdB04t89/1O/w1cDnyilFU=" 
 LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"  
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 
-# 🔑 รหัสความปลอดภัยประจำโรงงาน
+# รหัสความปลอดภัยประจำโรงงาน
 BOSS_PASSWORD = "boss1234"       
 BIGBOSS_PASSWORD = "bigboss9999" 
 
@@ -272,7 +273,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             backup_excel_path = os.path.join(backup_folder, backup_file_name)
             shutil.copy2(target_excel_path, backup_excel_path)
             
-            # 🛡️ SAFE GUARD: ป้องกันถ้าท่อส่งสัญญานเตือนจุดนี้เอ๋อ ให้เซฟข้อความข้ามผ่านไปทำส่วนถัดไป
             try: send_line_alert(f"📦 [Auto-Backup Completed]: ระบบสำรองไฟล์ของเครื่อง {machine_id} ประจำเดือน {last_month_str} สำเร็จเรียบร้อยแล้ว!")
             except: pass
 
@@ -462,7 +462,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
         elif any(uploaded_photos[idx]["file"] is None for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
         else:
-            # 📷 🛡️ ท่อน้ำยาแยกฝั่งอัปโหลดรูปภาพครอบ try-except ป้องกันรูปภาพล่มแล้วดึงข้อความไลน์พัง
             photo_logs = []
             for idx in required_photo_indexes:
                 saved_path = save_uploaded_photo(machine_id, current_day, idx, uploaded_photos[idx]["file"])
@@ -483,7 +482,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 photo_status_str = "\n".join(photo_logs)
                 audit_tag = f"\n\n🔒 [ISO Status]: บันทึกรายงานเครื่อง {machine_id} แล้ว (รอหัวหน้าลงนามดิจิทัล)"
                 
-                # 🚀 FORCE LINE DISPATCH: บังคับยิงสัญญานข้อความหลักทันที ไร้เงื่อนไขบล็อกจากรูปภาพล่ม
                 if fails:
                     summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ รายการที่ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
                     if fixed_items: summary_msg += "\n\n🛠️ รายการที่ช่างแก้ไขเสร็จทันที:\n" + "\n".join(fixed_items)
