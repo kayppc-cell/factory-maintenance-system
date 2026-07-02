@@ -66,7 +66,7 @@ MACHINES = {
     "FORKLIFT-01": "รถโฟคลิฟ FORKLIFT #01"
 }
 
-# รายการเช็คลิสต์แยกตามประเภทแผนก (ล้างคีย์ส่วนเกินออกให้ตรงเงื่อนไขสัญญานแล้ว)
+# รายการเช็คลิสต์แยกตามประเภทแผนก
 CHECKLISTS = {
     "CNC": [
         "Worm up เครื่องจักร 15 นาที ทุกครั้งที่ใช้งาน", "เช็คระดับนำมัน Oil Matic Mesh ทุกวัน เติมเมื่อพร่อง",
@@ -149,7 +149,7 @@ CHECKLISTS = {
         "เช็คระดับน้ำหล่อเย็นให้อยู่ในระดับพร้อมใช้งาน", "เช็คระดับแรงดันในถังแก๊สให้พร้อมใช้งาน",
         "ทำความสะอาดชุดหัวเชื่อมก่อนใช้งานอย่างสม่ำเสมอ"
     ],
-    "BAND SAW": ["เช็ค Auto Up-Down Back Gauge และ Manual (ความคล่องตัวในการเคลื่อนที่ของ Spindle)", "เช็คระดับน้ำมันไฮดรอลิค", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั๊ม COOLANT และสภาพของน้ำ COOLANT", "ตรวจสอบ Switch (สวิตซ์) หน้า BOX CONTROL", "ตรวจสอบระดับน้ำมันหล่อลื่นในห้องเกียร์"],
+    "BAND SAW": ["เช็ค Auto Up-Down Back Gauge และ Manual (ความคล่องตัวในการเคลื่อนที่ of Spindle)", "เช็คระดับน้ำมันไฮดรอลิค", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั๊ม COOLANT และสภาพของน้ำ COOLANT", "ตรวจสอบ Switch (สวิตซ์) หน้า BOX CONTROL", "ตรวจสอบระดับน้ำมันหล่อลื่นในห้องเกียร์"],
     "FORKLIFT": [
         "ตรวจเช็คระบบน้ำหม้อน้ำให้อยู่ในระดับ Hight", "ตรวจเช็คน้ำมันเครื่องยนต์ต้องอยู่ไม่เกินขีดที่3ของตัวเช็ค", "ตรวจเช็คไส้กรองและเป่าลมทำความสะอาด",
         "ตรวจเช็คการรั่วซึมของน้ำมันไฮดรอริก", "ตรวจเช็คระบบเบรคและน้ำมันเบรค", "ตรวจเช็คไฟส่องสว่างและไฟเลี้ยว",
@@ -170,10 +170,8 @@ PHOTO_RULES = {
 
 def get_coordinates_by_machine(m_id, m_type):
     u_id = str(m_id).upper()
-    
-    # 🌟 ล็อกพิกัดพิเศษสำหรับเครื่อง Cutter Grinding ให้ถูกต้องตรงตามตารางจริงโรงงานบอส
     if "CUTTER" in u_id or m_type == "CUTTER GRINDING-01": 
-        return 13, 15, "B18"  # ช่างแถว 13, หัวหน้าแถว 15, โน้ตช่อง B18
+        return 13, 15, "B18"
 
     if "QC-01" in u_id: return 10, 12, "B15"
     if any(k in u_id for k in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-16", "QC-17", "QC-18", "QC-19", "QC-20", "QC-21"]): return 11, 13, "B16"
@@ -285,12 +283,17 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
         
         note_cell = get_unmerged_cell(ws, n_cell)
-        old_val = "" if note_cell.value == "เครื่องจักรปกติ" else (note_cell.value or "")
+        
+        # 🌟 จุดแก้ไข: ถ้าช่องมีคำว่า "เครื่องจักรปกติ" หรือว่าง ให้เริ่มเขียนใหม่ได้เลย ไม่ปล่อยว่างหรือขึ้นคำซ้ำซ้อน
+        old_val = "" if (not note_cell.value or note_cell.value == "เครื่องจักรปกติ") else str(note_cell.value)
         notes_collected = [results_dict[item]["note"] for item in checklist_items if results_dict[item]["note"]]
         if notes_collected:
             new_val = old_val + ("\n" if old_val else "") + f"[วันที่ {day_num}]: " + ", ".join(notes_collected)
             note_cell.value = new_val
-            note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+        elif not note_cell.value:
+            note_cell.value = "เครื่องจักรปกติ"
+            
+        note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
             
         wb.save(target_excel_path)
         return True, ""
@@ -362,7 +365,6 @@ if isinstance(raw_machine_id, list): machine_id = str(raw_machine_id[0]).strip()
 else: machine_id = str(raw_machine_id).strip()
 machine_id = machine_id.replace("%20", " ")
 
-# 🌟 ปรับเงื่อนไขตรวจสอบประเภทสัญญานเครื่องของช่างให้ค้นหาคีย์เจอถูกต้อง แม่นยำ
 if "CRANE NO.1" in machine_id.upper() or "CRANE no.1" in machine_id: m_type_selected = "Crane no.1"
 elif "CRANE NO.2" in machine_id.upper() or "CRANE no.2" in machine_id: m_type_selected = "Crane no.2"
 elif "QC-01" in machine_id.upper() or "QC-01" in machine_id: m_type_selected = "QC-01"
@@ -388,8 +390,8 @@ elif "QC-20" in machine_id.upper() or "QC-20" in machine_id: m_type_selected = "
 elif "QC-21" in machine_id.upper() or "QC-21" in machine_id: m_type_selected = "QC-21"
 elif "COMP-01" in machine_id.upper(): m_type_selected = "COMP-01"
 elif "COMP-02" in machine_id.upper(): m_type_selected = "COMP-02"
-elif "CUTTER" in machine_id.upper(): m_type_selected = "CUTTER GRINDING-01"  # 🎯 ล็อกตรงคีย์ของเครื่อง Cutter Grinding เป๊ะๆ
 elif "GRINDING" in machine_id.upper(): m_type_selected = "GRINDING"
+elif "CUTTER" in machine_id.upper(): m_type_selected = "CUTTER GRINDING-01"
 elif "MILLING" in machine_id.upper(): m_type_selected = "MILLING"
 elif "LATHE" in machine_id.upper(): m_type_selected = "LATHE"
 elif "CUTTING" in machine_id.upper(): m_type_selected = "CUTTING"
@@ -439,7 +441,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
         elif any(uploaded_photos[idx]["file"] is None for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
         else:
-            # 🌟 ปรับระบบเก็บรูปภาพไว้ที่คลาวด์หลังบ้านอย่างเดียว (ประหยัดโควตา LINE OA ได้ผลชัวร์ 100%)
             photo_logs = []
             for idx in required_photo_indexes:
                 saved_path = save_uploaded_photo(machine_id, current_day, idx, uploaded_photos[idx]["file"])
@@ -457,9 +458,9 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             if success:
                 photo_status_str = "\n".join(photo_logs)
                 
-                # 🔗 ปรับบอทให้ยิงลิงก์อัลบั้มตรวจรูปให้หัวหน้างานอัตโนมัติ (ช่วยคุมปริมาณข้อความไม่ให้ชนเพดานโปรฟรี)
+                # 🔗 🌟 จุดเด็ดไฮไลท์: เปลี่ยนมาสร้างลิงก์รวมรูปอัลบั้ม ส่งแทนไฟล์ภาพสดๆ เข้า LINE ป้องกันโควตาเต็มแล้วล่ม
                 boss_review_url = f"https://pes-maintenance.streamlit.app/?role=boss&id={machine_id}"
-                audit_tag = f"\n\n📂 [คลิกเพื่อตรวจเช็คและดูรูปหลักฐานทั้งหมด]:\n👉 {boss_review_url}"
+                audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
                 
                 if fails:
                     summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ รายการที่ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
@@ -469,7 +470,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 else:
                     ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n✅ ผลการตรวจสอบ: ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
                     if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ (ลงตาราง ⨂):\n" + "\n".join(fixed_items)
-                    if photo_status_str: ok_msg += f"\n\n📸 มีรูปภาพหลักฐานถูกบันทึกไว้ในคลาวด์ระบบ"
                     send_line_alert(ok_msg + audit_tag)
                 st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลอัปเดตและบันทึกเรียบร้อยแล้ว")
             else:
@@ -518,7 +518,7 @@ else:
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
                 
-                # 🖼️ ดึงรูปภาพในคลาวด์มาเปิดให้หัวหน้าส่องเช็คหน้าแอปได้ทันที สะดวกสุดๆ
+                # 🔥 หัวหน้างานเปิดดูภาพถ่ายหลักฐานแยกรายหัวข้อที่ช่างอัปโหลดเข้ามาได้อย่างละเอียดที่หน้านี้เลยครับ
                 img_dir = os.path.join(BASE_FOLDER, f"maintenance_photos/{m_id}_Day_{target_day_check}")
                 if os.path.exists(img_dir):
                     valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
@@ -532,8 +532,9 @@ else:
                 current_notes = get_current_excel_note(m_id, m_type_flag)
                 
                 u_id = str(m_id).upper()
-                if "ARGON-02" in u_id or "ARGON-01" in u_id or "CRANE" in u_id: note_label = "ช่อง B19"
-                elif "WELDING_ALUMINUM" in u_id or "FORKLIFT" in u_id or "CUTTER" in u_id or "CUTTING" in u_id: note_label = "ช่อง B18"
+                if "CUTTER" in u_id or m_type_flag == "CUTTER GRINDING-01": note_label = "ช่อง B18"
+                elif "ARGON-02" in u_id or "ARGON-01" in u_id or "CRANE" in u_id: note_label = "ช่อง B19"
+                elif "WELDING_ALUMINUM" in u_id or "FORKLIFT" in u_id or "CUTTING" in u_id: note_label = "ช่อง B18"
                 elif "CNC" in u_id: note_label = "ช่อง B28"
                 elif "QC-01" in u_id or "QC-10" in u_id or "QC-11" in u_id or "QC-12" in u_id: note_label = "ช่อง B15"
                 elif "QC-15" in u_id: note_label = "ช่อง B17"
