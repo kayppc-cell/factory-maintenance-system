@@ -284,7 +284,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         
         note_cell = get_unmerged_cell(ws, n_cell)
         
-        # 🌟 จุดแก้ไข: ถ้าช่องมีคำว่า "เครื่องจักรปกติ" หรือว่าง ให้เริ่มเขียนใหม่ได้เลย ไม่ปล่อยว่างหรือขึ้นคำซ้ำซ้อน
         old_val = "" if (not note_cell.value or note_cell.value == "เครื่องจักรปกติ") else str(note_cell.value)
         notes_collected = [results_dict[item]["note"] for item in checklist_items if results_dict[item]["note"]]
         if notes_collected:
@@ -365,7 +364,9 @@ if isinstance(raw_machine_id, list): machine_id = str(raw_machine_id[0]).strip()
 else: machine_id = str(raw_machine_id).strip()
 machine_id = machine_id.replace("%20", " ")
 
-if "CRANE NO.1" in machine_id.upper() or "CRANE no.1" in machine_id: m_type_selected = "Crane no.1"
+# 🌟 [จุดสำคัญ - ป้องกันปัญหาทับซ้อน]: เอา CUTTER ขึ้นบนสุดเพื่อดักหน้า GRINDING ป้องกันดักซ้ำ
+if "CUTTER" in machine_id.upper(): m_type_selected = "CUTTER GRINDING-01"
+elif "CRANE NO.1" in machine_id.upper() or "CRANE no.1" in machine_id: m_type_selected = "Crane no.1"
 elif "CRANE NO.2" in machine_id.upper() or "CRANE no.2" in machine_id: m_type_selected = "Crane no.2"
 elif "QC-01" in machine_id.upper() or "QC-01" in machine_id: m_type_selected = "QC-01"
 elif "QC-02" in machine_id.upper() or "QC-02" in machine_id: m_type_selected = "QC-02"
@@ -391,7 +392,6 @@ elif "QC-21" in machine_id.upper() or "QC-21" in machine_id: m_type_selected = "
 elif "COMP-01" in machine_id.upper(): m_type_selected = "COMP-01"
 elif "COMP-02" in machine_id.upper(): m_type_selected = "COMP-02"
 elif "GRINDING" in machine_id.upper(): m_type_selected = "GRINDING"
-elif "CUTTER" in machine_id.upper(): m_type_selected = "CUTTER GRINDING-01"
 elif "MILLING" in machine_id.upper(): m_type_selected = "MILLING"
 elif "LATHE" in machine_id.upper(): m_type_selected = "LATHE"
 elif "CUTTING" in machine_id.upper(): m_type_selected = "CUTTING"
@@ -458,7 +458,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             if success:
                 photo_status_str = "\n".join(photo_logs)
                 
-                # 🔗 🌟 จุดเด็ดไฮไลท์: เปลี่ยนมาสร้างลิงก์รวมรูปอัลบั้ม ส่งแทนไฟล์ภาพสดๆ เข้า LINE ป้องกันโควตาเต็มแล้วล่ม
                 boss_review_url = f"https://pes-maintenance.streamlit.app/?role=boss&id={machine_id}"
                 audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
                 
@@ -518,7 +517,6 @@ else:
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
                 
-                # 🔥 หัวหน้างานเปิดดูภาพถ่ายหลักฐานแยกรายหัวข้อที่ช่างอัปโหลดเข้ามาได้อย่างละเอียดที่หน้านี้เลยครับ
                 img_dir = os.path.join(BASE_FOLDER, f"maintenance_photos/{m_id}_Day_{target_day_check}")
                 if os.path.exists(img_dir):
                     valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
