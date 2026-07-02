@@ -13,7 +13,6 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment
 
 # --- 1. CONFIGURATION ---
-# 🔑 [🔒 UPDATE: สัญญาณ Token ใหม่เอี่ยมอัปเดตเข้าท่อหลักเรียบร้อย]
 LINE_ACCESS_TOKEN = "SOs7DeGwVsFpuK/JN8zm58Wn3EOiB75Ww0q57z1/yht4H1imzYonre4QuPfQ3cxbJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lYwCp4biq7N20ffJqzGm+ZYNgtEzt2rYZ/GYVRV725EiAdB04t89/1O/w1cDnyilFU=" 
 LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"  
 
@@ -67,7 +66,7 @@ MACHINES = {
     "FORKLIFT-01": "รถโฟคลิฟ FORKLIFT #01"
 }
 
-# รายการเช็คลิสต์แยกตามประเภทแผนก
+# รายการเช็คลิสต์แยกตามประเภทแผนก (ล้างคีย์ส่วนเกินออกให้ตรงเงื่อนไขสัญญานแล้ว)
 CHECKLISTS = {
     "CNC": [
         "Worm up เครื่องจักร 15 นาที ทุกครั้งที่ใช้งาน", "เช็คระดับนำมัน Oil Matic Mesh ทุกวัน เติมเมื่อพร่อง",
@@ -111,7 +110,7 @@ CHECKLISTS = {
     "QC-21": ["ตรวจดูสภาพของสายไฟ", "ตรวจดูสภาพ ARM ของเครื่อง", "ตรวจดูสภาพของหัว PROBE คตงอหรือไม่", "ตรวจสอบ STICKER", "ตรวจสอบ NOTEBOOK COMPUTER"],
     "COMP-01": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
     "COMP-02": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
-    "GRINDING": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMP น้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
+    "GRINDING": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMPน้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
     "CUTTER GRINDING-01": ["การ WORM UP แกน Y พร้อมใช้งาน", "การ WORM UP แกน Z พร้อมใช้งาน", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของมอเตอร์ มีการหมุนปกติ", "ตรวจสอบการจับหัวคอเรต"],
     "MILLING": [
         "Worm Spindle ก่อนเริมงาน ตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor", 
@@ -165,12 +164,17 @@ PHOTO_RULES = {
     "QC-07": [2, 4], "QC-08": [2, 4], "QC-09": [2, 4], "QC-10": [2], "QC-11": [2], "QC-12": [2],
     "QC-13": [2], "QC-14": [2], "QC-15": [6], "QC-16": [3], "QC-17": [2], "QC-18": [3], "QC-19": [3],
     "QC-20": [3], "QC-21": [3], "COMP-01": [1, 2, 3], "COMP-02": [1, 2, 3], "GRINDING": [2, 4, 7],
-    "CUTTER GRINDING": [], "MILLING": [6, 7], "LATHE": [2, 5, 6], "CUTTING": [3, 5, 7], "BENDING": [3, 5, 6], "MIG CO2": [3, 4, 5],
+    "CUTTER GRINDING-01": [], "MILLING": [6, 7], "LATHE": [2, 5, 6], "CUTTING": [3, 5, 7], "BENDING": [3, 5, 6], "MIG CO2": [3, 4, 5],
     "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [2, 3, 5], "FORKLIFT": [1, 2, 5]
 }
 
 def get_coordinates_by_machine(m_id, m_type):
     u_id = str(m_id).upper()
+    
+    # 🌟 ล็อกพิกัดพิเศษสำหรับเครื่อง Cutter Grinding ให้ถูกต้องตรงตามตารางจริงโรงงานบอส
+    if "CUTTER" in u_id or m_type == "CUTTER GRINDING-01": 
+        return 13, 15, "B18"  # ช่างแถว 13, หัวหน้าแถว 15, โน้ตช่อง B18
+
     if "QC-01" in u_id: return 10, 12, "B15"
     if any(k in u_id for k in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-16", "QC-17", "QC-18", "QC-19", "QC-20", "QC-21"]): return 11, 13, "B16"
     if any(k in u_id for k in ["QC-10", "QC-11", "QC-12"]): return 11, 13, "B15"
@@ -183,7 +187,6 @@ def get_coordinates_by_machine(m_id, m_type):
     if m_type == "CNC" or "CNC" in u_id: return 22, 24, "B28"
     if "CRANE" in u_id: return 14, 16, "B19"
     if m_type == "GRINDING" or "GRINDING" in u_id: return 16, 18, "B21"
-    if m_type == "CUTTER GRINDING" or "CUTTER" in u_id: return 13, 15, "B18"
     if m_type == "MILLING" or "MILLING" in u_id: return 17, 19, "B22" 
     if m_type == "LATHE" or "LATHE" in u_id: return 17, 19, "B22"
     if m_type == "CUTTING" or "CUTTING" in u_id: return 13, 15, "B18"
@@ -207,33 +210,6 @@ def send_line_alert(msg_text):
     payload = {"to": LINE_TARGET_ID, "messages": [{"type": "text", "text": msg_text}]}
     try: requests.post(url, headers=headers, data=json.dumps(payload))
     except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
-
-def send_line_image(photo_path, caption_text):
-    try:
-        with open(photo_path, "rb") as img_file:
-            response = requests.post(
-                "https://freeimage.host/api/1/upload",
-                data={"key": "6d207e02198a847aa98d0a2a901485a5", "action": "upload"},
-                files={"source": img_file}
-            )
-            res_json = response.json()
-            public_image_url = res_json["image"]["url"]
-            
-        url = 'https://api.line.me/v2/bot/message/push'
-        headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
-        payload = {
-            "to": LINE_TARGET_ID,
-            "messages": [
-                {
-                    "type": "image",
-                    "originalContentUrl": public_image_url,
-                    "previewImageUrl": public_image_url
-                }
-            ]
-        }
-        requests.post(url, headers=headers, data=json.dumps(payload))
-    except Exception as e:
-        print(f"กลไกยิงรูปภาพหลุด: {e}")
 
 def save_uploaded_photo(machine_id, day_num, item_index, uploaded_file):
     if uploaded_file is not None:
@@ -386,6 +362,7 @@ if isinstance(raw_machine_id, list): machine_id = str(raw_machine_id[0]).strip()
 else: machine_id = str(raw_machine_id).strip()
 machine_id = machine_id.replace("%20", " ")
 
+# 🌟 ปรับเงื่อนไขตรวจสอบประเภทสัญญานเครื่องของช่างให้ค้นหาคีย์เจอถูกต้อง แม่นยำ
 if "CRANE NO.1" in machine_id.upper() or "CRANE no.1" in machine_id: m_type_selected = "Crane no.1"
 elif "CRANE NO.2" in machine_id.upper() or "CRANE no.2" in machine_id: m_type_selected = "Crane no.2"
 elif "QC-01" in machine_id.upper() or "QC-01" in machine_id: m_type_selected = "QC-01"
@@ -411,8 +388,8 @@ elif "QC-20" in machine_id.upper() or "QC-20" in machine_id: m_type_selected = "
 elif "QC-21" in machine_id.upper() or "QC-21" in machine_id: m_type_selected = "QC-21"
 elif "COMP-01" in machine_id.upper(): m_type_selected = "COMP-01"
 elif "COMP-02" in machine_id.upper(): m_type_selected = "COMP-02"
+elif "CUTTER" in machine_id.upper(): m_type_selected = "CUTTER GRINDING-01"  # 🎯 ล็อกตรงคีย์ของเครื่อง Cutter Grinding เป๊ะๆ
 elif "GRINDING" in machine_id.upper(): m_type_selected = "GRINDING"
-elif "CUTTER" in machine_id.upper(): m_type_selected = "CUTTER GRINDING"
 elif "MILLING" in machine_id.upper(): m_type_selected = "MILLING"
 elif "LATHE" in machine_id.upper(): m_type_selected = "LATHE"
 elif "CUTTING" in machine_id.upper(): m_type_selected = "CUTTING"
@@ -462,13 +439,12 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
         elif any(uploaded_photos[idx]["file"] is None for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
         else:
+            # 🌟 ปรับระบบเก็บรูปภาพไว้ที่คลาวด์หลังบ้านอย่างเดียว (ประหยัดโควตา LINE OA ได้ผลชัวร์ 100%)
             photo_logs = []
             for idx in required_photo_indexes:
                 saved_path = save_uploaded_photo(machine_id, current_day, idx, uploaded_photos[idx]["file"])
                 if saved_path: 
                     photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ")
-                    try: send_line_image(saved_path, f"📷 [หลักฐานข้อ {idx}] เครื่อง: {machine_id} โดยช่าง {tech_name}")
-                    except: pass
             
             fails, fixed_items = [], []
             for i, item in enumerate(current_checklist, 1):
@@ -480,7 +456,10 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             success, err_msg = update_iso_excel_by_tech(machine_id, current_day, results, tech_name, m_type_selected)
             if success:
                 photo_status_str = "\n".join(photo_logs)
-                audit_tag = f"\n\n🔒 [ISO Status]: บันทึกรายงานเครื่อง {machine_id} แล้ว (รอหัวหน้าลงนามดิจิทัล)"
+                
+                # 🔗 ปรับบอทให้ยิงลิงก์อัลบั้มตรวจรูปให้หัวหน้างานอัตโนมัติ (ช่วยคุมปริมาณข้อความไม่ให้ชนเพดานโปรฟรี)
+                boss_review_url = f"https://pes-maintenance.streamlit.app/?role=boss&id={machine_id}"
+                audit_tag = f"\n\n📂 [คลิกเพื่อตรวจเช็คและดูรูปหลักฐานทั้งหมด]:\n👉 {boss_review_url}"
                 
                 if fails:
                     summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ รายการที่ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
@@ -490,7 +469,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 else:
                     ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n✅ ผลการตรวจสอบ: ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
                     if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ (ลงตาราง ⨂):\n" + "\n".join(fixed_items)
-                    if photo_status_str: ok_msg += f"\n\n📸 รูปภาพหลักฐาน:\n{photo_status_str}"
+                    if photo_status_str: ok_msg += f"\n\n📸 มีรูปภาพหลักฐานถูกบันทึกไว้ในคลาวด์ระบบ"
                     send_line_alert(ok_msg + audit_tag)
                 st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลอัปเดตและบันทึกเรียบร้อยแล้ว")
             else:
@@ -539,6 +518,7 @@ else:
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
                 
+                # 🖼️ ดึงรูปภาพในคลาวด์มาเปิดให้หัวหน้าส่องเช็คหน้าแอปได้ทันที สะดวกสุดๆ
                 img_dir = os.path.join(BASE_FOLDER, f"maintenance_photos/{m_id}_Day_{target_day_check}")
                 if os.path.exists(img_dir):
                     valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
@@ -595,7 +575,7 @@ else:
         # ---- 3. แผนก CUTTER GRINDING ----
         st.write("#### 🔹 เครื่องลับคม CUTTER GRINDING (1 เครื่อง)")
         cutter_grind_col1, = st.columns(1)
-        with cutter_grind_col1: render_machine_card("CUTTER GRINDING-01", MACHINES["CUTTER GRINDING-01"], "CUTTER GRINDING")
+        with cutter_grind_col1: render_machine_card("CUTTER GRINDING-01", MACHINES["CUTTER GRINDING-01"], "CUTTER GRINDING-01")
 
         # ---- 4. แผนกปั๊มลม COMPRESSOR ----
         st.write("#### 🔹 เครื่องปั๊มลม AIR COMPRESSOR (2 เครื่อง)")
