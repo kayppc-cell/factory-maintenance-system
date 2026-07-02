@@ -259,7 +259,7 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
                 get_unmerged_cell(ws, f"{c_letter}{boss_row}").value = ""
             
             note_cell = get_unmerged_cell(ws, n_cell)
-            note_cell.value = "เครื่องจักรปกติ"
+            note_cell.value = ""  # บิ๊กบอสปรับแต่งใหม่: ปล่อยโล่งสะอาดตาไว้ล่วงหน้า
             note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
         col_letter = get_column_letter(2 + day_num)
@@ -282,16 +282,17 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         tech_cell.value = tech_name
         tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
         
+        # 📝 [ศัลยกรรมระบบโน้ตสะสมแบบผสมผสาน]: บันทึกข้อความลงช่องซ้ายบนสุดของเซลล์ที่ถูกผสาน (B ถึง AG)
         note_cell = get_unmerged_cell(ws, n_cell)
+        old_val = str(note_cell.value) if (note_cell.value and note_cell.value != "เครื่องจักรปกติ") else ""
         
-        old_val = "" if (not note_cell.value or note_cell.value == "เครื่องจักรปกติ") else str(note_cell.value)
         notes_collected = [results_dict[item]["note"] for item in checklist_items if results_dict[item]["note"]]
+        
         if notes_collected:
             new_val = old_val + ("\n" if old_val else "") + f"[วันที่ {day_num}]: " + ", ".join(notes_collected)
             note_cell.value = new_val
-        elif not note_cell.value:
-            note_cell.value = "เครื่องจักรปกติ"
-            
+        
+        # 🌟 สั่งควบคุมข้อความและรูปแบบฟอนต์บนพื้นที่ผสานเซลล์ให้สวยงาม คมชัด ไม่ตกขอบกระดาษ
         note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
             
         wb.save(target_excel_path)
@@ -336,7 +337,7 @@ def save_custom_excel_note_by_boss(machine_id, m_type, new_text):
         _, _, n_cell = get_coordinates_by_machine(machine_id, m_type)
         note_cell = get_unmerged_cell(ws, n_cell)
         
-        note_cell.value = new_text.strip() if new_text.strip() else "เครื่องจักรปกติ"
+        note_cell.value = new_text.strip()
         note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
         wb.save(target_excel_path)
         return True
@@ -364,7 +365,7 @@ if isinstance(raw_machine_id, list): machine_id = str(raw_machine_id[0]).strip()
 else: machine_id = str(raw_machine_id).strip()
 machine_id = machine_id.replace("%20", " ")
 
-# 🌟 [จุดสำคัญ - ป้องกันปัญหาทับซ้อน]: เอา CUTTER ขึ้นบนสุดเพื่อดักหน้า GRINDING ป้องกันดักซ้ำ
+# 🌟 [แก้ปัญหาการดักทับซ้อนถาวร]: สั่งคัดแยกคำค้นหาชื่อเฉพาะ "CUTTER" ขึ้นมาดักไว้แถวบนสุดก่อนลุยหาคำว่า "GRINDING" 
 if "CUTTER" in machine_id.upper(): m_type_selected = "CUTTER GRINDING-01"
 elif "CRANE NO.1" in machine_id.upper() or "CRANE no.1" in machine_id: m_type_selected = "Crane no.1"
 elif "CRANE NO.2" in machine_id.upper() or "CRANE no.2" in machine_id: m_type_selected = "Crane no.2"
@@ -688,7 +689,7 @@ else:
                 st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
 
             with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
-                st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ สิ้นเดือน")
+                st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ Сิ้นเดือน")
                 backup_folder_path = os.path.join(BASE_FOLDER, "maintenance_backups")
                 if os.path.exists(backup_folder_path):
                     all_backups = [f for f in os.listdir(backup_folder_path) if f.lower().endswith('.xlsx')]
