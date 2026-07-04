@@ -232,10 +232,8 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         
         t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
         
-        check_col_1 = get_column_letter(3) 
-        first_cell_of_month = get_unmerged_cell(ws, f"{check_col_1}{t_row}")
-        
-        if day_num == 1 and (first_cell_of_month.value is None or first_cell_of_month.value == ""):
+        # 🚨 ระบบจะทำการล้างตารางและแบ็กอัป "เฉพาะเมื่อเป็นวันที่ 1 ของเดือนใหม่" เท่านั้น
+        if day_num == 1:
             backup_folder = os.path.join(BASE_FOLDER, "maintenance_backups")
             if not os.path.exists(backup_folder): os.makedirs(backup_folder, exist_ok=True)
             today = datetime.date.today()
@@ -245,11 +243,13 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             
             backup_file_name = f"Backup_{last_month_str}_FM-MN-07_{machine_id}.xlsx"
             backup_excel_path = os.path.join(backup_folder, backup_file_name)
-            shutil.copy2(target_excel_path, backup_excel_path)
             
-            try: send_line_alert(f"📦 [Auto-Backup Completed]: ระบบสำรองไฟล์ของเครื่อง {machine_id} ประจำเดือน {last_month_str} สำเร็จเรียบร้อยแล้ว!")
-            except: pass
+            if not os.path.exists(backup_excel_path):
+                shutil.copy2(target_excel_path, backup_excel_path)
+                try: send_line_alert(f"📦 [Auto-Backup Completed]: ระบบสำรองไฟล์ของเครื่อง {machine_id} ประจำเดือน {last_month_str} สำเร็จเรียบร้อยแล้ว!")
+                except: pass
 
+            # ล้างข้อมูลทั้ง 31 วันให้โล่งเพื่อเริ่มเดือนใหม่
             checklist_items = CHECKLISTS[m_type]
             for d in range(1, 32):
                 c_letter = get_column_letter(2 + d)
@@ -258,10 +258,12 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
                 get_unmerged_cell(ws, f"{c_letter}{t_row}").value = ""
                 get_unmerged_cell(ws, f"{c_letter}{boss_row}").value = ""
             
+            # ล้างช่องบันทึกเพิ่มเติม (ช่อง B) ให้โล่งเฉพาะวันแรกของเดือนใหม่
             note_cell = get_unmerged_cell(ws, n_cell)
-            note_cell.value = ""  # บิ๊กบอสปรับแต่งใหม่: ปล่อยโล่งสะอาดตาไว้ล่วงหน้า
+            note_cell.value = ""
             note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
+        # ✍️ บันทึกเครื่องหมายลงช่องวันที่ปัจจุบัน (ข้อมูลวันอื่นๆ อยู่ครบ)
         col_letter = get_column_letter(2 + day_num)
         checklist_items = CHECKLISTS[m_type]
         
@@ -278,21 +280,25 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
                 
                 current_cell.alignment = Alignment(horizontal='center', vertical='center')
                 
+        # ลงชื่อช่างในคอลัมน์วันปัจจุบัน
         tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")
         tech_cell.value = tech_name
         tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
         
-        # 📝 [ศัลยกรรมระบบโน้ตสะสมแบบผสมผสาน]: บันทึกข้อความลงช่องซ้ายบนสุดของเซลล์ที่ถูกผสาน (B ถึง AG)
+        # 📝 [ศัลยกรรมจุดสำคัญ]: ดึงข้อความเดิมในช่อง B มาแล้ว "เขียนต่อยาวออกไปด้านข้าง" ไม่ใช้ \n เลื่อนบรรทัดลงมา
         note_cell = get_unmerged_cell(ws, n_cell)
-        old_val = str(note_cell.value) if (note_cell.value and note_cell.value != "เครื่องจักรปกติ") else ""
+        old_val = str(note_cell.value).strip() if note_cell.value else ""
         
         notes_collected = [results_dict[item]["note"] for item in checklist_items if results_dict[item]["note"]]
         
         if notes_collected:
-            new_val = old_val + ("\n" if old_val else "") + f"[วันที่ {day_num}]: " + ", ".join(notes_collected)
-            note_cell.value = new_val
+            new_note_text = f"[วันที่ {day_num}]: " + ", ".join(notes_collected)
+            # 🎯 ถ้ามีข้อความเก่าอยู่ ให้เชื่อมด้วย ",  " เพื่อให้ข้อความวิ่งยาวไปทางขวาตามแนวเซลล์ผสาน B-AG
+            if old_val and old_val != "None" and old_val != "เครื่องจักรปกติ":
+                note_cell.value = old_val + ",  " + new_note_text
+            else:
+                note_cell.value = new_note_text
         
-        # 🌟 สั่งควบคุมข้อความและรูปแบบฟอนต์บนพื้นที่ผสานเซลล์ให้สวยงาม คมชัด ไม่ตกขอบกระดาษ
         note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
             
         wb.save(target_excel_path)
