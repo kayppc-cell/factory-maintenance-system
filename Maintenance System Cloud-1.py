@@ -7,20 +7,20 @@ import qrcode
 from io import BytesIO
 import json
 import os
-import shutil 
+import shutil
 import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment
 
 # --- 1. CONFIGURATION ---
-LINE_ACCESS_TOKEN = "SOs7DeGwVsFpuK/JN8zm58Wn3EOiB75Ww0q57z1/yht4H1imzYonre4QuPfQ3cxbJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lYwCp4biq7N20ffJqzGm+ZYNgtEzt2rYZ/GYVRV725EiAdB04t89/1O/w1cDnyilFU=" 
-LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"  
+LINE_ACCESS_TOKEN = "SOs7DeGwVsFpuK/JN8zm58Wn3EOiB75Ww0q57z1/yht4H1imzYonre4QuPfQ3cxbJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lYwCp4biq7N20ffJqzGm+ZYNgtEzt2rYZ/GYVRV725EiAdB04t89/1O/w1cDnyilFU="
+LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 
 # รหัสความปลอดภัยประจำโรงงาน
-BOSS_PASSWORD = "boss1234"       
-BIGBOSS_PASSWORD = "bigboss9999" 
+BOSS_PASSWORD = "boss1234"
+BIGBOSS_PASSWORD = "bigboss9999"
 
 # ทะเบียนเครื่องจักรกลางประจำโรงงาน
 MACHINES = {
@@ -30,14 +30,14 @@ MACHINES = {
     "CNC3X-07": "CNC 3 แกน #07", "CNC3X-08": "CNC 3 แกน #08",
     "CNC5X-01": "CNC 5 แกน #พิเศษ",
     "Crane no.1": "เครน CNC NO.1", "Crane no.2": "เครน QC NO.2",
-    "QC-01": "เครื่องวัดความแข็ง",  
-    "QC-02": "เวอร์เนีย 1000 QC-VN-009",       
-    "QC-03": "เวอร์เนีย 300 QC-VN-011",  
-    "QC-04": "เวอร์เนีย 300 QC-VN-029",   
+    "QC-01": "เครื่องวัดความแข็ง",
+    "QC-02": "เวอร์เนีย 1000 QC-VN-009",
+    "QC-03": "เวอร์เนีย 300 QC-VN-011",
+    "QC-04": "เวอร์เนีย 300 QC-VN-029",
     "QC-05": "เวอร์เนีย 200 QC-VN-025",
-    "QC-06": "เวอร์เนีย 200 QC-VN-026",  
+    "QC-06": "เวอร์เนีย 200 QC-VN-026",
     "QC-07": "เวอร์เนีย 200 QC-VN-027",
-    "QC-08": "เวอร์เนีย 200 QC-VN-028", 
+    "QC-08": "เวอร์เนีย 200 QC-VN-028",
     "QC-09": "เวอร์เนีย 600 QC-VN-010",
     "QC-10": "ไฮเกจ 300 QC-HG-006",
     "QC-11": "ไฮเกจ 600 QC-HG-007",
@@ -49,19 +49,19 @@ MACHINES = {
     "QC-17": "เลื่อยสายพาน QC-SAW-001",
     "QC-18": "Faro Arm QC-AC-001",
     "QC-19": "Cimcore Arm 2.8 QC-AC-003",
-    "QC-20": "Cimcore Arm 2.4 QC-AC-002",               
+    "QC-20": "Cimcore Arm 2.4 QC-AC-002",
     "QC-21": "Cimcore Arm 3.5 QC-AC-004",
-    "COMP-01": "ปั๊มลม 1 COMP-01",          
+    "COMP-01": "ปั๊มลม 1 COMP-01",
     "COMP-02": "ปั๊มลม 2 COMP-02",
     "GRINDING-01": "เครื่องเจียร GRINDING #01", "GRINDING-02": "เครื่องเจียร GRINDING #02",
     "CUTTER GRINDING-01": "เครื่องลับคม CUTTER GRINDING #01",
     "MILLING-01": "เครื่องมิลลิ่ง #01", "MILLING-02": "เครื่องมิลลิ่ง #02", "MILLING-03": "เครื่องมิลลิ่ง #03", "MILLING-04": "เครื่องเฟสเก็บขนาด",
-    "LATHE-01": "เครื่องกลึง LATHE #01", 
-    "CUTTING-01": "เครื่องตัด CUTTING #01", 
-    "BENDING-01": "เครื่องพับ BENDING #01", 
+    "LATHE-01": "เครื่องกลึง LATHE #01",
+    "CUTTING-01": "เครื่องตัด CUTTING #01",
+    "BENDING-01": "เครื่องพับ BENDING #01",
     "MIG CO2-01": "เครื่องเชื่อม MIG CO2 #01", "MIG CO2-02": "เครื่องเชื่อม MIG CO2 #02", "MIG CO2-03": "เครื่องเชื่อม MIG CO2 #03",
-    "ARGON-01": "เครื่องเชื่อม ARGON #01", "ARGON-02": "เครื่องเชื่อม ARGON #02", 
-    "WELDING_ALUMINUM-01": "เครื่องเชื่อมอลูมิเนียม WELDING ALUMINUM #01", 
+    "ARGON-01": "เครื่องเชื่อม ARGON #01", "ARGON-02": "เครื่องเชื่อม ARGON #02",
+    "WELDING_ALUMINUM-01": "เครื่องเชื่อมอลูมิเนียม WELDING ALUMINUM #01",
     "BAND SAW-01": "เครื่องเลื่อยสายพาน #01", "BAND SAW-02": "เครื่องเลื่อยสายพาน #02", "BAND SAW-03": "เครื่องเลื่อยสายพาน #03",
     "FORKLIFT-01": "รถโฟคลิฟ FORKLIFT #01"
 }
@@ -127,7 +127,7 @@ CHECKLISTS = {
         "ตรวจสอบหน้าจอ  DIGITAL  READ OUT และการ ทำงานของ  LINEAR  SCALE", "ตรวจเช็คสภาพและความตึงของสายพาน",
         "ตรวจสอบการทำงานของไฟฟ้าแสงสว่าง", "อัดจาระบีตามหัวอัดจาระบีทุก ๆ จุด", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง"
     ],
-    "CUTTING": ["การ Worm spindle ก่อนเริ่มงาน เพื่อตรวจ ความผิดปกติของชุด Back gauge และ Motor", "เช็ค Auto Up-Down back gauge และ Manual ( ความคล่องตัวในการเคลื่อนที่ )", "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับในปั้มน้ำมัน หล่อลืนแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด", "ตรวจสอบ Digital  read out และการทำงานของ Linear  scale", "อัดจาระบีตามจุดที่อัดจาระบีทุกๆจุด", "ตรวจสอบใบมีด  บนและล่าง", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง จักรและอุปกรณ์เสริมต่าง ๆ"],
+    "CUTTING": ["การ Worm spindle ก่อนเริ่มงาน เพื่อตรวจ ความผิดปกติของชุด Back gauge และ Motor", "เช็ค Auto Up-Down back gauge และ Manual ( ความคล่องตัวในการเคลื่อนที่ )", "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับในปั้มน้ำมัน หล่อลืนแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด", "ตรวจสอบ Digital  read out และการทำงาน of Linear  scale", "อัดจาระบีตามจุดที่อัดจาระบีทุกๆจุด", "ตรวจสอบใบมีด  บนและล่าง", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง จักรและอุปกรณ์เสริมต่าง ๆ"],
     "BENDING": [
         "การ Worm spindle ก่อนเริมงาน เพื่อตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor",
         "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคล่องตัวในการเคลื่อนที่ของ Spindle )",
@@ -232,8 +232,10 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         
         t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
         
-        # 🚨 ระบบจะทำการล้างตารางและแบ็กอัป "เฉพาะเมื่อเป็นวันที่ 1 ของเดือนใหม่" เท่านั้น
-        if day_num == 1:
+        check_col_1 = get_column_letter(3) 
+        first_cell_of_month = get_unmerged_cell(ws, f"{check_col_1}{t_row}")
+        
+        if day_num == 1 and (first_cell_of_month.value is None or first_cell_of_month.value == ""):
             backup_folder = os.path.join(BASE_FOLDER, "maintenance_backups")
             if not os.path.exists(backup_folder): os.makedirs(backup_folder, exist_ok=True)
             today = datetime.date.today()
@@ -263,7 +265,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             note_cell.value = ""
             note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
-        # ✍️ บันทึกเครื่องหมายลงช่องวันที่ปัจจุบัน (ข้อมูลวันอื่นๆ อยู่ครบ)
         col_letter = get_column_letter(2 + day_num)
         checklist_items = CHECKLISTS[m_type]
         
@@ -285,7 +286,7 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         tech_cell.value = tech_name
         tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
         
-        # 📝 [ศัลยกรรมจุดสำคัญ]: ดึงข้อความเดิมในช่อง B มาแล้ว "เขียนต่อยาวออกไปด้านข้าง" ไม่ใช้ \n เลื่อนบรรทัดลงมา
+        # 📝 [แก้ไขจุดสำคัญ]: ดึงผ่าน get_unmerged_cell เสมอเพื่อให้อ่านเซลล์ที่รวมกัน B-AG ได้ถูกต้อง
         note_cell = get_unmerged_cell(ws, n_cell)
         old_val = str(note_cell.value).strip() if note_cell.value else ""
         
@@ -293,7 +294,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         
         if notes_collected:
             new_note_text = f"[วันที่ {day_num}]: " + ", ".join(notes_collected)
-            # 🎯 ถ้ามีข้อความเก่าอยู่ ให้เชื่อมด้วย ",  " เพื่อให้ข้อความวิ่งยาวไปทางขวาตามแนวเซลล์ผสาน B-AG
             if old_val and old_val != "None" and old_val != "เครื่องจักรปกติ":
                 note_cell.value = old_val + ",  " + new_note_text
             else:
@@ -363,7 +363,6 @@ else:
     user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"])
 
 now = datetime.datetime.now()
-current_day = now.day
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
 raw_machine_id = query_params.get("id", "CNC3X-01")
@@ -371,7 +370,7 @@ if isinstance(raw_machine_id, list): machine_id = str(raw_machine_id[0]).strip()
 else: machine_id = str(raw_machine_id).strip()
 machine_id = machine_id.replace("%20", " ")
 
-# 🌟 [แก้ปัญหาการดักทับซ้อนถาวร]: สั่งคัดแยกคำค้นหาชื่อเฉพาะ "CUTTER" ขึ้นมาดักไว้แถวบนสุดก่อนลุยหาคำว่า "GRINDING" 
+# 🌟 [จุดสำคัญ - ป้องกันปัญหาทับซ้อน]: เอา CUTTER ขึ้นบนสุดเพื่อดักหน้า GRINDING ป้องกันดักซ้ำ
 if "CUTTER" in machine_id.upper(): m_type_selected = "CUTTER GRINDING-01"
 elif "CRANE NO.1" in machine_id.upper() or "CRANE no.1" in machine_id: m_type_selected = "Crane no.1"
 elif "CRANE NO.2" in machine_id.upper() or "CRANE no.2" in machine_id: m_type_selected = "Crane no.2"
@@ -422,6 +421,10 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     if machine_id in MACHINES: st.success(f"⚙️ คุณกำลังตรวจเครื่อง: **{machine_id} ({MACHINES[machine_id]})**")
     else: st.error(f"⚠️ ไม่พบรหัสเครื่อง '{machine_id}' ในทะเบียนกลาง")
     st.divider()
+
+    # 📅 ให้ช่างสามารถเลือกวันที่ต้องการบันทึกรายงานได้จริง เพื่อป้องกันปัญหาการดีดกลับของเวลาเซิร์ฟเวอร์
+    report_date = st.date_input("📆 เลือกวันที่ตรวจสอบงานฟอร์ม:", value=datetime.date.today())
+    current_day = report_date.day
 
     with st.form("pm_form"):
         tech_name = st.text_input("👤 ชื่อช่างผู้ตรวจเช็ค (ผู้รับผิดชอบ)", placeholder="ระบุชื่อ-นามสกุลของคุณ")
