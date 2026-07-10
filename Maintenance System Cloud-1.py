@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit st
 import requests
 import smtplib
 from email.mime.text import MIMEText
@@ -128,7 +128,7 @@ CHECKLISTS = {
         "ตรวจสอบหน้าจอ  DIGITAL  READ OUT และการ ทำงานของ  LINEAR  SCALE", "ตรวจเช็คสภาพและความตึงของสายพาน",
         "ตรวจสอบการทำงานของไฟฟ้าแสงสว่าง", "อัดจาระบีตามหัวอัดจาระบีทุก ๆ จุด", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง"
     ],
-    "CUTTING": ["การ Worm spindle ก่อนเริ่มงาน เพื่อตรวจ ความผิดปกติของชุด Back gauge และ Motor", "เช็ค Auto Up-Down back gauge และ Manual ( ความคล่องตัวในการเคลื่อนที่ )", "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับในปั้มน้ำมัน หล่อลืนแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด", "ตรวจสอบ Digital  read out และการทำงาน of Linear  scale", "อัดจาระบีตามจุดที่อัดจาระบีทุกๆจุด", "ตรวจสอบใบมีด  บนและล่าง", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง จักรและอุปกรณ์เสริมต่าง ๆ"],
+    "CUTTING": ["การ Worm spindle ก่อนเริ่มงาน เพื่อตรวจ ความผิดปกติของชุด Back gauge และ Motor", "เช็ค Auto Up-Down back gauge และ Manual ( ความคล่องตัวในการเคลื่อนที่ )", "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับในปั้มน้ำมัน หล่อลืนแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด", "ตรวจสอบ Digital  read out และการทำงาน ของ Linear  scale", "อัดจาระบีตามจุดที่อัดจาระบีทุกๆจุด", "ตรวจสอบใบมีด  บนและล่าง", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง จักรและอุปกรณ์เสริมต่าง ๆ"],
     "BENDING": [
         "การ Worm spindle ก่อนเริมงาน เพื่อตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor",
         "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคล่องตัวในการเคลื่อนที่ของ Spindle )",
@@ -179,13 +179,13 @@ def get_coordinates_by_machine(m_id, m_type):
     if any(k in u_id for k in ["QC-10", "QC-11", "QC-12"]): return 11, 13, "B15"
     if "QC-15" in u_id: return 12, 14, "B17"
     
-    if m_id == "ARGON-02": return 14, 16, "B19"
-    if m_id == "ARGON-01": return 11, 13, "B19"
+    # 🌟 [จุดแก้ไข]: ปรับแต่งพิกัดเครื่อง ARGON-01 และ ARGON-02 ให้ลงล็อกแถว 14-15 และ 16-17 ตามหน้างานจริงโรงงาน
+    if "ARGON-02" in u_id or "ARGON-01" in u_id: return 14, 16, "B19"
     if m_type == "FORKLIFT" or "FORKLIFT" in u_id: return 13, 15, "B18"
     
     if m_type == "CNC" or "CNC" in u_id: return 22, 24, "B28"
     if "CRANE" in u_id: return 14, 16, "B19"
-    if m_type == "GRINDING" or "GRINDING" in u_id: return 16, 18, "B21"
+    if "GRINDING" in m_type or "GRINDING" in u_id: return 16, 18, "B21"
     if m_type == "MILLING" or "MILLING" in u_id: return 17, 19, "B22" 
     if m_type == "LATHE" or "LATHE" in u_id: return 17, 19, "B22"
     if m_type == "CUTTING" or "CUTTING" in u_id: return 13, 15, "B18"
@@ -210,19 +210,22 @@ def send_line_alert(msg_text):
     try: requests.post(url, headers=headers, data=json.dumps(payload))
     except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
 
-def save_uploaded_photo(machine_id, day_num, item_index, uploaded_file):
-    if uploaded_file is not None:
+# 🌟 [จุดปรับโครงสร้าง]: เพิ่มระบบวนลูปเก็บชื่อภาพกรณีอัปโหลดเข้ามามากกว่า 1 รูปพร้อมกัน
+def save_uploaded_photos_list(machine_id, day_num, item_index, files_list):
+    saved_paths = []
+    if files_list:
         folder_path = os.path.join(BASE_FOLDER, "maintenance_photos")
         sub_folder = os.path.join(folder_path, f"{machine_id}_Day_{day_num}")
         if not os.path.exists(folder_path): os.makedirs(folder_path, exist_ok=True)
         if not os.path.exists(sub_folder): os.makedirs(sub_folder, exist_ok=True)
         
-        file_extension = os.path.splitext(uploaded_file.name)[1]
-        file_name = f"photo_item_{item_index}{file_extension}"
-        full_path = os.path.join(sub_folder, file_name)
-        with open(full_path, "wb") as f: f.write(uploaded_file.getbuffer())
-        return full_path
-    return None
+        for idx, uploaded_file in enumerate(files_list, 1):
+            file_extension = os.path.splitext(uploaded_file.name)[1]
+            file_name = f"photo_item_{item_index}_{idx}{file_extension}"
+            full_path = os.path.join(sub_folder, file_name)
+            with open(full_path, "wb") as f: f.write(uploaded_file.getbuffer())
+            saved_paths.append(full_path)
+    return saved_paths
 
 def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_type):
     target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
@@ -252,7 +255,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
                 try: send_line_alert(f"📦 [Auto-Backup Completed]: ระบบสำรองไฟล์ของเครื่อง {machine_id} ประจำเดือน {last_month_str} สำเร็จเรียบร้อยแล้ว!")
                 except: pass
 
-            # ล้างข้อมูลทั้ง 31 วันให้โล่งเพื่อเริ่มเดือนใหม่
             checklist_items = CHECKLISTS[m_type]
             for d in range(1, 32):
                 c_letter = get_column_letter(2 + d)
@@ -261,7 +263,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
                 get_unmerged_cell(ws, f"{c_letter}{t_row}").value = ""
                 get_unmerged_cell(ws, f"{c_letter}{boss_row}").value = ""
             
-            # ล้างช่องบันทึกเพิ่มเติม (ช่อง B) ให้โล่งเฉพาะวันแรกของเดือนใหม่
             note_cell = get_unmerged_cell(ws, n_cell)
             note_cell.value = ""
             note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
@@ -287,7 +288,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         tech_cell.value = tech_name
         tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
         
-        # 📝 [แก้ไขจุดสำคัญ]: ดึงผ่าน get_unmerged_cell เสมอเพื่อให้อ่านเซลล์ที่รวมกัน B-AG ได้ถูกต้อง
         note_cell = get_unmerged_cell(ws, n_cell)
         old_val = str(note_cell.value).strip() if note_cell.value else ""
         
@@ -371,7 +371,6 @@ if isinstance(raw_machine_id, list): machine_id = str(raw_machine_id[0]).strip()
 else: machine_id = str(raw_machine_id).strip()
 machine_id = machine_id.replace("%20", " ")
 
-# 🌟 [จุดสำคัญ - ป้องกันปัญหาทับซ้อน]: เอา CUTTER ขึ้นบนสุดเพื่อดักหน้า GRINDING ป้องกันดักซ้ำ
 if "CUTTER" in machine_id.upper(): m_type_selected = "CUTTER GRINDING-01"
 elif "CRANE NO.1" in machine_id.upper() or "CRANE no.1" in machine_id: m_type_selected = "Crane no.1"
 elif "CRANE NO.2" in machine_id.upper() or "CRANE no.2" in machine_id: m_type_selected = "Crane no.2"
@@ -420,11 +419,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
     st.info("📄 มาตรฐานระบบคุณภาพโรงงาน: **FM-MN-07 Rev.00**")
 
-    if machine_id in MACHINES: st.success(f"⚙️ คุณกำลังตรวจเครื่อง: **{machine_id} ({MACHINES[machine_id]})**")
-    else: st.error(f"⚠️ ไม่พบรหัสเครื่อง '{machine_id}' ในทะเบียนกลาง")
-    st.divider()
-
-    # 📅 ให้ช่างสามารถเลือกวันที่ต้องการบันทึกรายงานได้จริง เพื่อป้องกันปัญหาการดีดกลับของเวลาเซิร์ฟเวอร์
     report_date = st.date_input("📆 เลือกวันที่ตรวจสอบงานฟอร์ม:", value=datetime.date.today())
     current_day = report_date.day
 
@@ -438,9 +432,10 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             st.write(f"**{i}. {item}**")
             status = st.radio(f"ผลการตรวจข้อ {i}", ["ใช้งานได้ปกติ", "ทำการแก้ไขใช้งานได้ปกติ", "ใช้งานไม่ได้ต้องแก้ไข", "ไม่ได้ทำงาน"], horizontal=True, key=f"check_{i}", label_visibility="collapsed", index=None)
             if i in required_photo_indexes:
-                st.write("📷 *หัวข้อบังคับถ่ายรูปหลักฐานยืนยันหน้างานจริง*")
-                uploaded_file = st.file_uploader(f"แนบรูปข้อ {i}", type=["jpg", "jpeg", "png"], key=f"photo_{i}")
-                uploaded_photos[i] = {"file": uploaded_file, "index": i}
+                st.write("📷 *หัวข้อบังคับถ่ายรูปหลักฐานยืนยันหน้างานจริง (เลือกได้มากกว่า 1 รูป)*")
+                # 🌟 [จุดเด่น]: เพิ่ม accept_multiple_files=True ปลดล็อกระบบให้ช่างเลือกรูปได้แบบยกพวงพร้อมกัน
+                uploaded_files = st.file_uploader(f"แนบรูปข้อ {i}", type=["jpg", "jpeg", "png"], key=f"photo_{i}", accept_multiple_files=True)
+                uploaded_photos[i] = {"files": uploaded_files, "index": i}
             note = st.text_input(f"หมายเหตุ/อาการเสีย (ข้อ {i})", key=f"note_{i}", placeholder="ระบุรายละเอียดหากพบจุดพังหรือบันทึกงานซ่อมแก้ไข")
             results[item] = {"status": status, "note": note}
             st.divider()
@@ -451,13 +446,13 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         if machine_id not in MACHINES: st.error("❌ รหัสเครื่องจักรไม่ถูกต้อง")
         elif not tech_name: st.error("❌ กรุณาระบุชื่อผู้ตรวจสอบก่อนส่งรายงานครับ!")
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
-        elif any(uploaded_photos[idx]["file"] is None for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
+        elif any((uploaded_photos[idx]["files"] is None or len(uploaded_photos[idx]["files"]) == 0) for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
         else:
             photo_logs = []
             for idx in required_photo_indexes:
-                saved_path = save_uploaded_photo(machine_id, current_day, idx, uploaded_photos[idx]["file"])
-                if saved_path: 
-                    photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ")
+                saved_paths = save_uploaded_photos_list(machine_id, current_day, idx, uploaded_photos[idx]["files"])
+                if saved_paths: 
+                    photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ ({len(saved_paths)} รูป)")
             
             fails, fixed_items = [], []
             for i, item in enumerate(current_checklist, 1):
@@ -469,7 +464,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             success, err_msg = update_iso_excel_by_tech(machine_id, current_day, results, tech_name, m_type_selected)
             if success:
                 photo_status_str = "\n".join(photo_logs)
-                
                 boss_review_url = f"https://pes-maintenance.streamlit.app/?role=boss&id={machine_id}"
                 audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
                 
@@ -529,12 +523,13 @@ else:
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
                 
+                # 🖼️ ดึงรูปถ่ายในคลาวด์มาโชว์ทั้งหมด (รอบนี้รองรับกรณีมีรูปในข้อเดียวกันหลาย ๆ ใบดึงขึ้นมาเรียงกันได้สมบูรณ์)
                 img_dir = os.path.join(BASE_FOLDER, f"maintenance_photos/{m_id}_Day_{target_day_check}")
                 if os.path.exists(img_dir):
                     valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
                     if valid_photos:
                         with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check} ({len(valid_photos)} รูป)"):
-                            for p_path in valid_photos:
+                            for p_path in sorted(valid_photos):
                                 st.image(p_path, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
                 else:
                     st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
@@ -580,7 +575,7 @@ else:
         for m_id, m_name in MACHINES.items():
             if "GRINDING" in m_id and "CUTTER" not in m_id:
                 with (grind_col1 if grind_idx % 2 == 0 else grind_col2):
-                    render_machine_card(m_id, m_name, "GRINDING")
+                    render_machine_card(m_id, m_name, m_id)
                 grind_idx += 1
 
         # ---- 3. แผนก CUTTER GRINDING ----
@@ -700,7 +695,7 @@ else:
                 st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
 
             with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
-                st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุกๆ สิ้นเดือน")
+                st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ Сิ้นเดือน")
                 backup_folder_path = os.path.join(BASE_FOLDER, "maintenance_backups")
                 if os.path.exists(backup_folder_path):
                     all_backups = [f for f in os.listdir(backup_folder_path) if f.lower().endswith('.xlsx')]
