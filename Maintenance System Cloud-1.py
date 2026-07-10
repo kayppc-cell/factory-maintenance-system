@@ -1,4 +1,4 @@
-import streamlit st
+import streamlit as st
 import requests
 import smtplib
 from email.mime.text import MIMEText
