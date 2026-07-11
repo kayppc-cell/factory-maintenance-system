@@ -790,7 +790,7 @@ else:
                 st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
 
             with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
-                st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ Сิ้นเดือน")
+                st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุกๆ สิ้นเดือน")
                 backup_folder_path = os.path.join(BASE_FOLDER, "maintenance_backups")
                 if os.path.exists(backup_folder_path):
                     all_backups = [f for f in os.listdir(backup_folder_path) if f.lower().endswith('.xlsx')]
