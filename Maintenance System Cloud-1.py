@@ -534,7 +534,7 @@ else:
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
     
-    selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและรูปภาพยิงย้อนหลัง:", value=datetime.date.today())
+    selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและดูรูปภาพย้อนหลัง:", value=datetime.date.today())
     target_day_check = selected_date.day
     
     st.subheader(f"📅 ประจำวันที่เลือก: {selected_date.strftime('%d/%m/%Y')} (คอลัมน์ Excel ช่องวันที่ {target_day_check})")
