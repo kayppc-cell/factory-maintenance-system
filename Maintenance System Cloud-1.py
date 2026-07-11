@@ -225,15 +225,12 @@ def save_uploaded_photos_list(machine_id, day_num, item_index, files_list):
             saved_paths.append(full_path)
     return saved_paths
 
-# 🌟 [ปรับปรุงอัจฉริยะ]: มัดรวมรูปแยกเครื่อง เลือกระบุ "เฉพาะวัน" หรือ "ทั้งเดือน" ได้
 def zip_single_machine_photos(machine_id, target_day=None):
     current_year_month = datetime.datetime.now().strftime("%Y_%B")
     
     if target_day:
-        # ดึงรูปเฉพาะวันที่หัวหน้าเจาะจง
         source_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), current_year_month, f"Day_{target_day}")
     else:
-        # ดึงกวาดหมดทั้งเดือน
         source_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), current_year_month)
         
     if not os.path.exists(source_dir):
@@ -252,8 +249,7 @@ def zip_single_machine_photos(machine_id, target_day=None):
     except:
         return None
 
-# 🌟 [ปรับปรุงอัจฉริยะ]: มัดรวมรูปฝั่งผู้บริหาร สามารถเลือกเจาะจงดาวน์โหลด "รายแผนก" ได้
-def zip_factory_photos_by_filter(filter_type="ทั้งโรงงาน"):
+def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน"):
     photos_root_dir = os.path.join(BASE_FOLDER, "maintenance_photos")
     if not os.path.exists(photos_root_dir):
         return None
@@ -263,7 +259,6 @@ def zip_factory_photos_by_filter(filter_type="ทั้งโรงงาน"):
         has_file = False
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             for machine_code in MACHINES.keys():
-                # คัดกรองแผนกตามเงื่อนไขที่ผู้บริหารกดเลือก
                 match = False
                 if filter_type == "ทั้งโรงงาน": match = True
                 elif filter_type == "CNC" and "CNC" in machine_code: match = True
@@ -585,68 +580,76 @@ else:
         def render_machine_card(m_id, m_name, m_type_flag):
             st.info(f"⚙️ **{m_id}**\n{m_name}")
             target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{m_id}.xlsx")
+            
+            # 👑 [ศัลยกรรมล็อกแยกกลุ่มอิสระ]: ตัวแปรอนุมัติยังเช็คเงื่อนไขไฟล์มีอยู่จริงเหมือนเดิม
             if os.path.isfile(target_excel_path):
                 if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
                     if approve_excel_by_boss(m_id, target_day_check, boss_name, m_type_flag):
                         st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
-                
-                # ดึงรูปถ่ายในคลาวด์มาโชว์ (แยกโฟลเดอร์รายเครื่อง -> เดือน -> วัน)
-                current_year_month = datetime.datetime.now().strftime("%Y_%B")
-                img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), current_year_month, f"Day_{target_day_check}")
-                
-                if os.path.exists(img_dir):
-                    valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
-                    if valid_photos:
-                        with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check} ({len(valid_photos)} รูป)"):
-                            for p_path in sorted(valid_photos):
-                                st.image(p_path, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
-                else:
-                    st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
+            
+            # ดึงรูปถ่ายในคลาวด์มาโชว์ (แยกโฟลเดอร์รายเครื่อง -> เดือน -> วัน)
+            current_year_month = datetime.datetime.now().strftime("%Y_%B")
+            img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), current_year_month, f"Day_{target_day_check}")
+            
+            if os.path.exists(img_dir):
+                valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
+                if valid_photos:
+                    with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check} ({len(valid_photos)} รูป)"):
+                        for p_path in sorted(valid_photos):
+                            st.image(p_path, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
+            else:
+                st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
-                current_notes = get_current_excel_note(m_id, m_type_flag)
-                
-                u_id = str(m_id).upper()
-                if "CUTTER" in u_id or m_type_flag == "CUTTER GRINDING-01": note_label = "ช่อง B18"
-                elif "ARGON-02" in u_id or "ARGON-01" in u_id or "CRANE" in u_id: note_label = "ช่อง B19"
-                elif "WELDING_ALUMINUM" in u_id or "FORKLIFT" in u_id or "CUTTING" in u_id: note_label = "ช่อง B18"
-                elif "CNC" in u_id: note_label = "ช่อง B28"
-                elif "QC-01" in u_id or "QC-10" in u_id or "QC-11" in u_id or "QC-12" in u_id: note_label = "ช่อง B15"
-                elif "QC-15" in u_id: note_label = "ช่อง B17"
-                elif "GRINDING" in u_id or "GRINDING" in m_type_flag: note_label = "ช่อง B21"
-                elif "MILLING" in u_id or "LATHE" in u_id: note_label = "ช่อง B22"
-                elif "BENDING" in u_id: note_label = "ช่อง B20"
-                else: note_label = "ช่อง B16"
-                
-                edited_notes = st.text_area(f"📝 รายการอาการเสียสะสม ({note_label})", value=current_notes, key=f"note_area_{m_id}", height=120)
-                if st.button(f"💾 เซฟบันทึก {note_label} ของ {m_id}", key=f"save_note_{m_id}"):
-                    if save_custom_excel_note_by_boss(m_id, m_type_flag, edited_notes):
-                        st.toast(f"อัปเดตรายการอาการเสียเครื่อง {m_id} สำเร็จ!", icon="💾")
-                        st.rerun()
-                        
-                st.write("---")
-                # 📥 [ฝั่งหัวหน้าช่าง - ระบบเลือกประเภทดาวน์โหลดรูปภาพอัจฉริยะ]: 
-                photo_scope = st.radio(f"ขอบเขตการโหลดรูปของ {m_id}:", [f"📥 โหลดเฉพาะรูปวันที่ {target_day_check}", "📦 โหลดสะสมทั้งหมดของเดือนนี้"], key=f"scope_{m_id}", horizontal=True)
-                
-                excel_col, zip_col = st.columns(2)
-                with excel_col:
+            current_notes = get_current_excel_note(m_id, m_type_flag)
+            
+            u_id = str(m_id).upper()
+            if "CUTTER" in u_id or m_type_flag == "CUTTER GRINDING-01": note_label = "ช่อง B18"
+            elif "ARGON-02" in u_id or "ARGON-01" in u_id or "CRANE" in u_id: note_label = "ช่อง B19"
+            elif "WELDING_ALUMINUM" in u_id or "FORKLIFT" in u_id or "CUTTING" in u_id: note_label = "ช่อง B18"
+            elif "CNC" in u_id: note_label = "ช่อง B28"
+            elif "QC-01" in u_id or "QC-10" in u_id or "QC-11" in u_id or "QC-12" in u_id: note_label = "ช่อง B15"
+            elif "QC-15" in u_id: note_label = "ช่อง B17"
+            elif "GRINDING" in u_id or "GRINDING" in m_type_flag: note_label = "ช่อง B21"
+            elif "MILLING" in u_id or "LATHE" in u_id: note_label = "ช่อง B22"
+            elif "BENDING" in u_id: note_label = "ช่อง B20"
+            else: note_label = "ช่อง B16"
+            
+            edited_notes = st.text_area(f"📝 รายการอาการเสียสะสม ({note_label})", value=current_notes, key=f"note_area_{m_id}", height=120)
+            if st.button(f"💾 เซฟบันทึก {note_label} ของ {m_id}", key=f"save_note_{m_id}"):
+                if save_custom_excel_note_by_boss(m_id, m_type_flag, edited_notes):
+                    st.toast(f"อัปเดตรายการอาการเสียเครื่อง {m_id} สำเร็จ!", icon="💾")
+                    st.rerun()
+                    
+            st.write("---")
+            # 🎯 [จุดแก้ไขที่ 1 - คืนชีพระบบเลือกวิทยุ]: ผูกพารามิเตอร์ key ให้เป็นชื่อเครื่องเพื่อจำค่าแบบไดนามิกแบบเรียลไทม์
+            photo_scope = st.radio(f"ขอบเขตการโหลดรูปของ {m_id}:", [f"📥 โหลดเฉพาะรูปวันที่ {target_day_check}", "📦 โหลดสะสมทั้งหมดของเดือนนี้"], key=f"scope_radio_{m_id}", horizontal=True)
+            
+            excel_col, zip_col = st.columns(2)
+            
+            # 🎯 [จุดแก้ไขที่ 2 - ปล่อยปุ่มดาวน์โหลดเป็นอิสระ]: ดึงปุ่มเปิดกระปุกออกมานอกเงื่อนไข ถ้าระบบยังไม่สร้างไฟล์ให้แสดงผลปุ่มปิดสิทธิ์เพื่อไม่ให้ค้าง
+            with excel_col:
+                if os.path.isfile(target_excel_path):
                     with open(target_excel_path, "rb") as f:
                         st.download_button(label=f"📥 ดึงไฟล์ Excel ของ {m_id}", data=f, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
-                with zip_col:
-                    # ประมวลผลมัดรวมไฟล์ตามเงื่อนไขวิทยุที่หัวหน้าจิ้มเลือก
-                    if f"📥 โหลดเฉพาะรูปวันที่ {target_day_check}" in photo_scope:
-                        zip_data = zip_single_machine_photos(m_id, target_day=target_day_check)
-                        zip_filename = f"Photos_{m_id}_Day_{target_day_check}.zip"
-                    else:
-                        zip_data = zip_single_machine_photos(m_id, target_day=None)
-                        zip_filename = f"Photos_{m_id}_Full_{current_year_month}.zip"
-                        
-                    if zip_data:
-                        st.download_button(label=f"📸 ดาวน์โหลดไฟล์ .zip รูปภาพ", data=zip_data, file_name=zip_filename, mime="application/zip", key=f"zip_{m_id}")
-                    else:
-                        st.button(f"📷 ช่วงที่เลือกยังไม่มีรูป", disabled=True, key=f"zip_dis_{m_id}")
-            else: st.error(f"ยังไม่มีไฟล์ฟอร์ม FM-MN-07_{m_id}.xlsx บนระบบคลาวด์")
+                else:
+                    st.button(f"❌ ไม่มีไฟล์ Excel ของ {m_id}", disabled=True, key=f"dl_disabled_{m_id}")
+                    
+            with zip_col:
+                # 🎯 [จุดแก้ไขที่ 3 - เชื่อมวิทยุกับปุ่ม .zip สั่งรันตามพิกัดนิ้วชี้จริง]:
+                if f"📥 โหลดเฉพาะรูปวันที่ {target_day_check}" in photo_scope:
+                    zip_data = zip_single_machine_photos(m_id, target_day=target_day_check)
+                    zip_filename = f"Photos_{m_id}_Day_{target_day_check}.zip"
+                else:
+                    zip_data = zip_single_machine_photos(m_id, target_day=None)
+                    zip_filename = f"Photos_{m_id}_Full_{current_year_month}.zip"
+                    
+                if zip_data:
+                    st.download_button(label=f"📸 ดาวน์โหลดไฟล์ .zip รูปภาพ", data=zip_data, file_name=zip_filename, mime="application/zip", key=f"zip_btn_{m_id}")
+                else:
+                    st.button(f"📷 ช่วงที่เลือกยังไม่มีรูป", disabled=True, key=f"zip_dis_{m_id}")
+                    
             st.divider()
 
         # ---- 1. แผนก CNC ----
@@ -777,11 +780,10 @@ else:
         if bigboss_code_input == BIGBOSS_PASSWORD:
             st.success("🎯 ยืนยันสิทธิ์ สำเร็จ ปลดล็อกเรียบร้อยแล้วครับ!")
             
-            # 👑 [ฝั่งผู้บริหารสูงสุด - ระบบเลือกคัดกรองโหลดรูปแยกตามรายแผนก]:
-            with st.expander("📸 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดรูปภาพ PM รวมคัดกรองตามแผนก (.zip)"):
-                st.info("📦 บอสสามารถเลือกดาวน์โหลดรวมทั้งโรงงานทีเดียว หรือเลือกเจาะจงเฉพาะแผนกที่ต้องการตรวจงานได้จากเมนูด้านล่างนี้ครับ")
+            # ปุ่มรวมใหญ่คลาวด์: มัดรวมรูปภาพของ "ทุกเครื่องจักร" ทั่วโรงงาน เป็น .zip เดียวสะเด็ดน้ำ
+            with st.expander("📸 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดรูปภาพ PM รวมหมดทั้งโรงงาน (.zip)"):
+                st.info("📦 ปุ่มนี้จะทำหน้าที่เดินสแกนกวาดรูปถ่าย PM ของทุกแผนก ทุกเครื่องจักร มารวมเป็นไฟล์ .zip ก้อนเดียวเพื่อใช้ส่งผลตรวจมาตรฐานโรงงาน")
                 
-                # ตัวเลือกแผนกอัจฉริยะคัดกรองรูปภาพ
                 dept_target = st.selectbox("เลือกแผนกที่บอสต้องการดาวน์โหลดรูปภาพ:", [
                     "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC", "MILLING", "MIG CO2", "ARGON", "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
                 ])
