@@ -672,7 +672,7 @@ else:
         saw_col1, saw_col2, saw_col3 = st.columns(3)
         saw_idx = 0
         for m_id, m_name in MACHINES.items():
-            if "BAND" in f"BAND {m_id}".upper():
+            if "BAND" in m_id.upper():  # 🎯 [แก้ไขเรียบร้อย]: ดักจับเฉพาะเครื่องเลื่อย BAND SAW เท่านั้น ไม่ดึงเครื่องอื่นมาซ้ำ
                 with (saw_col1 if saw_idx % 3 == 0 else (saw_col2 if saw_idx % 3 == 1 else saw_col3)):
                     render_machine_card(m_id, m_name, "BAND SAW")
                 saw_idx += 1
