@@ -11,6 +11,7 @@ import shutil
 import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment
+import zipfile  # 🌟 เพิ่มไลบรารีสำหรับมัดรวมบีบอัดไฟล์รูปภาพเป็น .zip
 
 # --- 1. CONFIGURATION ---
 LINE_ACCESS_TOKEN = "SOs7DeGwVsFpuK/JN8zm58Wn3EOiB75Ww0q57z1/yht4H1imzYonre4QuPfQ3cxbJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lYwCp4biq7N20ffJqzGm+ZYNgtEzt2rYZ/GYVRV725EiAdB04t89/1O/w1cDnyilFU="
@@ -111,7 +112,7 @@ CHECKLISTS = {
     "COMP-01": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
     "COMP-02": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
     "GRINDING-01": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMPน้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
-    "GRINDING-02": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงาน of แม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMPน้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
+    "GRINDING-02": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMPน้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
     "CUTTER GRINDING-01": ["การ WORM UP แกน Y พร้อมใช้งาน", "การ WORM UP แกน Z พร้อมใช้งาน", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของมอเตอร์ มีการหมุนปกติ", "ตรวจสอบการจับหัวคอเรต"],
     "MILLING": [
         "Worm Spindle ก่อนเริมงาน ตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor", 
@@ -209,7 +210,6 @@ def send_line_alert(msg_text):
     try: requests.post(url, headers=headers, data=json.dumps(payload))
     except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
 
-# 🌟 [อัปเดตระบบตู้เซฟรูปภาพ]: จัดเก็บรูปแยกตาม ชื่อเครื่อง -> ปี_เดือน -> วันที่ โครงสร้างคลีนร้อยเปอร์เซ็นต์
 def save_uploaded_photos_list(machine_id, day_num, item_index, files_list):
     saved_paths = []
     if files_list:
@@ -224,6 +224,38 @@ def save_uploaded_photos_list(machine_id, day_num, item_index, files_list):
             with open(full_path, "wb") as f: f.write(uploaded_file.getbuffer())
             saved_paths.append(full_path)
     return saved_paths
+
+# 🌟 [ฟังก์ชันพิเศษแบบที่ 1]: มัดรวมรูปภาพ "เฉพาะเครื่องนั้น ๆ ทุกวันในเดือน" เป็นไฟล์ .zip
+def zip_single_machine_photos(machine_id):
+    current_year_month = datetime.datetime.now().strftime("%Y_%B")
+    machine_photo_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), current_year_month)
+    
+    zip_buffer = BytesIO()
+    if os.path.exists(machine_photo_dir):
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for root, dirs, files in os.walk(machine_photo_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    relative_path = os.path.relpath(file_path, machine_photo_dir)
+                    zip_file.write(file_path, relative_path)
+        zip_buffer.seek(0)
+        return zip_buffer
+    return None
+
+# 🌟 [ฟังก์ชันพิเศษแบบที่ 2]: มัดรวมรูปภาพ "ทั้งโรงงาน ทุกแผนก ทุกเครื่อง" เป็นไฟล์ .zip ใหญ่ก้อนเดียว
+def zip_all_factory_photos():
+    photos_root_dir = os.path.join(BASE_FOLDER, "maintenance_photos")
+    zip_buffer = BytesIO()
+    if os.path.exists(photos_root_dir):
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for root, dirs, files in os.walk(photos_root_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    relative_path = os.path.relpath(file_path, photos_root_dir)
+                    zip_file.write(file_path, relative_path)
+        zip_buffer.seek(0)
+        return zip_buffer
+    return None
 
 def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_type):
     target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
@@ -525,7 +557,7 @@ else:
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
                 
-                # 🌟 [แก้ไขพิกัดดึงรูปภาพฝั่งหัวหน้างาน]: วิ่งเข้าโฟลเดอร์รายเครื่อง -> ปี_เดือน -> วันที่ ตรงล็อกระบบใหม่ทันที
+                # 🖼️ ดึงรูปถ่ายในคลาวด์มาโชว์ (แยกโฟลเดอร์แบบใหม่รายเครื่อง -> เดือน -> วัน)
                 current_year_month = datetime.datetime.now().strftime("%Y_%B")
                 img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), current_year_month, f"Day_{target_day_check}")
                 
@@ -557,8 +589,18 @@ else:
                     if save_custom_excel_note_by_boss(m_id, m_type_flag, edited_notes):
                         st.toast(f"อัปเดตรายการอาการเสียเครื่อง {m_id} สำเร็จ!", icon="💾")
                         st.rerun()
-                with open(target_file, "rb") as f:
-                    st.download_button(label=f"📥 ดึงไฟล์ Excel ของ {m_id}", data=f, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
+                        
+                # 📥 [ปุ่มอำนวยความสะดวกแบบแยกรายเครื่อง]: ดึง Excel และมัดรวมรูปภาพเฉพาะเครื่องเป็น .zip
+                excel_col, zip_col = st.columns(2)
+                with excel_col:
+                    with open(target_file, "rb") as f:
+                        st.download_button(label=f"📥 ดึงไฟล์ Excel ของ {m_id}", data=f, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
+                with zip_col:
+                    zip_data = zip_single_machine_photos(m_id)
+                    if zip_data:
+                        st.download_button(label=f"📸 โหลดรูปทั้งหมดของ {m_id}", data=zip_data, file_name=f"Photos_{m_id}_{current_year_month}.zip", mime="application/zip", key=f"zip_{m_id}")
+                    else:
+                        st.button(f"📷 {m_id} เดือนนี้ยังไม่มีรูป", disabled=True, key=f"zip_dis_{m_id}")
             else: st.error(f"ยังไม่มีไฟล์ฟอร์ม FM-MN-07_{m_id}.xlsx บนระบบคลาวด์")
             st.divider()
 
@@ -672,7 +714,7 @@ else:
         saw_col1, saw_col2, saw_col3 = st.columns(3)
         saw_idx = 0
         for m_id, m_name in MACHINES.items():
-            if "BAND" in m_id.upper():  # 🎯 [แก้ไขเรียบร้อย]: ดักจับเฉพาะเครื่องเลื่อย BAND SAW เท่านั้น ไม่ดึงเครื่องอื่นมาซ้ำ
+            if "BAND" in m_id.upper():
                 with (saw_col1 if saw_idx % 3 == 0 else (saw_col2 if saw_idx % 3 == 1 else saw_col3)):
                     render_machine_card(m_id, m_name, "BAND SAW")
                 saw_idx += 1
@@ -690,6 +732,15 @@ else:
         if bigboss_code_input == BIGBOSS_PASSWORD:
             st.success("🎯 ยืนยันสิทธิ์ สำเร็จ ปลดล็อกเรียบร้อยแล้วครับ!")
             
+            # 👑 [ปุ่มรวมใหญ่คลาวด์]: มัดรวมรูปภาพของ "ทุกเครื่องจักร" ทั่วโรงงาน เป็น .zip เดียวสะเด็ดน้ำ
+            with st.expander("📸 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดรูปภาพ PM รวมหมดทั้งโรงงาน (.zip)"):
+                st.info("📦 ปุ่มนี้จะทำหน้าที่เดินสแกนกวาดรูปถ่าย PM ของทุกแผนก ทุกเครื่องจักร มารวมเป็นไฟล์ .zip ก้อนเดียวเพื่อใช้ส่งผลตรวจมาตรฐานโรงงาน")
+                all_zip_data = zip_all_factory_photos()
+                if all_zip_data:
+                    st.download_button(label="📥 ดาวน์โหลดรูปภาพ PM รวมทั้งโรงงาน (ALL MACHINES)", data=all_zip_data, file_name="ALL_Factory_Maintenance_Photos.zip", mime="application/zip", type="primary")
+                else:
+                    st.caption("ℹ️ ระบบคลาวด์ยังไม่มีรูปภาพใด ๆ บันทึกอยู่ในโฟลเดอร์กลางเลยครับ")
+
             with st.expander("🖨️ [เฉพาะผู้บริหารสูงสุด] เครื่องมือพิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
                 sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()), key="bigboss_qr_select_box")
                 qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" 
@@ -721,7 +772,7 @@ else:
 
             with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายทดสอบ (RESET SYSTEM)"):
                 st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานที่ส่งทดสอบก่อนหน้านี้ทั้งหมดออกไปอย่างถาวร เพื่อให้ระบบสะอาดพร้อมเปิดใช้งานจริง")
-                if st.button("🚨 สั่งลบรูปภาพทดสอบทั้งหมดกริบ 100%", type="primary"):
+                if st.button("🚨 สั่งลบรูปภาพทดสอบทั้งหมดกริบ 100%", type="primary", key="reset_all_photos_primary_btn"):
                     target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
                     if os.path.exists(target_photo_folder):
                         shutil.rmtree(target_photo_folder) 
