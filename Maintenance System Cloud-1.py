@@ -139,7 +139,7 @@ CHECKLISTS = {
     "MIG CO2": ["ตรวจสภาพความพร้อมโดยรวมของเครื่อง", "เช็ค BREAKER เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์ และสวิชท์ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดัน ของก๊าซ CO2 และปรับตั้งอย่างถูกต้อง", "ตรวจจุดต่อของก๊าซ CO2 รั่วหรือไม่", "ตรวจสภาพความพร้อมของสายไฟ สายก๊าซ  CO2 ว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราวด์", "ทำความสะอาดหัวเชื่อมก่อนใช้งาน"],
     "ARGON": [
         "ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", 
-        "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อ of สายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", 
+        "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", 
         "ตรวจสภาพความพร้อมของสายกราว์", "ตรวจสภาพความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", 
         "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"
     ],
@@ -152,7 +152,7 @@ CHECKLISTS = {
     "BAND SAW": ["เช็ค Auto Up-Down Back Gauge และ Manual (ความคล่องตัวในการเคลื่อนที่ of Spindle)", "เช็คระดับน้ำมันไฮดรอลิค", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั๊ม COOLANT และสภาพของน้ำ COOLANT", "ตรวจสอบ Switch (สวิตซ์) หน้า BOX CONTROL", "ตรวจสอบระดับน้ำมันหล่อลื่นในห้องเกียร์"],
     "FORKLIFT": [
         "ตรวจเช็คระบบน้ำหม้อน้ำให้อยู่ในระดับ Hight", "ตรวจเช็คน้ำมันเครื่องยนต์ต้องอยู่ไม่เกินขีดที่3ของตัวเช็ค", "ตรวจเช็คไส้กรองและเป่าลมทำความสะอาด",
-        "ตรวจเช็คการรั่วซึมของน้ำมันไฮดรอริก", "ตรวจเช็คระบบเบรคและน้ำมันเบรค", "ตรวจเช็คไฟส่องสว่างและไฟเลี้ยว",
+        "ตรวจเช็คการรั่วซึมofน้ำมันไฮดรอริก", "ตรวจเช็คระบบเบรคและน้ำมันเบรค", "ตรวจเช็คไฟส่องสว่างและไฟเลี้ยว",
         "ตรวจเช็คสัญญานแตร"
     ]
 }
@@ -583,7 +583,6 @@ else:
             else:
                 st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
-            # 👑 [ดึงกล่องข้อความคืนกลับมาตามบัญชาบอส]: หัวหน้าสามารถอ่านสรุปอาการเสียสะสมได้ตลอดเวลาจากหน้าเว็บ
             current_notes = get_current_excel_note(m_id, m_type_flag)
             u_id = str(m_id).upper()
             if "CUTTER" in u_id or m_type_flag == "CUTTER GRINDING-01": note_label = "ช่อง B18"
@@ -598,32 +597,38 @@ else:
             else: note_label = "ช่อง B16"
             
             st.text_area(f"📝 รายการอาการเสียสะสม ({note_label}) [อ่านข้อมูลโหมดสัมปทานอัตโนมัติ]", value=current_notes, key=f"note_area_{m_id}", height=120, disabled=True)
-            # 🧹 สั่งเด็ดหัว "ปุ่มกดเซฟมือ" ตัวเดิมออกไปอย่างถาวรตามสั่งเรียบร้อยแล้ว หน้าจอคลีน สบายตา
 
             st.write("---")
-            photo_scope = st.radio(f"ขอบเขตการโหลดรูปของ {m_id}:", [f"📥 โหลดเฉพาะรูปวันที่ {target_day_check}", "📦 โหลดสะสมทั้งหมดของเดือนนี้"], key=f"scope_radio_{m_id}", horizontal=True)
             
-            excel_col, zip_col = st.columns(2)
+            # 🎯 [ มหาอัปเกรดจุดดาวน์โหลดรูปภาพ ]: ถอดสวิตช์วิทยุออก เปลี่ยนเป็นระบบปฏิทินแยกเดี่ยวอิสระประจำเครื่อง
+            st.caption(f"📅 **เลือกดาวน์โหลดรูปภาพของ {m_id}:**")
+            photo_date_input = st.date_input("เลือกวันที่ต้องการดึงรูปภาพ (.zip):", value=datetime.date.today(), key=f"photo_date_{m_id}")
+            chosen_day = photo_date_input.day
+            
+            excel_col, zip_day_col, zip_month_col = st.columns(3)
             
             with excel_col:
                 if os.path.isfile(target_excel_path):
                     with open(target_excel_path, "rb") as f:
-                        st.download_button(label=f"📥 ดึงไฟล์ Excel ของ {m_id}", data=f, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
+                        st.download_button(label=f"📥 ดึง Excel {m_id}", data=f, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
                 else:
-                    st.button(f"❌ ไม่มีไฟล์ Excel ของ {m_id}", disabled=True, key=f"dl_disabled_{m_id}")
+                    st.button(f"❌ ไม่มีไฟล์ Excel", disabled=True, key=f"dl_disabled_{m_id}")
                     
-            with zip_col:
-                if f"📥 โหลดเฉพาะรูปวันที่ {target_day_check}" in photo_scope:
-                    zip_data = zip_single_machine_photos(m_id, target_day=target_day_check)
-                    zip_filename = f"Photos_{m_id}_Day_{target_day_check}.zip"
+            with zip_day_col:
+                # 📥 ปุ่มโหลดรูป "เฉพาะวันที่จิ้มในปฏิทินย่อย"
+                zip_day_data = zip_single_machine_photos(m_id, target_day=chosen_day)
+                if zip_day_data:
+                    st.download_button(label=f"📸 โหลดรูปวันที่ {chosen_day}", data=zip_day_data, file_name=f"Photos_{m_id}_Day_{chosen_day}.zip", mime="application/zip", key=f"zip_day_btn_{m_id}")
                 else:
-                    zip_data = zip_single_machine_photos(m_id, target_day=None)
-                    zip_filename = f"Photos_{m_id}_Full_{current_year_month_str}.zip"
+                    st.button(f"📷 วันที่ {chosen_day} ไม่มีรูป", disabled=True, key=f"zip_day_dis_{m_id}")
                     
-                if zip_data:
-                    st.download_button(label=f"📸 ดาวน์โหลดไฟล์ .zip รูปภาพ", data=zip_data, file_name=zip_filename, mime="application/zip", key=f"zip_btn_{m_id}")
+            with zip_month_col:
+                # 📦 ปุ่มโหลดรูปสะสม "ทั้งเดือนรวมกัน" เผื่อใช้ส่งสรุป ISO ตอนสิ้นเดือน
+                zip_month_data = zip_single_machine_photos(m_id, target_day=None)
+                if zip_month_data:
+                    st.download_button(label="📦 โหลดรูปทั้งเดือน", data=zip_month_data, file_name=f"Photos_{m_id}_Full_{current_year_month_str}.zip", mime="application/zip", key=f"zip_month_btn_{m_id}")
                 else:
-                    st.button(f"📷 ช่วงที่เลือกยังไม่มีรูป", disabled=True, key=f"zip_dis_{m_id}")
+                    st.button("📷 เดือนนี้ยังไม่มีรูป", disabled=True, key=f"zip_month_dis_{m_id}")
                     
             st.divider()
 
@@ -762,7 +767,6 @@ else:
                     "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC", "MILLING", "MIG CO2", "ARGON", "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
                 ])
                 
-                # 🎯 [แก้ไข NameError เรียบร้อยแล้ว]: ประกาศตัวแปรเดือนปัจจุบันให้แก่บล็อกบิ๊กบอสอย่างสมบูรณ์ ไร้จุดสะดุด
                 current_boss_month = datetime.datetime.now().strftime("%Y_%B")
                 
                 filtered_zip_data = zip_all_factory_photos_by_filter(filter_type=dept_target)
