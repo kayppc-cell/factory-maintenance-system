@@ -139,7 +139,7 @@ CHECKLISTS = {
     "MIG CO2": ["ตรวจสภาพความพร้อมโดยรวมของเครื่อง", "เช็ค BREAKER เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์ และสวิชท์ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดัน ของก๊าซ CO2 และปรับตั้งอย่างถูกต้อง", "ตรวจจุดต่อของก๊าซ CO2 รั่วหรือไม่", "ตรวจสภาพความพร้อมของสายไฟ สายก๊าซ  CO2 ว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราวด์", "ทำความสะอาดหัวเชื่อมก่อนใช้งาน"],
     "ARGON": [
         "ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", 
-        "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", 
+        "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อ of สายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", 
         "ตรวจสภาพความพร้อมของสายกราว์", "ตรวจสภาพความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", 
         "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"
     ],
@@ -152,7 +152,7 @@ CHECKLISTS = {
     "BAND SAW": ["เช็ค Auto Up-Down Back Gauge และ Manual (ความคล่องตัวในการเคลื่อนที่ of Spindle)", "เช็คระดับน้ำมันไฮดรอลิค", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั๊ม COOLANT และสภาพของน้ำ COOLANT", "ตรวจสอบ Switch (สวิตซ์) หน้า BOX CONTROL", "ตรวจสอบระดับน้ำมันหล่อลื่นในห้องเกียร์"],
     "FORKLIFT": [
         "ตรวจเช็คระบบน้ำหม้อน้ำให้อยู่ในระดับ Hight", "ตรวจเช็คน้ำมันเครื่องยนต์ต้องอยู่ไม่เกินขีดที่3ของตัวเช็ค", "ตรวจเช็คไส้กรองและเป่าลมทำความสะอาด",
-        "ตรวจเช็คการรั่วซึมofน้ำมันไฮดรอริก", "ตรวจเช็คระบบเบรคและน้ำมันเบรค", "ตรวจเช็คไฟส่องสว่างและไฟเลี้ยว",
+        "ตรวจเช็คการรั่วซึมของน้ำมันไฮดรอริก", "ตรวจเช็คระบบเบรคและน้ำมันเบรค", "ตรวจเช็คไฟส่องสว่างและไฟเลี้ยว",
         "ตรวจเช็คสัญญานแตร"
     ]
 }
@@ -300,7 +300,7 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             backup_folder = os.path.join(BASE_FOLDER, "maintenance_backups")
             if not os.path.exists(backup_folder): os.makedirs(backup_folder, exist_ok=True)
             today = datetime.date.today()
-            first_day_of_current_month = today.replace(day=1)
+            first_day of_current_month = today.replace(day=1)
             last_day_of_last_month = first_day_of_current_month - datetime.timedelta(days=1)
             last_month_str = last_day_of_last_month.strftime("%B_%Y")
             
@@ -583,8 +583,23 @@ else:
             else:
                 st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
-            # 🧹 [ถอดระบบเซฟช่อง B ออกถาวรตามคำสั่งบอส]: ลบกล่องข้อความ text_area และปุ่มเซฟมือฝั่งหัวหน้าช่างทิ้งทั้งหมด หน้าจอสะอาดเรียบร้อย
+            # 👑 [ดึงกล่องข้อความคืนกลับมาตามบัญชาบอส]: หัวหน้าสามารถอ่านสรุปอาการเสียสะสมได้ตลอดเวลาจากหน้าเว็บ
+            current_notes = get_current_excel_note(m_id, m_type_flag)
+            u_id = str(m_id).upper()
+            if "CUTTER" in u_id or m_type_flag == "CUTTER GRINDING-01": note_label = "ช่อง B18"
+            elif "ARGON-02" in u_id or "ARGON-01" in u_id or "CRANE" in u_id: note_label = "ช่อง B19"
+            elif "WELDING_ALUMINUM" in u_id or "FORKLIFT" in u_id or "CUTTING" in u_id: note_label = "ช่อง B18"
+            elif "CNC" in u_id: note_label = "ช่อง B28"
+            elif "QC-01" in u_id or "QC-10" in u_id or "QC-11" in u_id or "QC-12" in u_id: note_label = "ช่อง B15"
+            elif "QC-15" in u_id: note_label = "ช่อง B17"
+            elif "GRINDING" in u_id or "GRINDING" in m_type_flag: note_label = "ช่อง B21"
+            elif "MILLING" in u_id or "LATHE" in u_id: note_label = "ช่อง B22"
+            elif "BENDING" in u_id: note_label = "ช่อง B20"
+            else: note_label = "ช่อง B16"
             
+            st.text_area(f"📝 รายการอาการเสียสะสม ({note_label}) [อ่านข้อมูลโหมดสัมปทานอัตโนมัติ]", value=current_notes, key=f"note_area_{m_id}", height=120, disabled=True)
+            # 🧹 สั่งเด็ดหัว "ปุ่มกดเซฟมือ" ตัวเดิมออกไปอย่างถาวรตามสั่งเรียบร้อยแล้ว หน้าจอคลีน สบายตา
+
             st.write("---")
             photo_scope = st.radio(f"ขอบเขตการโหลดรูปของ {m_id}:", [f"📥 โหลดเฉพาะรูปวันที่ {target_day_check}", "📦 โหลดสะสมทั้งหมดของเดือนนี้"], key=f"scope_radio_{m_id}", horizontal=True)
             
@@ -747,7 +762,7 @@ else:
                     "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC", "MILLING", "MIG CO2", "ARGON", "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
                 ])
                 
-                # 🎯 [จุดแก้ไขวิกฤต - ซ่อมแซมระบบ NameError]: ประกาศนิยามตัวแปรเดือนปัจจุบันในบล็อกของบิ๊กบอสอย่างถูกต้อง
+                # 🎯 [แก้ไข NameError เรียบร้อยแล้ว]: ประกาศตัวแปรเดือนปัจจุบันให้แก่บล็อกบิ๊กบอสอย่างสมบูรณ์ ไร้จุดสะดุด
                 current_boss_month = datetime.datetime.now().strftime("%Y_%B")
                 
                 filtered_zip_data = zip_all_factory_photos_by_filter(filter_type=dept_target)
