@@ -11,7 +11,7 @@ import shutil
 import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment
-import zipfile  # 🌟 เพิ่มไลบรารีสำหรับมัดรวมบีบอัดไฟล์รูปภาพเป็น .zip
+import zipfile  # ไลบรารีสำหรับมัดรวมบีบอัดไฟล์รูปภาพเป็น .zip
 
 # --- 1. CONFIGURATION ---
 LINE_ACCESS_TOKEN = "SOs7DeGwVsFpuK/JN8zm58Wn3EOiB75Ww0q57z1/yht4H1imzYonre4QuPfQ3cxbJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lYwCp4biq7N20ffJqzGm+ZYNgtEzt2rYZ/GYVRV725EiAdB04t89/1O/w1cDnyilFU="
@@ -154,7 +154,7 @@ CHECKLISTS = {
     "BAND SAW": ["เช็ค Auto Up-Down Back Gauge และ Manual (ความคล่องตัวในการเคลื่อนที่ of Spindle)", "เช็คระดับน้ำมันไฮดรอลิค", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั๊ม COOLANT และสภาพของน้ำ COOLANT", "ตรวจสอบ Switch (สวิตซ์) หน้า BOX CONTROL", "ตรวจสอบระดับน้ำมันหล่อลื่นในห้องเกียร์"],
     "FORKLIFT": [
         "ตรวจเช็คระบบน้ำหม้อน้ำให้อยู่ในระดับ Hight", "ตรวจเช็คน้ำมันเครื่องยนต์ต้องอยู่ไม่เกินขีดที่3ของตัวเช็ค", "ตรวจเช็คไส้กรองและเป่าลมทำความสะอาด",
-        "ตรวจเช็คการรั่วซึมของน้ำมันไฮดรอริก", "ตรวจเช็คระบบเบรคและน้ำมันเบรค", "ตรวจเช็คไฟส่องสว่างและไฟเลี้ยว",
+        "ตรวจเช็คการรั่วซึมofน้ำมันไฮดรอริก", "ตรวจเช็คระบบเบรคและน้ำมันเบรค", "ตรวจเช็คไฟส่องสว่างและไฟเลี้ยว",
         "ตรวจเช็คสัญญานแตร"
     ]
 }
@@ -225,7 +225,7 @@ def save_uploaded_photos_list(machine_id, day_num, item_index, files_list):
             saved_paths.append(full_path)
     return saved_paths
 
-# 🌟 [ฟังก์ชันพิเศษแบบที่ 1]: มัดรวมรูปภาพ "เฉพาะเครื่องนั้น ๆ ทุกวันในเดือน" เป็นไฟล์ .zip
+# มัดรวมรูปภาพ "เฉพาะเครื่องนั้น ๆ ทุกวันในเดือน" เป็นไฟล์ .zip
 def zip_single_machine_photos(machine_id):
     current_year_month = datetime.datetime.now().strftime("%Y_%B")
     machine_photo_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), current_year_month)
@@ -242,7 +242,7 @@ def zip_single_machine_photos(machine_id):
         return zip_buffer
     return None
 
-# 🌟 [ฟังก์ชันพิเศษแบบที่ 2]: มัดรวมรูปภาพ "ทั้งโรงงาน ทุกแผนก ทุกเครื่อง" เป็นไฟล์ .zip ใหญ่ก้อนเดียว
+# มัดรวมรูปภาพ "ทั้งโรงงาน ทุกแผนก ทุกเครื่อง" เป็นไฟล์ .zip ใหญ่ก้อนเดียว
 def zip_all_factory_photos():
     photos_root_dir = os.path.join(BASE_FOLDER, "maintenance_photos")
     zip_buffer = BytesIO()
@@ -549,15 +549,15 @@ else:
    
         def render_machine_card(m_id, m_name, m_type_flag):
             st.info(f"⚙️ **{m_id}**\n{m_name}")
-            target_file = os.path.join(BASE_FOLDER, f"FM-MN-07_{m_id}.xlsx")
-            if os.path.isfile(target_file):
+            target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{m_id}.xlsx")
+            if os.path.isfile(target_excel_path):
                 if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
                     if approve_excel_by_boss(m_id, target_day_check, boss_name, m_type_flag):
                         st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
                 
-                # 🖼️ ดึงรูปถ่ายในคลาวด์มาโชว์ (แยกโฟลเดอร์แบบใหม่รายเครื่อง -> เดือน -> วัน)
+                # ดึงรูปถ่ายในคลาวด์มาโชว์ (แยกโฟลเดอร์รายเครื่อง -> เดือน -> วัน)
                 current_year_month = datetime.datetime.now().strftime("%Y_%B")
                 img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), current_year_month, f"Day_{target_day_check}")
                 
@@ -590,10 +590,10 @@ else:
                         st.toast(f"อัปเดตรายการอาการเสียเครื่อง {m_id} สำเร็จ!", icon="💾")
                         st.rerun()
                         
-                # 📥 [ปุ่มอำนวยความสะดวกแบบแยกรายเครื่อง]: ดึง Excel และมัดรวมรูปภาพเฉพาะเครื่องเป็น .zip
+                # 📥 [แก้ไขจุดสำคัญ]: ซ่อมแซมระบบดึงไฟล์ Excel ชี้พิกัดตรงตัวแปร target_excel_path ดาวน์โหลดได้แน่นอน
                 excel_col, zip_col = st.columns(2)
                 with excel_col:
-                    with open(target_file, "rb") as f:
+                    with open(target_excel_path, "rb") as f:
                         st.download_button(label=f"📥 ดึงไฟล์ Excel ของ {m_id}", data=f, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
                 with zip_col:
                     zip_data = zip_single_machine_photos(m_id)
@@ -732,7 +732,7 @@ else:
         if bigboss_code_input == BIGBOSS_PASSWORD:
             st.success("🎯 ยืนยันสิทธิ์ สำเร็จ ปลดล็อกเรียบร้อยแล้วครับ!")
             
-            # 👑 [ปุ่มรวมใหญ่คลาวด์]: มัดรวมรูปภาพของ "ทุกเครื่องจักร" ทั่วโรงงาน เป็น .zip เดียวสะเด็ดน้ำ
+            # ปุ่มรวมใหญ่คลาวด์: มัดรวมรูปภาพของ "ทุกเครื่องจักร" ทั่วโรงงาน เป็น .zip เดียวสะเด็ดน้ำ
             with st.expander("📸 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดรูปภาพ PM รวมหมดทั้งโรงงาน (.zip)"):
                 st.info("📦 ปุ่มนี้จะทำหน้าที่เดินสแกนกวาดรูปถ่าย PM ของทุกแผนก ทุกเครื่องจักร มารวมเป็นไฟล์ .zip ก้อนเดียวเพื่อใช้ส่งผลตรวจมาตรฐานโรงงาน")
                 all_zip_data = zip_all_factory_photos()
