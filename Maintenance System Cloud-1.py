@@ -214,17 +214,25 @@ def send_line_alert(msg_text):
 def save_uploaded_photos_list(machine_id, day_num, item_index, files_list):
     saved_paths = []
     if files_list:
-        folder_path = os.path.join(BASE_FOLDER, "maintenance_photos")
-        sub_folder = os.path.join(folder_path, f"{machine_id}_Day_{day_num}")
-        if not os.path.exists(folder_path): os.makedirs(folder_path, exist_ok=True)
-        if not os.path.exists(sub_folder): os.makedirs(sub_folder, exist_ok=True)
+        # ดึงปี และ เดือน ปัจจุบันมาทำชื่อโฟลเดอร์ (เช่น 2026_July)
+        current_year_month = datetime.datetime.now().strftime("%Y_%B")
         
+        # 🎯 ปรับโครงสร้างทางเดินไฟล์ใหม่: maintenance_photos / ชื่อเครื่อง / ปี_เดือน / วันที่_X
+        folder_path = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), current_year_month, f"Day_{day_num}")
+        
+        # ถ้าระบบตรวจสอบแล้วยังไม่มีโฟลเดอร์นี้ ให้จัดการสร้างขึ้นมาให้อัตโนมัติทันที
+        if not os.path.exists(folder_path): 
+            os.makedirs(folder_path, exist_ok=True)
+        
+        # วนลูปเซฟรูปภาพของข้อนั้นๆ ลงโฟลเดอร์แยกวัน
         for idx, uploaded_file in enumerate(files_list, 1):
             file_extension = os.path.splitext(uploaded_file.name)[1]
             file_name = f"photo_item_{item_index}_{idx}{file_extension}"
-            full_path = os.path.join(sub_folder, file_name)
-            with open(full_path, "wb") as f: f.write(uploaded_file.getbuffer())
+            full_path = os.path.join(folder_path, file_name)
+            with open(full_path, "wb") as f: 
+                f.write(uploaded_file.getbuffer())
             saved_paths.append(full_path)
+            
     return saved_paths
 
 def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_type):
@@ -523,8 +531,9 @@ else:
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
                 
-                # 🖼️ ดึงรูปถ่ายในคลาวด์มาโชว์ทั้งหมด (รอบนี้รองรับกรณีมีรูปในข้อเดียวกันหลาย ๆ ใบดึงขึ้นมาเรียงกันได้สมบูรณ์)
-                img_dir = os.path.join(BASE_FOLDER, f"maintenance_photos/{m_id}_Day_{target_day_check}")
+                # 🎯 ปรับตำแหน่งการวิ่งไปดึงรูปมาโชว์บนหน้าเว็บของหัวหน้างานให้ตรงกับล็อกใหม่
+                current_year_month = datetime.datetime.now().strftime("%Y_%B")
+                img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), current_year_month, f"Day_{target_day_check}")
                 if os.path.exists(img_dir):
                     valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
                     if valid_photos:
