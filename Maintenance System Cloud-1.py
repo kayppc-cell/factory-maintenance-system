@@ -11,7 +11,7 @@ import shutil
 import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment
-import zipfile  # ไลบรารีสำหรับมัดรวมบีบอัดไฟล์รูปภาพเป็น .zip
+import zipfile
 
 # --- 1. CONFIGURATION ---
 LINE_ACCESS_TOKEN = "SOs7DeGwVsFpuK/JN8zm58Wn3EOiB75Ww0q57z1/yht4H1imzYonre4QuPfQ3cxbJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lYwCp4biq7N20ffJqzGm+ZYNgtEzt2rYZ/GYVRV725EiAdB04t89/1O/w1cDnyilFU="
@@ -112,7 +112,7 @@ CHECKLISTS = {
     "COMP-01": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
     "COMP-02": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
     "GRINDING-01": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMPน้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
-    "GRINDING-02": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMPน้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
+    "GRINDING-02": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงาน of PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMPน้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
     "CUTTER GRINDING-01": ["การ WORM UP แกน Y พร้อมใช้งาน", "การ WORM UP แกน Z พร้อมใช้งาน", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของมอเตอร์ มีการหมุนปกติ", "ตรวจสอบการจับหัวคอเรต"],
     "MILLING": [
         "Worm Spindle ก่อนเริมงาน ตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor", 
@@ -154,7 +154,7 @@ CHECKLISTS = {
     "BAND SAW": ["เช็ค Auto Up-Down Back Gauge และ Manual (ความคล่องตัวในการเคลื่อนที่ of Spindle)", "เช็คระดับน้ำมันไฮดรอลิค", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั๊ม COOLANT และสภาพของน้ำ COOLANT", "ตรวจสอบ Switch (สวิตซ์) หน้า BOX CONTROL", "ตรวจสอบระดับน้ำมันหล่อลื่นในห้องเกียร์"],
     "FORKLIFT": [
         "ตรวจเช็คระบบน้ำหม้อน้ำให้อยู่ในระดับ Hight", "ตรวจเช็คน้ำมันเครื่องยนต์ต้องอยู่ไม่เกินขีดที่3ของตัวเช็ค", "ตรวจเช็คไส้กรองและเป่าลมทำความสะอาด",
-        "ตรวจเช็คการรั่วซึมofน้ำมันไฮดรอริก", "ตรวจเช็คระบบเบรคและน้ำมันเบรค", "ตรวจเช็คไฟส่องสว่างและไฟเลี้ยว",
+        "ตรวจเช็คการรั่วซึมของน้ำมันไฮดรอริก", "ตรวจเช็คระบบเบรคและน้ำมันเบรค", "ตรวจเช็คไฟส่องสว่างและไฟเลี้ยว",
         "ตรวจเช็คสัญญานแตร"
     ]
 }
@@ -225,13 +225,15 @@ def save_uploaded_photos_list(machine_id, day_num, item_index, files_list):
             saved_paths.append(full_path)
     return saved_paths
 
-# มัดรวมรูปภาพ "เฉพาะเครื่องนั้น ๆ ทุกวันในเดือน" เป็นไฟล์ .zip
 def zip_single_machine_photos(machine_id):
     current_year_month = datetime.datetime.now().strftime("%Y_%B")
     machine_photo_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), current_year_month)
     
+    if not os.path.exists(machine_photo_dir):
+        return None
+        
     zip_buffer = BytesIO()
-    if os.path.exists(machine_photo_dir):
+    try:
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             for root, dirs, files in os.walk(machine_photo_dir):
                 for file in files:
@@ -240,13 +242,16 @@ def zip_single_machine_photos(machine_id):
                     zip_file.write(file_path, relative_path)
         zip_buffer.seek(0)
         return zip_buffer
-    return None
+    except:
+        return None
 
-# มัดรวมรูปภาพ "ทั้งโรงงาน ทุกแผนก ทุกเครื่อง" เป็นไฟล์ .zip ใหญ่ก้อนเดียว
 def zip_all_factory_photos():
     photos_root_dir = os.path.join(BASE_FOLDER, "maintenance_photos")
+    if not os.path.exists(photos_root_dir):
+        return None
+        
     zip_buffer = BytesIO()
-    if os.path.exists(photos_root_dir):
+    try:
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             for root, dirs, files in os.walk(photos_root_dir):
                 for file in files:
@@ -255,7 +260,8 @@ def zip_all_factory_photos():
                     zip_file.write(file_path, relative_path)
         zip_buffer.seek(0)
         return zip_buffer
-    return None
+    except:
+        return None
 
 def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_type):
     target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
@@ -478,7 +484,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     if submitted:
         if machine_id not in MACHINES: st.error("❌ รหัสเครื่องจักรไม่ถูกต้อง")
         elif not tech_name: st.error("❌ กรุณาระบุชื่อผู้ตรวจสอบก่อนส่งรายงานครับ!")
-        elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
+        elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสรการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
         elif any((uploaded_photos[idx]["files"] is None or len(uploaded_photos[idx]["files"]) == 0) for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
         else:
             photo_logs = []
@@ -538,7 +544,7 @@ else:
 
     if is_supervisor or is_bigboss:
         if is_bigboss:
-            st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ล็อกอินผ่านรหัสแอดมินหลักเรียบร้อย")
+            st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ล็อกอินผ่านรหัสแอนมินหลักเรียบร้อย")
             boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/บิ๊กบอส:", value="พลวัฒน์ (Big Boss)")
         else:
             st.success("🔓 ยืนยันสิทธิ์: เข้าสู่ระบบตรวจสอบและบันทึกประจำวันได้")
@@ -579,7 +585,7 @@ else:
                 elif "CNC" in u_id: note_label = "ช่อง B28"
                 elif "QC-01" in u_id or "QC-10" in u_id or "QC-11" in u_id or "QC-12" in u_id: note_label = "ช่อง B15"
                 elif "QC-15" in u_id: note_label = "ช่อง B17"
-                elif "GRINDING" in u_id: note_label = "ช่อง B21"
+                elif "GRINDING" in u_id or "GRINDING" in m_type_flag: note_label = "ช่อง B21"
                 elif "MILLING" in u_id or "LATHE" in u_id: note_label = "ช่อง B22"
                 elif "BENDING" in u_id: note_label = "ช่อง B20"
                 else: note_label = "ช่อง B16"
@@ -590,7 +596,7 @@ else:
                         st.toast(f"อัปเดตรายการอาการเสียเครื่อง {m_id} สำเร็จ!", icon="💾")
                         st.rerun()
                         
-                # 📥 [แก้ไขจุดสำคัญ]: ซ่อมแซมระบบดึงไฟล์ Excel ชี้พิกัดตรงตัวแปร target_excel_path ดาวน์โหลดได้แน่นอน
+                # ระบบดาวน์โหลดแบบทูอินวัน (2 in 1): ดึงไฟล์ Excel และมัดรวมรูปภาพ .zip
                 excel_col, zip_col = st.columns(2)
                 with excel_col:
                     with open(target_excel_path, "rb") as f:
@@ -621,7 +627,8 @@ else:
         for m_id, m_name in MACHINES.items():
             if "GRINDING" in m_id and "CUTTER" not in m_id:
                 with (grind_col1 if grind_idx % 2 == 0 else grind_col2):
-                    render_machine_card(m_id, m_name, m_id)
+                    # 🎯 [แก้ไขจุดพิกัดหลุดล็อตเครื่องเจียร]: ส่งค่าประเภทพิกัด "GRINDING" แทนตัว m_id ช่างลงชื่อไม่เบี้ยวแล้วครับ
+                    render_machine_card(m_id, m_name, "GRINDING")
                 grind_idx += 1
 
         # ---- 3. แผนก CUTTER GRINDING ----
@@ -646,7 +653,7 @@ else:
         for m_id, m_name in MACHINES.items():
             if "CRANE" in m_id.upper() or "Crane" in m_id:
                 with (crane_col1 if crane_idx % 2 == 0 else crane_col2):
-                    render_machine_card(m_id, m_name, m_id) 
+                    render_machine_card(m_id, m_name, "CRANE") 
                 crane_idx += 1
 
         # ---- 6. แผนก QC ----
