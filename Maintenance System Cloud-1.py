@@ -300,7 +300,7 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             backup_folder = os.path.join(BASE_FOLDER, "maintenance_backups")
             if not os.path.exists(backup_folder): os.makedirs(backup_folder, exist_ok=True)
             today = datetime.date.today()
-            first_day of_current_month = today.replace(day=1)
+            first_day_of_current_month = today.replace(day=1)
             last_day_of_last_month = first_day_of_current_month - datetime.timedelta(days=1)
             last_month_str = last_day_of_last_month.strftime("%B_%Y")
             
