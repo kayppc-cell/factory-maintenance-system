@@ -122,7 +122,7 @@ CHECKLISTS = {
         "ตรวจสอบการทำงานของไฟฟ้าแสงสว่างของเครื่อง", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร  และอุกรณ์เสริมต่าง ๆ"
     ],
     "LATHE": [
-        "การ WORM SPINDLE ก่อนเริ่มงาน 15 นาที", "เช็คระดับน้ำมันเครื่องในห้องเกียร์", "เช็คระบบเฟื่องทดลองเปลี่ยนรอบตวามเร็วต่าง ๆ",
+        "Spindle ก่อนเริ่มงาน 15 นาที", "เช็คระดับน้ำมันเครื่องในห้องเกียร์", "เช็คระบบเฟื่องทดลองเปลี่ยนรอบตวามเร็วต่าง ๆ",
         "เช็ค AUTO แกน X,Y", "เช็คระดับน้ำมันหล่อลื่นใน PUMP", "เช็คน้ำมันหล่อเย็นและการทำงานของปั้ม",
         "ตรวจสอบหน้าจอ  DIGITAL  READ OUT และการ ทำงานของ  LINEAR  SCALE", "ตรวจเช็คสภาพและความตึงของสายพาน",
         "ตรวจสอบการทำงานของไฟฟ้าแสงสว่าง", "อัดจาระบีตามหัวอัดจาระบีทุก ๆ จุด", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง"
@@ -157,7 +157,6 @@ CHECKLISTS = {
     ]
 }
 
-# กฎบังคับถ่ายรูปภาพรายแผนก
 PHOTO_RULES = {
     "CNC": [2, 3, 4, 5, 8, 13], "Crane no.1": [3, 4], "Crane no.2": [3, 4], "QC-01": [4],
     "QC-02": [2, 4], "QC-03": [2, 4], "QC-04": [2, 4], "QC-05": [2, 4], "QC-06": [2, 4],
@@ -172,15 +171,12 @@ def get_coordinates_by_machine(m_id, m_type):
     u_id = str(m_id).upper()
     if "CUTTER" in u_id or m_type == "CUTTER GRINDING-01": 
         return 13, 15, "B18"
-
     if "QC-01" in u_id: return 10, 12, "B15"
     if any(k in u_id for k in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-16", "QC-17", "QC-18", "QC-19", "QC-20", "QC-21"]): return 11, 13, "B16"
     if any(k in u_id for k in ["QC-10", "QC-11", "QC-12"]): return 11, 13, "B15"
     if "QC-15" in u_id: return 12, 14, "B17"
-    
     if "ARGON-02" in u_id or "ARGON-01" in u_id: return 14, 16, "B19"
     if m_type == "FORKLIFT" or "FORKLIFT" in u_id: return 13, 15, "B18"
-    
     if m_type == "CNC" or "CNC" in u_id: return 22, 24, "B28"
     if "CRANE" in u_id: return 14, 16, "B19"
     if "GRINDING" in m_type or "GRINDING" in u_id: return 16, 18, "B21"
@@ -208,10 +204,13 @@ def send_line_alert(msg_text):
     try: requests.post(url, headers=headers, data=json.dumps(payload))
     except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
 
-def save_uploaded_photos_list(machine_id, day_num, item_index, files_list):
+def save_uploaded_photos_list(machine_id, day_num, item_index, files_list, current_date_obj=None):
     saved_paths = []
     if files_list:
-        current_year_month = datetime.datetime.now().strftime("%Y_%B")
+        if current_date_obj is None:
+            current_date_obj = datetime.date.today()
+        current_year_month = current_date_obj.strftime("%Y_%B")
+        
         folder_path = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), current_year_month, f"Day_{day_num}")
         if not os.path.exists(folder_path): os.makedirs(folder_path, exist_ok=True)
         
@@ -223,8 +222,8 @@ def save_uploaded_photos_list(machine_id, day_num, item_index, files_list):
             saved_paths.append(full_path)
     return saved_paths
 
-def zip_single_machine_photos(machine_id, target_day=None):
-    current_year_month = datetime.datetime.now().strftime("%Y_%B")
+def zip_single_machine_photos(machine_id, target_date_obj, target_day=None):
+    current_year_month = target_date_obj.strftime("%Y_%B")
     if target_day:
         source_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), current_year_month, f"Day_{target_day}")
     else:
@@ -246,10 +245,13 @@ def zip_single_machine_photos(machine_id, target_day=None):
     except:
         return None
 
-def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน"):
+def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน", target_date_obj=None):
     photos_root_dir = os.path.join(BASE_FOLDER, "maintenance_photos")
     if not os.path.exists(photos_root_dir):
         return None
+    if target_date_obj is None:
+        target_date_obj = datetime.date.today()
+    current_year_month = target_date_obj.strftime("%Y_%B")
         
     zip_buffer = BytesIO()
     try:
@@ -269,13 +271,13 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
                 elif filter_type == "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)" and any(k in machine_code for k in ["BENDING", "CUTTING", "LATHE", "FORKLIFT", "WELDING_ALUMINUM", "SAW"]): match = True
                 
                 if match:
-                    machine_dir = os.path.join(photos_root_dir, machine_code)
+                    machine_dir = os.path.join(photos_root_dir, machine_code, current_year_month)
                     if os.path.exists(machine_dir):
                         for root, dirs, files in os.walk(machine_dir):
                             for file in files:
                                 file_path = os.path.join(root, file)
-                                relative_path = os.path.relpath(file_path, photos_root_dir)
-                                zip_file.write(file_path, relative_path)
+                                arc_name = os.path.join(machine_code, os.path.relpath(file_path, machine_dir))
+                                zip_file.write(file_path, arc_name)
                                 has_file = True
         if not has_file:
             return None
@@ -284,6 +286,7 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
     except:
         return None
 
+# 🌟 [กู้ระบบเคลียร์ใบตรวจขึ้นเดือนใหม่เรียบร้อย]: ปลดล็อกระบบเคลียร์ข้อมูลอัตโนมัติเฉพาะเมื่อเป็นวันที่ 1
 def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_type):
     target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
     if not os.path.isfile(target_excel_path): return False, f"ไม่พบไฟล์แบบฟอร์ม `{target_excel_path}` บนระบบคลาวด์"
@@ -296,6 +299,7 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         check_col_1 = get_column_letter(3) 
         first_cell_of_month = get_unmerged_cell(ws, f"{check_col_1}{t_row}")
         
+        # 🎯 [ระบบกู้ชีพล้างตาราง]: ถ้าช่างรายงานเป็น "วันที่ 1" และในช่องนั้นยังเป็นค่าว่าง (แปลว่าเป็นข้อพิสูจน์เริ่มรันเดือนใหม่แกะกล่อง)
         if day_num == 1 and (first_cell_of_month.value is None or first_cell_of_month.value == ""):
             backup_folder = os.path.join(BASE_FOLDER, "maintenance_backups")
             if not os.path.exists(backup_folder): os.makedirs(backup_folder, exist_ok=True)
@@ -307,11 +311,13 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             backup_file_name = f"Backup_{last_month_str}_FM-MN-07_{machine_id}.xlsx"
             backup_excel_path = os.path.join(backup_folder, backup_file_name)
             
+            # ทำการคัดลอกไฟล์เดือนเก่าเก็บเข้าตู้เซฟอย่างถาวร ป้องกันประวัติสูญหาย
             if not os.path.exists(backup_excel_path):
                 shutil.copy2(target_excel_path, backup_excel_path)
-                try: send_line_alert(f"📦 [Auto-Backup Completed]: ระบบสำรองไฟล์ของเครื่อง {machine_id} ประจำเดือน {last_month_str} สำเร็จเรียบร้อยแล้ว!")
+                try: send_line_alert(f"📦 [Auto-Backup]: ตรวจพบการเริ่มรอบเดือนใหม่ ระบบได้สำรองไฟล์เครื่อง {machine_id} ประจำเดือนเก่าไว้ให้เรียบร้อยแล้ว!")
                 except: pass
 
+            # 🧹 สั่งรันลูปกวาดข้อมูลวันที่ 1-31 ของเก่าทิ้งทั้งหมด ตารางจะสะอาดบริสุทธิ์เพื่อต้อนรับเดือนใหม่แกะกล่อง ไม่มั่วแน่นอนครับบอส!
             checklist_items = CHECKLISTS[m_type]
             for d in range(1, 32):
                 c_letter = get_column_letter(2 + d)
@@ -352,7 +358,7 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         
         if notes_collected:
             new_note_text = f"[วันที่ {day_num}]: " + ", ".join(notes_collected)
-            if old_val and old_val != "None" and old_val != "เครื่องจักรปกติ":
+            if old_val and old_val != "None" and old_val != "เครื่องจักรปกติ" and old_val != "":
                 note_cell.value = old_val + ",  " + new_note_text
             else:
                 note_cell.value = new_note_text
@@ -495,7 +501,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         else:
             photo_logs = []
             for idx in required_photo_indexes:
-                saved_paths = save_uploaded_photos_list(machine_id, current_day, idx, uploaded_photos[idx]["files"])
+                saved_paths = save_uploaded_photos_list(machine_id, current_day, idx, uploaded_photos[idx]["files"], current_date_obj=report_date)
                 if saved_paths: 
                     photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ ({len(saved_paths)} รูป)")
             
@@ -550,7 +556,7 @@ else:
 
     if is_supervisor or is_bigboss:
         if is_bigboss:
-            st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ล็อกอินผ่านรหัสแอดมินหลักเรียบร้อย")
+            st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ล็อกอินผ่านรหัสแอนมินหลักเรียบร้อย")
             boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/บิ๊กบอส:", value="พลวัฒน์ (Big Boss)")
         else:
             st.success("🔓 ยืนยันสิทธิ์: เข้าสู่ระบบตรวจสอบและบันทึกประจำวันได้")
@@ -570,9 +576,8 @@ else:
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
             
-            # ดึงรูปถ่ายในคลาวด์มาโชว์ (แยกโฟลเดอร์รายเครื่อง -> เดือน -> วัน)
-            current_year_month_str = datetime.datetime.now().strftime("%Y_%B")
-            img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), current_year_month_str, f"Day_{target_day_check}")
+            target_year_month_folder = selected_date.strftime("%Y_%B")
+            img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), target_year_month_folder, f"Day_{target_day_check}")
             
             if os.path.exists(img_dir):
                 valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
@@ -600,9 +605,8 @@ else:
 
             st.write("---")
             
-            # 🎯 [ มหาอัปเกรดจุดดาวน์โหลดรูปภาพ ]: ถอดสวิตช์วิทยุออก เปลี่ยนเป็นระบบปฏิทินแยกเดี่ยวอิสระประจำเครื่อง
             st.caption(f"📅 **เลือกดาวน์โหลดรูปภาพของ {m_id}:**")
-            photo_date_input = st.date_input("เลือกวันที่ต้องการดึงรูปภาพ (.zip):", value=datetime.date.today(), key=f"photo_date_{m_id}")
+            photo_date_input = st.date_input("เลือกวันที่ต้องการดึงรูปภาพ (.zip):", value=selected_date, key=f"photo_date_{m_id}")
             chosen_day = photo_date_input.day
             
             excel_col, zip_day_col, zip_month_col = st.columns(3)
@@ -615,18 +619,16 @@ else:
                     st.button(f"❌ ไม่มีไฟล์ Excel", disabled=True, key=f"dl_disabled_{m_id}")
                     
             with zip_day_col:
-                # 📥 ปุ่มโหลดรูป "เฉพาะวันที่จิ้มในปฏิทินย่อย"
-                zip_day_data = zip_single_machine_photos(m_id, target_day=chosen_day)
+                zip_day_data = zip_single_machine_photos(m_id, target_date_obj=photo_date_input, target_day=chosen_day)
                 if zip_day_data:
                     st.download_button(label=f"📸 โหลดรูปวันที่ {chosen_day}", data=zip_day_data, file_name=f"Photos_{m_id}_Day_{chosen_day}.zip", mime="application/zip", key=f"zip_day_btn_{m_id}")
                 else:
                     st.button(f"📷 วันที่ {chosen_day} ไม่มีรูป", disabled=True, key=f"zip_day_dis_{m_id}")
                     
             with zip_month_col:
-                # 📦 ปุ่มโหลดรูปสะสม "ทั้งเดือนรวมกัน" เผื่อใช้ส่งสรุป ISO ตอนสิ้นเดือน
-                zip_month_data = zip_single_machine_photos(m_id, target_day=None)
+                zip_month_data = zip_single_machine_photos(m_id, target_date_obj=photo_date_input, target_day=None)
                 if zip_month_data:
-                    st.download_button(label="📦 โหลดรูปทั้งเดือน", data=zip_month_data, file_name=f"Photos_{m_id}_Full_{current_year_month_str}.zip", mime="application/zip", key=f"zip_month_btn_{m_id}")
+                    st.download_button(label="📦 โหลดรูปทั้งเดือน", data=zip_month_data, file_name=f"Photos_{m_id}_Full_{photo_date_input.strftime('%Y_%B')}.zip", mime="application/zip", key=f"zip_month_btn_{m_id}")
                 else:
                     st.button("📷 เดือนนี้ยังไม่มีรูป", disabled=True, key=f"zip_month_dis_{m_id}")
                     
@@ -767,9 +769,9 @@ else:
                     "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC", "MILLING", "MIG CO2", "ARGON", "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
                 ])
                 
-                current_boss_month = datetime.datetime.now().strftime("%Y_%B")
+                current_boss_month = selected_date.strftime("%Y_%B")
                 
-                filtered_zip_data = zip_all_factory_photos_by_filter(filter_type=dept_target)
+                filtered_zip_data = zip_all_factory_photos_by_filter(filter_type=dept_target, target_date_obj=selected_date)
                 if filtered_zip_data:
                     st.download_button(
                         label=f"📥 ดาวน์โหลดรูปภาพแผนก [{dept_target}]", 
@@ -779,7 +781,7 @@ else:
                         type="primary"
                     )
                 else:
-                    st.warning(f"⚠️ ในระบบคลาวด์ขณะนี้ ยังไม่มีรูปภาพบันทึกอยู่ในกลุ่มแผนก [{dept_target}] เลยครับบอส")
+                    st.warning(f"⚠️ ในระบบคลาวด์ตามช่วงปฏิทินที่เลือก ยังไม่มีรูปภาพบันทึกอยู่ในกลุ่มแผนก [{dept_target}] เลยครับบอส")
 
             with st.expander("🖨️ [เฉพาะผู้บริหารสูงสุด] เครื่องมือพิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
                 sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()), key="bigboss_qr_select_box")
@@ -790,7 +792,7 @@ else:
                 st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
 
             with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
-                st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุกๆ สิ้นเดือน")
+                st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ สิ้นเดือน")
                 backup_folder_path = os.path.join(BASE_FOLDER, "maintenance_backups")
                 if os.path.exists(backup_folder_path):
                     all_backups = [f for f in os.listdir(backup_folder_path) if f.lower().endswith('.xlsx')]
@@ -808,7 +810,7 @@ else:
                     else:
                         st.caption("ℹ️ ยังไม่มีไฟล์สำรองประวัติเดือนเก่าจัดเก็บในตู้นี้")
                 else:
-                    st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ (จะปรากฏไฟล์แรกเมื่อช่างส่งฟอร์มประเดิมคนแรกในวันที่ 1 ของเดือนถัดไปครับ)")
+                    st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
 
             with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายทดสอบ (RESET SYSTEM)"):
                 st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานที่ส่งทดสอบก่อนหน้านี้ทั้งหมดออกไปอย่างถาวร เพื่อให้ระบบสะอาดพร้อมเปิดใช้งานจริง")
