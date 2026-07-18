@@ -18,7 +18,7 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 
-# 🎯 ตัวแปรเวลาสตรีมสดส่วนกลาง ป้องกัน NameError
+# ตัวแปรเวลาสตรีมสดส่วนกลาง ป้องกัน NameError
 now = datetime.datetime.now()
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -134,7 +134,7 @@ CHECKLISTS = {
     ],
     "CUTTING": ["การ Worm spindle ก่อนเริ่มงาน เพื่อตรวจ ความผิดปกติของชุด Back gauge และ Motor", "เช็ค Auto Up-Down back gauge และ Manual ( ความคล่องตัวในการเคลื่อนที่ )", "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับในปั้มน้ำมัน หล่อลืนแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด", "ตรวจสอบ Digital  read out และการทำงาน ของ Linear  scale", "อัดจาระบีตามจุดที่อัดจาระบีทุกๆจุด", "ตรวจสอบใบมีด  บนและล่าง", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง จักรและอุปกรณ์เสริมต่าง ๆ"],
     "BENDING": [
-        "การ Worm spindle ก่อนเริมงาน เพื่อตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor",
+        "การ Worm spindle ก่อนเริมงาน เพื่อตรวจสอบความ ผิดปกติ of ชุด  Back gauge  และ Motor",
         "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคล่องตัวในการเคลื่อนที่ของ Spindle )",
         "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับน้ำมันในปั้ม น้ำมันหล่อลื่นแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด",
         "ตรวจสอบหน้าจอ Digital read out  และการทำงาน ของ Linear  scale", "อัดจาระบีตามจุดหัวอัดจาระบีทุก ๆจุด 1ครั้งตต่อเดือน",
@@ -144,7 +144,7 @@ CHECKLISTS = {
     "MIG CO2": ["ตรวจสภาพความพร้อมโดยรวมของเครื่อง", "เช็ค BREAKER เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์ และสวิชท์ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดัน ของก๊าซ CO2 และปรับตั้งอย่างถูกต้อง", "ตรวจจุดต่อของก๊าซ CO2 รั่วหรือไม่", "ตรวจสภาพความพร้อมของสายไฟ สายก๊าซ  CO2 ว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราวด์", "ทำความสะอาดหัวเชื่อมก่อนใช้งาน"],
     "ARGON": [
         "ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", 
-        "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อ of สายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", 
+        "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", 
         "ตรวจสภาพความพร้อมของสายกราว์", "ตรวจสภาพความพร้อมของสายไฟฟ้าสายก๊าช  ARGON และชุดหัวเชื่อม", 
         "ตรวจสภาพความพร้อมของ  SWITCH  หัวเชื่อม", "ทำความสะดาดชุดหัวเชื่อมก่อนใช้งาน"
     ],
@@ -200,7 +200,7 @@ def get_unmerged_cell(ws, coordinate_str):
             return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
     return cell
 
-# --- 2. 🛡️ ฟังก์ชันคลาวด์กระจกเงาคู่ขนาน (เพิ่มเข้ามาเพื่อแก้ไขอาการเสียสะสมช่อง B และล็อกประวัติถาวร) ---
+# --- 2. 🛡️ ฐานข้อมูลกระจกเงาคู่ขนานรักษาประวัติถาวร (ถอดสมการตามตรรกะข้อกำหนดของบอส) ---
 def save_log_to_gsheet(machine_id, day_num, year_month, tech_name, checklist_item, item_no, status, note, role="tech"):
     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
     new_data = {
@@ -315,7 +315,7 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
     except:
         return None
 
-# --- 4. 👑 ฟังก์ชันสแกนกรอกฟอร์ม Excel อัตโนมัติจากข้อมูลประจักษ์กระจกเงาคลาวด์ ---
+# --- 4. 👑 ฟังก์ชันสร้างแบบฟอร์มกวาดเขียนประวัติลง Excel จากฐานข้อมูลกระจกเงา ---
 def generate_excel_from_cloud_logs(machine_id, target_date_obj, m_type):
     target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
     if not os.path.isfile(target_excel_path):
@@ -327,7 +327,7 @@ def generate_excel_from_cloud_logs(machine_id, target_date_obj, m_type):
         t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
         checklist_items = CHECKLISTS[m_type]
         
-        # ล้างข้อมูลใบงานเก่าก่อนพ่นกรอก เพื่อเริ่มเดือนใหม่แบบสะอาดกริบ
+        # ล้างรอยเก่าในช่องคอลัมน์ 1-31 เพื่อสกรีนเริ่มเดือนใหม่แกะกล่องตามสัญญากู้ชีพล้างกระดาน
         for d in range(1, 32):
             c_letter = get_column_letter(2 + d)
             for row_idx in range(6, 6 + len(checklist_items)):
@@ -345,7 +345,6 @@ def generate_excel_from_cloud_logs(machine_id, target_date_obj, m_type):
             buf.seek(0)
             return buf
 
-        # เรียงลำดับตาม Timestamp ป้องกันข้อมูลสับสน
         df_logs = df_logs.sort_values(by="Timestamp")
 
         for _, row in df_logs.iterrows():
@@ -369,7 +368,7 @@ def generate_excel_from_cloud_logs(machine_id, target_date_obj, m_type):
                 tech_cell.value = row["Tech_Name"]
                 tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
                 
-                # 🎯 แก้ไขจุดหัวใจสำคัญ: กรอกอาการเสียสะสมแยกตามวันที่ลงช่อง Note สังกัดช่อง B ใน Excel
+                # 🎯 สัญญารอยล็อกช่อง B: กวาดพ่นเฉพาะคำบันทึกอาการเสียจริงจากคลาวด์กระจกเงา
                 if str(row["Note"]).strip() and str(row["Note"]) != "nan":
                     note_cell = get_unmerged_cell(ws, n_cell)
                     old_note = str(note_cell.value).strip() if note_cell.value else ""
@@ -510,7 +509,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 status_val = results[item]["status"]
                 note_val = results[item]["note"]
                 
-                # 🚀 บันทึกตัวแปรทุกข้อแตกแถวลงสู่ฐานข้อมูลกระจกเงา ทนสภาวะรีบูท 100%
+                # 🚀 ตรึงประวัติรายข้อเข้าสู่ฐานข้อมูลกระจกเงาส่วนกลาง ปลอดภัยจากอาการ Reboot
                 save_log_to_gsheet(
                     machine_id=machine_id,
                     day_num=current_day,
@@ -538,7 +537,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n✅ ผลการตรวจสอบ: ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
                 if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ (ลงตาราง ⨂):\n" + "\n".join(fixed_items)
                 send_line_alert(ok_msg + audit_tag)
-            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลล็อกเข้าฐานข้อมูลกระจกเงาปลอดภัยแล้ว")
+            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลถูกสำรองลงระบบกระจกเงาปลอดภัยแล้ว")
 
 # ==========================================
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ล็อกอินตรวจสอบและกดอนุมัติฟอร์ม]
@@ -578,7 +577,7 @@ else:
             st.info(f"⚙️ **{m_id}**\n{m_name}")
             
             if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
-                # 🚀 บันทึกรอยเซ็นอนุมัติของบอสเข้าสู่ฐานข้อมูลกระจกเงาถาวร
+                # บันทึกรอยเซ็นอนุมัติของบอสเข้าสู่ฐานข้อมูลกระจกเงาถาวร
                 save_log_to_gsheet(
                     machine_id=m_id,
                     day_num=target_day_check,
@@ -610,7 +609,9 @@ else:
                 for _, row in df_curr.iterrows():
                     if row["Role"] == "tech" and str(row["Note"]).strip() and str(row["Note"]) != "nan":
                         notes_text_list.append(f"[วัน {int(row['Day_Num'])}]: {row['Note']}")
-            current_notes = " / ".join(notes_text_list) if notes_text_list else "เครื่องจักรปกติ"
+            
+            # 🎯 ถอดถอนตรรกะคำว่าเครื่องจักรปกติออกอย่างถาวร: คืนค่าเป็น String ว่างเปล่าตามเจตนารมณ์ดั้งเดิมของบอส 100%
+            current_notes = " / ".join(notes_text_list) if notes_text_list else ""
 
             u_id = str(m_id).upper()
             if "CUTTER" in u_id or m_type_flag == "CUTTER GRINDING-01": note_label = "ช่อง B18"
@@ -634,7 +635,6 @@ else:
             excel_col, zip_day_col, zip_month_col = st.columns(3)
             
             with excel_col:
-                # 🎯 เรียกใช้งานฟังก์ชันอัจฉริยะกวาดประวัติจากกระจกเงาเขียนลง Excel ก่อนส่งให้บอส
                 excel_file_buffer = generate_excel_from_cloud_logs(m_id, photo_date_input, m_type_flag)
                 if excel_file_buffer:
                     st.download_button(label=f"📥 ดึง Excel {m_id}", data=excel_file_buffer, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
@@ -785,7 +785,7 @@ else:
         if bigboss_code_input == BIGBOSS_PASSWORD:
             st.success("🎯 ยืนยันสิทธิ์ สำเร็จ ปลดล็อกเรียบร้อยแล้วครับ!")
             
-            with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดไฟล์ดิบฐานข้อมูลหลัก (DATABASE HISTORY DISK)"):
+            with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดไฟล์ดิบฐานข้อมูลหลัก (DATABASE BACKUP DISK)"):
                 st.info("📂 ปุ่มนี้ทำหน้าที่ดึงไฟล์ประวัติการติ๊กและหมายเหตุสะสมทั้งหมดของเครื่องจักรทุกแผนกบนระบบคลาวด์กระจกเงาออกเป็นไฟล์ .csv เพื่อเก็บเป็นประวัติถาวร")
                 local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
                 if os.path.exists(local_cloud_backup):
