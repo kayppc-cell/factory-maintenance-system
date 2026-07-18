@@ -18,9 +18,12 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 
-# 🎯 ลิงก์คลาวด์ Google Sheets ของบอสอมตะคลาวด์
+# 🎯 ประกาศเวลาสตรีมสดส่วนกลาง ป้องกัน NameError หายขาดถาวร!
+now = datetime.datetime.now()
+current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
+
+# ลิงก์คลาวด์ Google Sheets ของบอสอมตะคลาวด์
 GSHEET_URL = "https://docs.google.com/spreadsheets/d/10TX0htwHAV9w7D7bm2plo5iBsSQ1iudPFFhsZiBNlu8/edit?usp=sharing"
-# ท่อนแปลงข้อมูล CSV Export ไดนามิกของ Google Sheets
 GSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/10TX0htwHAV9w7D7bm2plo5iBsSQ1iudPFFhsZiBNlu8/export?format=csv"
 
 # รหัสความปลอดภัยประจำโรงงาน
@@ -78,7 +81,7 @@ CHECKLISTS = {
         "ทำความสะอาด Air filter Mesh ทุกวัน", "ตรวจเช็คแรงดัน Air Control Unit ปกติเฉลี่ยที่ 0.5 Mpa",
         "เช็คน้ำมันชุด Gear ของ ATC ทุกวัน(เปลี่ยนถ่ายทุกปี)", "อัดจารบี Ballscrew และ Linear Guideทุก 1000 ชม.",
         "ตรวจสอบการเคลื่อนที่ของแกนทุกแกน (X,Y,Z)", "ตรวจสอบสภาพของน้ำ Coolant ถ่ายรูปค่าที่วัดได้ส่งเข้าระบบ",
-        "การทำงานของ Coolant pump", "การทำงาน of Unclamp และการเปลี่ยน Tool", "การทำงานของ Spindle",
+        "การทำงานของ Coolant pump", "การทำงานของ Unclamp และการเปลี่ยน Tool", "การทำงานของ Spindle",
         "การทำงานของ Arm เปลี่ยน Tool", "ตรวจสอบระดับของน้ำ Coolant เติมเมื่ออยู่ระดับที่ต่ำ",
         "ความสะอาดทั่วไปของเครื่องจักรโดยรวม", "ตรวจสอบความพร้อมสภาพโดยรวม(ฟังด้วยหู ดูด้วยตา)", "ตรวจสอบสายไฮโดรลิกส์ และสายลม"
     ],
@@ -201,13 +204,7 @@ def get_unmerged_cell(ws, coordinate_str):
             return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
     return cell
 
-# --- 2. 👑 ฟังก์ชันทางด่วนเชื่อมต่อคลาวด์อมตะ (GOOGLE SHEETS API SIMULATOR) ---
 def save_log_to_gsheet(machine_id, day_num, year_month, tech_name, checklist_item, item_no, status, note, role="tech"):
-    """
-    ฟังก์ชันสำหรับยิงบันทึกข้อมูลแบบ Append ลงแถวล่างสุดของ Google Sheets 
-    """
-    # ใช้กลไกผูกผ่าน Streamlit Secrets หรือการพ่นบันทึกจำลองคลาวด์ลงไฟล์ .csv คู่ขนาน 
-    # เพื่อให้แอปคงสถานะเป็นคลาวด์อมตะ 100% ตราบใดที่เปิดลิงก์อยู่
     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
     new_data = {
         "Timestamp": [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
@@ -228,21 +225,16 @@ def save_log_to_gsheet(machine_id, day_num, year_month, tech_name, checklist_ite
         df_new.to_csv(local_cloud_backup, mode='a', header=False, index=False, encoding="utf-8-sig")
 
 def fetch_logs_from_gsheet(machine_id, year_month):
-    """
-    ฟังก์ชันวิ่งไปช้อนข้อมูลทั้งหมดของเครื่องจักรและเดือนเป้าหมายกลับคืนมาจากคลาวด์
-    """
     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
     if not os.path.exists(local_cloud_backup):
         return pd.DataFrame()
     try:
         df = pd.read_csv(local_cloud_backup, encoding="utf-8-sig")
-        # กรองเจาะจงเฉพาะเครื่องและรอบเดือนนั้น ๆ
         df_filtered = df[(df["Machine_ID"] == machine_id) & (df["Year_Month"] == year_month)]
         return df_filtered
     except:
         return pd.DataFrame()
 
-# --- 3. PHOTO FUNCTIONS ---
 def save_uploaded_photos_list(machine_id, day_num, item_index, files_list, current_date_obj):
     saved_paths = []
     if files_list:
@@ -322,11 +314,7 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
     except:
         return None
 
-# --- 4. 👑 ระบบดึงข้อมูลจาก GOOGLE SHEETS มากวาดเติมฟอร์ม EXCEL มาตรฐาน ---
 def generate_excel_from_cloud_logs(machine_id, target_date_obj, m_type):
-    """
-    กลไกคืนชีพเอกสาร ISO: ดึงไฟล์ FM-MN-07 ขาวสะอาดมาสแกนกรอกคำตอบรอยติ๊กย้อนหลังจาก Google Sheets
-    """
     target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
     if not os.path.isfile(target_excel_path):
         return None
@@ -334,7 +322,6 @@ def generate_excel_from_cloud_logs(machine_id, target_date_obj, m_type):
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
         
-        # ล้างข้อมูลรอยติ๊กเก่าออกก่อน เพื่อปูตารางเริ่มเดือนใหม่แบบสะอาดกริบ ไม่ปนมั่ว
         t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
         checklist_items = CHECKLISTS[m_type]
         for d in range(1, 32):
@@ -345,18 +332,15 @@ def generate_excel_from_cloud_logs(machine_id, target_date_obj, m_type):
             get_unmerged_cell(ws, f"{c_letter}{boss_row}").value = ""
         get_unmerged_cell(ws, n_cell).value = ""
 
-        # วิ่งไปสอยบันทึกจาก Google Sheets
         year_month_key = target_date_obj.strftime("%Y_%B")
         df_logs = fetch_logs_from_gsheet(machine_id, year_month_key)
         
         if df_logs.empty:
-            # ถ้าคลาวด์ว่างเปล่า (เปลี่ยนเดือนใหม่แกะกล่อง) ส่งตารางเปล่าคืนให้ทันที
             buf = BytesIO()
             wb.save(buf)
             buf.seek(0)
             return buf
 
-        # ดึงประวัติเติมช่องรายวันคอลัมน์ 1-31 
         for _, row in df_logs.iterrows():
             day_val = int(row["Day_Num"])
             col_letter = get_column_letter(2 + day_val)
@@ -375,12 +359,10 @@ def generate_excel_from_cloud_logs(machine_id, target_date_obj, m_type):
                 elif status_val == "ไม่ได้ทำงาน": current_cell.value = "-"
                 current_cell.alignment = Alignment(horizontal='center', vertical='center')
                 
-                # กรอกชื่อช่าง
                 tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")
                 tech_cell.value = row["Tech_Name"]
                 tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
                 
-                # เติมหมายเหตุสะสม
                 if str(row["Note"]).strip() and str(row["Note"]) != "nan":
                     note_cell = get_unmerged_cell(ws, n_cell)
                     old_note = str(note_cell.value).strip() if note_cell.value else ""
@@ -392,7 +374,6 @@ def generate_excel_from_cloud_logs(machine_id, target_date_obj, m_type):
                     note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
             
             elif row["Role"] == "boss":
-                # กรอกลายเซ็นดิจิทัลหัวหน้าช่าง
                 boss_cell = get_unmerged_cell(ws, f"{col_letter}{boss_row}")
                 boss_cell.value = row["Tech_Name"]
                 boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
@@ -413,6 +394,8 @@ def send_line_alert(msg_text):
     except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
 
 # --- 5. UI NAVIGATION SIDEBAR & QUERY PARAMETERS ---
+st.set_page_config(page_title="Smart Factory PM SYSTEM", page_icon="🔧", layout="wide")
+
 query_params = st.query_params
 raw_role = query_params.get("role", "tech")
 is_boss_link = str(raw_role).strip().lower() == "boss"
@@ -517,7 +500,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                     photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ ({len(saved_paths)} รูป)")
             
             fails, fixed_items = [], []
-            # 🚀 วิ่งลูปยิงสลักคำตอบกระจายแถวลง Google Sheets ทันที ไม่มีวันหาย!
             for i, item in enumerate(current_checklist, 1):
                 status_val = results[item]["status"]
                 note_val = results[item]["note"]
@@ -577,7 +559,7 @@ else:
 
     if is_supervisor or is_bigboss:
         if is_bigboss:
-            st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ล็อกอินผ่านรหัสแอดมินหลักเรียบร้อย")
+            st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ล็อกอินผ่านรหัสแอนมินหลักเรียบร้อย")
             boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/บิ๊กบอส:", value="พลวัฒน์ (Big Boss)")
         else:
             st.success("🔓 ยืนยันสิทธิ์: เข้าสู่ระบบตรวจสอบและบันทึกประจำวันได้")
@@ -589,7 +571,6 @@ else:
         def render_machine_card(m_id, m_name, m_type_flag):
             st.info(f"⚙️ **{m_id}**\n{m_name}")
             
-            # ปุ่มลงนามดิจิทัลหัวหน้างาน อนุมัติยิงตรงบันทึกเข้า Google Sheets ไม่มีวันหาย!
             if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
                 save_log_to_gsheet(
                     machine_id=m_id,
@@ -605,7 +586,6 @@ else:
                 st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
                 send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
             
-            # เรียกดูภาพหลักฐานคลาวด์รายวันรายเดือนย้อนหลังตามจริง
             img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), year_month_key, f"Day_{target_day_check}")
             if os.path.exists(img_dir):
                 valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
@@ -616,7 +596,6 @@ else:
             else:
                 st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
-            # แสดงข้อความช่องอาการเสียสะสมโหมดเรียลไทม์ ดึงตรงจากประวัติ Google Sheets สิ้นเดือนไม่มั่ว!
             df_curr = fetch_logs_from_gsheet(m_id, year_month_key)
             notes_text_list = []
             if not df_curr.empty:
@@ -635,7 +614,6 @@ else:
             excel_col, zip_day_col, zip_month_col = st.columns(3)
             
             with excel_col:
-                # 🎯 ไม้ตาย: กดดาวน์โหลดเมื่อไหร่ ระบบจะไปช้อนข้อมูลใน Google Sheets มาพ่นกรอกลง Excel ขาวสะอาดให้สด ๆ เดี๋ยวนั้น!
                 excel_file_buffer = generate_excel_from_cloud_logs(m_id, photo_date_input, m_type_flag)
                 if excel_file_buffer:
                     st.download_button(label=f"📥 ดึง Excel {m_id}", data=excel_file_buffer, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
