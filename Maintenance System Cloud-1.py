@@ -22,10 +22,6 @@ BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals
 now = datetime.datetime.now()
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
-# รหัสความปลอดภัยประจำโรงงาน
-BOSS_PASSWORD = "boss1234"
-BIGBOSS_PASSWORD = "bigboss9999"
-
 # ทะเบียนเครื่องจักรกลางประจำโรงงาน
 MACHINES = {
     "CNC3X-01": "CNC 3 แกน #01", "CNC3X-02": "CNC 3 แกน #02",
@@ -134,7 +130,7 @@ CHECKLISTS = {
     ],
     "CUTTING": ["การ Worm spindle ก่อนเริ่มงาน เพื่อตรวจ ความผิดปกติของชุด Back gauge และ Motor", "เช็ค Auto Up-Down back gauge และ Manual ( ความคล่องตัวในการเคลื่อนที่ )", "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับในปั้มน้ำมัน หล่อลืนแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด", "ตรวจสอบ Digital  read out และการทำงาน ของ Linear  scale", "อัดจาระบีตามจุดที่อัดจาระบีทุกๆจุด", "ตรวจสอบใบมีด  บนและล่าง", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง จักรและอุปกรณ์เสริมต่าง ๆ"],
     "BENDING": [
-        "การ Worm spindle ก่อนเริมงาน เพื่อตรวจสอบความ ผิดปกติ of ชุด  Back gauge  และ Motor",
+        "การ Worm spindle ก่อนเริมงาน เพื่อตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor",
         "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคล่องตัวในการเคลื่อนที่ของ Spindle )",
         "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับน้ำมันในปั้ม น้ำมันหล่อลื่นแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด",
         "ตรวจสอบหน้าจอ Digital read out  และการทำงาน ของ Linear  scale", "อัดจาระบีตามจุดหัวอัดจาระบีทุก ๆจุด 1ครั้งตต่อเดือน",
@@ -200,7 +196,7 @@ def get_unmerged_cell(ws, coordinate_str):
             return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
     return cell
 
-# --- 2. 🛡️ ฐานข้อมูลกระจกเงาคู่ขนานรักษาประวัติถาวร (ถอดสมการตามตรรกะข้อกำหนดของบอส) ---
+# --- 2. 🛡️ ฐานข้อมูลกระจกเงาคู่ขนานรักษาประวัติถาวร ---
 def save_log_to_gsheet(machine_id, day_num, year_month, tech_name, checklist_item, item_no, status, note, role="tech"):
     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
     new_data = {
@@ -317,6 +313,7 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
 
 # --- 4. 👑 ฟังก์ชันสร้างแบบฟอร์มกวาดเขียนประวัติลง Excel จากฐานข้อมูลกระจกเงา ---
 def generate_excel_from_cloud_logs(machine_id, target_date_obj, m_type):
+    # 🎯 [จุดซ่อมไม้ตาย]: ปรับแมปปิ้งให้วิ่งหาชื่อไฟล์จริงตาม machine_id ใน GitHub เสมอ ไม่ให้โดนบล็อกปุ่มดาวน์โหลด
     target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
     if not os.path.isfile(target_excel_path):
         return None
@@ -368,7 +365,7 @@ def generate_excel_from_cloud_logs(machine_id, target_date_obj, m_type):
                 tech_cell.value = row["Tech_Name"]
                 tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
                 
-                # 🎯 สัญญารอยล็อกช่อง B: กวาดพ่นเฉพาะคำบันทึกอาการเสียจริงจากคลาวด์กระจกเงา
+                # สัญญารอยล็อกช่อง B: กวาดพ่นเฉพาะคำบันทึกอาการเสียจริงจากคลาวด์กระจกเงา
                 if str(row["Note"]).strip() and str(row["Note"]) != "nan":
                     note_cell = get_unmerged_cell(ws, n_cell)
                     old_note = str(note_cell.value).strip() if note_cell.value else ""
@@ -509,7 +506,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 status_val = results[item]["status"]
                 note_val = results[item]["note"]
                 
-                # 🚀 ตรึงประวัติรายข้อเข้าสู่ฐานข้อมูลกระจกเงาส่วนกลาง ปลอดภัยจากอาการ Reboot
+                # 🚀 บันทึกตัวแปรทุกข้อแตกแถวลงสู่ฐานข้อมูลกระจกเงา ทนสภาวะรีบูท 100%
                 save_log_to_gsheet(
                     machine_id=machine_id,
                     day_num=current_day,
@@ -602,7 +599,7 @@ else:
             else:
                 st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
-            # 🎯 ดึงอาการเสียสะสมโหมดเรียลไทม์จากตัวแปรคลาวด์กระจกเงามาแสดงผลหน้าจอ
+            # ดึงอาการเสียสะสมโหมดเรียลไทม์จากตัวแปรคลาวด์กระจกเงามาแสดงผลหน้าจอ
             df_curr = fetch_logs_from_gsheet(m_id, year_month_key)
             notes_text_list = []
             if not df_curr.empty:
@@ -610,7 +607,7 @@ else:
                     if row["Role"] == "tech" and str(row["Note"]).strip() and str(row["Note"]) != "nan":
                         notes_text_list.append(f"[วัน {int(row['Day_Num'])}]: {row['Note']}")
             
-            # 🎯 ถอดถอนตรรกะคำว่าเครื่องจักรปกติออกอย่างถาวร: คืนค่าเป็น String ว่างเปล่าตามเจตนารมณ์ดั้งเดิมของบอส 100%
+            # ถอดถอนตรรกะคำว่าเครื่องจักรปกติออกอย่างถาวร: คืนค่าเป็น String ว่างเปล่าตามเจตนารมณ์ดั้งเดิมของบอส 100%
             current_notes = " / ".join(notes_text_list) if notes_text_list else ""
 
             u_id = str(m_id).upper()
@@ -635,6 +632,7 @@ else:
             excel_col, zip_day_col, zip_month_col = st.columns(3)
             
             with excel_col:
+                # เรียกใช้งานฟังก์ชันอัจฉริยะกวาดประวัติจากกระจกเงาเขียนลง Excel ก่อนส่งให้บอส
                 excel_file_buffer = generate_excel_from_cloud_logs(m_id, photo_date_input, m_type_flag)
                 if excel_file_buffer:
                     st.download_button(label=f"📥 ดึง Excel {m_id}", data=excel_file_buffer, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
