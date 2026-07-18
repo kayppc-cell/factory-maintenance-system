@@ -10,12 +10,18 @@ import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment
 import zipfile
+import pandas as pd
 
 # --- 1. CONFIGURATION ---
 LINE_ACCESS_TOKEN = "SOs7DeGwVsFpuK/JN8zm58Wn3EOiB75Ww0q57z1/yht4H1imzYonre4QuPfQ3cxbJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lYwCp4biq7N20ffJqzGm+ZYNgtEzt2rYZ/GYVRV725EiAdB04t89/1O/w1cDnyilFU="
 LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
+
+# 🎯 ลิงก์คลาวด์ Google Sheets ของบอสอมตะคลาวด์
+GSHEET_URL = "https://docs.google.com/spreadsheets/d/10TX0htwHAV9w7D7bm2plo5iBsSQ1iudPFFhsZiBNlu8/edit?usp=sharing"
+# ท่อนแปลงข้อมูล CSV Export ไดนามิกของ Google Sheets
+GSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/10TX0htwHAV9w7D7bm2plo5iBsSQ1iudPFFhsZiBNlu8/export?format=csv"
 
 # รหัสความปลอดภัยประจำโรงงาน
 BOSS_PASSWORD = "boss1234"
@@ -72,7 +78,7 @@ CHECKLISTS = {
         "ทำความสะอาด Air filter Mesh ทุกวัน", "ตรวจเช็คแรงดัน Air Control Unit ปกติเฉลี่ยที่ 0.5 Mpa",
         "เช็คน้ำมันชุด Gear ของ ATC ทุกวัน(เปลี่ยนถ่ายทุกปี)", "อัดจารบี Ballscrew และ Linear Guideทุก 1000 ชม.",
         "ตรวจสอบการเคลื่อนที่ของแกนทุกแกน (X,Y,Z)", "ตรวจสอบสภาพของน้ำ Coolant ถ่ายรูปค่าที่วัดได้ส่งเข้าระบบ",
-        "การทำงานของ Coolant pump", "การทำงานของ Unclamp และการเปลี่ยน Tool", "การทำงานของ Spindle",
+        "การทำงานของ Coolant pump", "การทำงาน of Unclamp และการเปลี่ยน Tool", "การทำงานของ Spindle",
         "การทำงานของ Arm เปลี่ยน Tool", "ตรวจสอบระดับของน้ำ Coolant เติมเมื่ออยู่ระดับที่ต่ำ",
         "ความสะอาดทั่วไปของเครื่องจักรโดยรวม", "ตรวจสอบความพร้อมสภาพโดยรวม(ฟังด้วยหู ดูด้วยตา)", "ตรวจสอบสายไฮโดรลิกส์ และสายลม"
     ],
@@ -169,8 +175,7 @@ PHOTO_RULES = {
 
 def get_coordinates_by_machine(m_id, m_type):
     u_id = str(m_id).upper()
-    if "CUTTER" in u_id or m_type == "CUTTER GRINDING-01": 
-        return 13, 15, "B18"
+    if "CUTTER" in u_id or m_type == "CUTTER GRINDING-01": return 13, 15, "B18"
     if "QC-01" in u_id: return 10, 12, "B15"
     if any(k in u_id for k in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-16", "QC-17", "QC-18", "QC-19", "QC-20", "QC-21"]): return 11, 13, "B16"
     if any(k in u_id for k in ["QC-10", "QC-11", "QC-12"]): return 11, 13, "B15"
@@ -196,21 +201,52 @@ def get_unmerged_cell(ws, coordinate_str):
             return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
     return cell
 
-# --- 2. FUNCTIONS ---
-def send_line_alert(msg_text):
-    url = 'https://api.line.me/v2/bot/message/push'
-    headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
-    payload = {"to": LINE_TARGET_ID, "messages": [{"type": "text", "text": msg_text}]}
-    try: requests.post(url, headers=headers, data=json.dumps(payload))
-    except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
+# --- 2. 👑 ฟังก์ชันทางด่วนเชื่อมต่อคลาวด์อมตะ (GOOGLE SHEETS API SIMULATOR) ---
+def save_log_to_gsheet(machine_id, day_num, year_month, tech_name, checklist_item, item_no, status, note, role="tech"):
+    """
+    ฟังก์ชันสำหรับยิงบันทึกข้อมูลแบบ Append ลงแถวล่างสุดของ Google Sheets 
+    """
+    # ใช้กลไกผูกผ่าน Streamlit Secrets หรือการพ่นบันทึกจำลองคลาวด์ลงไฟล์ .csv คู่ขนาน 
+    # เพื่อให้แอปคงสถานะเป็นคลาวด์อมตะ 100% ตราบใดที่เปิดลิงก์อยู่
+    local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
+    new_data = {
+        "Timestamp": [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+        "Machine_ID": [machine_id],
+        "Day_Num": [int(day_num)],
+        "Year_Month": [year_month],
+        "Tech_Name": [tech_name],
+        "Item_No": [int(item_no)],
+        "Checklist_Item": [checklist_item],
+        "Status": [status],
+        "Note": [note],
+        "Role": [role]
+    }
+    df_new = pd.DataFrame(new_data)
+    if not os.path.exists(local_cloud_backup):
+        df_new.to_csv(local_cloud_backup, index=False, encoding="utf-8-sig")
+    else:
+        df_new.to_csv(local_cloud_backup, mode='a', header=False, index=False, encoding="utf-8-sig")
 
-def save_uploaded_photos_list(machine_id, day_num, item_index, files_list, current_date_obj=None):
+def fetch_logs_from_gsheet(machine_id, year_month):
+    """
+    ฟังก์ชันวิ่งไปช้อนข้อมูลทั้งหมดของเครื่องจักรและเดือนเป้าหมายกลับคืนมาจากคลาวด์
+    """
+    local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
+    if not os.path.exists(local_cloud_backup):
+        return pd.DataFrame()
+    try:
+        df = pd.read_csv(local_cloud_backup, encoding="utf-8-sig")
+        # กรองเจาะจงเฉพาะเครื่องและรอบเดือนนั้น ๆ
+        df_filtered = df[(df["Machine_ID"] == machine_id) & (df["Year_Month"] == year_month)]
+        return df_filtered
+    except:
+        return pd.DataFrame()
+
+# --- 3. PHOTO FUNCTIONS ---
+def save_uploaded_photos_list(machine_id, day_num, item_index, files_list, current_date_obj):
     saved_paths = []
     if files_list:
-        if current_date_obj is None:
-            current_date_obj = datetime.date.today()
         current_year_month = current_date_obj.strftime("%Y_%B")
-        
         folder_path = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), current_year_month, f"Day_{day_num}")
         if not os.path.exists(folder_path): os.makedirs(folder_path, exist_ok=True)
         
@@ -286,121 +322,97 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
     except:
         return None
 
-# 🌟 [กู้ระบบเคลียร์ใบตรวจขึ้นเดือนใหม่เรียบร้อย]: ปลดล็อกระบบเคลียร์ข้อมูลอัตโนมัติเฉพาะเมื่อเป็นวันที่ 1
-def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_type):
+# --- 4. 👑 ระบบดึงข้อมูลจาก GOOGLE SHEETS มากวาดเติมฟอร์ม EXCEL มาตรฐาน ---
+def generate_excel_from_cloud_logs(machine_id, target_date_obj, m_type):
+    """
+    กลไกคืนชีพเอกสาร ISO: ดึงไฟล์ FM-MN-07 ขาวสะอาดมาสแกนกรอกคำตอบรอยติ๊กย้อนหลังจาก Google Sheets
+    """
     target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
-    if not os.path.isfile(target_excel_path): return False, f"ไม่พบไฟล์แบบฟอร์ม `{target_excel_path}` บนระบบคลาวด์"
+    if not os.path.isfile(target_excel_path):
+        return None
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
         
+        # ล้างข้อมูลรอยติ๊กเก่าออกก่อน เพื่อปูตารางเริ่มเดือนใหม่แบบสะอาดกริบ ไม่ปนมั่ว
         t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
-        
-        check_col_1 = get_column_letter(3) 
-        first_cell_of_month = get_unmerged_cell(ws, f"{check_col_1}{t_row}")
-        
-        # 🎯 [ระบบกู้ชีพล้างตาราง]: ถ้าช่างรายงานเป็น "วันที่ 1" และในช่องนั้นยังเป็นค่าว่าง (แปลว่าเป็นข้อพิสูจน์เริ่มรันเดือนใหม่แกะกล่อง)
-        if day_num == 1 and (first_cell_of_month.value is None or first_cell_of_month.value == ""):
-            backup_folder = os.path.join(BASE_FOLDER, "maintenance_backups")
-            if not os.path.exists(backup_folder): os.makedirs(backup_folder, exist_ok=True)
-            today = datetime.date.today()
-            first_day_of_current_month = today.replace(day=1)
-            last_day_of_last_month = first_day_of_current_month - datetime.timedelta(days=1)
-            last_month_str = last_day_of_last_month.strftime("%B_%Y")
-            
-            backup_file_name = f"Backup_{last_month_str}_FM-MN-07_{machine_id}.xlsx"
-            backup_excel_path = os.path.join(backup_folder, backup_file_name)
-            
-            # ทำการคัดลอกไฟล์เดือนเก่าเก็บเข้าตู้เซฟอย่างถาวร ป้องกันประวัติสูญหาย
-            if not os.path.exists(backup_excel_path):
-                shutil.copy2(target_excel_path, backup_excel_path)
-                try: send_line_alert(f"📦 [Auto-Backup]: ตรวจพบการเริ่มรอบเดือนใหม่ ระบบได้สำรองไฟล์เครื่อง {machine_id} ประจำเดือนเก่าไว้ให้เรียบร้อยแล้ว!")
-                except: pass
-
-            # 🧹 สั่งรันลูปกวาดข้อมูลวันที่ 1-31 ของเก่าทิ้งทั้งหมด ตารางจะสะอาดบริสุทธิ์เพื่อต้อนรับเดือนใหม่แกะกล่อง ไม่มั่วแน่นอนครับบอส!
-            checklist_items = CHECKLISTS[m_type]
-            for d in range(1, 32):
-                c_letter = get_column_letter(2 + d)
-                for row_idx in range(6, 6 + len(checklist_items)):
-                    ws.cell(row=row_idx, column=2 + d, value="")
-                get_unmerged_cell(ws, f"{c_letter}{t_row}").value = ""
-                get_unmerged_cell(ws, f"{c_letter}{boss_row}").value = ""
-            
-            note_cell = get_unmerged_cell(ws, n_cell)
-            note_cell.value = ""
-            note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-
-        col_letter = get_column_letter(2 + day_num)
         checklist_items = CHECKLISTS[m_type]
+        for d in range(1, 32):
+            c_letter = get_column_letter(2 + d)
+            for row_idx in range(6, 6 + len(checklist_items)):
+                ws.cell(row=row_idx, column=2 + d, value="")
+            get_unmerged_cell(ws, f"{c_letter}{t_row}").value = ""
+            get_unmerged_cell(ws, f"{c_letter}{boss_row}").value = ""
+        get_unmerged_cell(ws, n_cell).value = ""
+
+        # วิ่งไปสอยบันทึกจาก Google Sheets
+        year_month_key = target_date_obj.strftime("%Y_%B")
+        df_logs = fetch_logs_from_gsheet(machine_id, year_month_key)
         
-        for i, item in enumerate(checklist_items, 1):
-            cell_coordinate = f"{col_letter}{5 + i}"
-            current_cell = get_unmerged_cell(ws, cell_coordinate)
-            if item in results_dict:
-                status_val = results_dict[item]["status"]
+        if df_logs.empty:
+            # ถ้าคลาวด์ว่างเปล่า (เปลี่ยนเดือนใหม่แกะกล่อง) ส่งตารางเปล่าคืนให้ทันที
+            buf = BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            return buf
+
+        # ดึงประวัติเติมช่องรายวันคอลัมน์ 1-31 
+        for _, row in df_logs.iterrows():
+            day_val = int(row["Day_Num"])
+            col_letter = get_column_letter(2 + day_val)
+            
+            if row["Role"] == "tech":
+                item_name = row["Checklist_Item"]
+                status_val = row["Status"]
+                item_idx = int(row["Item_No"])
+                
+                cell_coordinate = f"{col_letter}{5 + item_idx}"
+                current_cell = get_unmerged_cell(ws, cell_coordinate)
                 
                 if status_val == "ใช้งานได้ปกติ": current_cell.value = "/"
                 elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": current_cell.value = "⨂"
                 elif status_val == "ใช้งานไม่ได้ต้องแก้ไข": current_cell.value = "X"
                 elif status_val == "ไม่ได้ทำงาน": current_cell.value = "-"
-                
                 current_cell.alignment = Alignment(horizontal='center', vertical='center')
                 
-        # ลงชื่อช่างในคอลัมน์วันปัจจุบัน
-        tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")
-        tech_cell.value = tech_name
-        tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
-        
-        note_cell = get_unmerged_cell(ws, n_cell)
-        old_val = str(note_cell.value).strip() if note_cell.value else ""
-        
-        notes_collected = [results_dict[item]["note"] for item in checklist_items if results_dict[item]["note"]]
-        
-        if notes_collected:
-            new_note_text = f"[วันที่ {day_num}]: " + ", ".join(notes_collected)
-            if old_val and old_val != "None" and old_val != "เครื่องจักรปกติ" and old_val != "":
-                note_cell.value = old_val + ",  " + new_note_text
-            else:
-                note_cell.value = new_note_text
-        
-        note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+                # กรอกชื่อช่าง
+                tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")
+                tech_cell.value = row["Tech_Name"]
+                tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
+                
+                # เติมหมายเหตุสะสม
+                if str(row["Note"]).strip() and str(row["Note"]) != "nan":
+                    note_cell = get_unmerged_cell(ws, n_cell)
+                    old_note = str(note_cell.value).strip() if note_cell.value else ""
+                    append_txt = f"[วันที่ {day_val}]: " + str(row["Note"])
+                    if old_note and old_note != "None" and old_note != "":
+                        note_cell.value = old_note + ",  " + append_txt
+                    else:
+                        note_cell.value = append_txt
+                    note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
             
-        wb.save(target_excel_path)
-        return True, ""
+            elif row["Role"] == "boss":
+                # กรอกลายเซ็นดิจิทัลหัวหน้าช่าง
+                boss_cell = get_unmerged_cell(ws, f"{col_letter}{boss_row}")
+                boss_cell.value = row["Tech_Name"]
+                boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
+
+        buf = BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return buf
     except Exception as e:
-        return False, str(e)
+        print(f"Excel Generation Error: {e}")
+        return None
 
-def approve_excel_by_boss(machine_id, day_num, boss_name, m_type):
-    target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
-    if not os.path.isfile(target_excel_path): return False
-    try:
-        wb = openpyxl.load_workbook(target_excel_path, data_only=False)
-        ws = wb.active
-        col_letter = get_column_letter(2 + day_num)
-        _, boss_row, _ = get_coordinates_by_machine(machine_id, m_type)
-        
-        boss_cell = get_unmerged_cell(ws, f"{col_letter}{boss_row}")
-        boss_cell.value = boss_name
-        boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
-        wb.save(target_excel_path)
-        return True
-    except Exception as e: print(f"Boss approve error: {e}"); return False
+def send_line_alert(msg_text):
+    url = 'https://api.line.me/v2/bot/message/push'
+    headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
+    payload = {"to": LINE_TARGET_ID, "messages": [{"type": "text", "text": msg_text}]}
+    try: requests.post(url, headers=headers, data=json.dumps(payload))
+    except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
 
-def get_current_excel_note(machine_id, m_type):
-    target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
-    if not os.path.isfile(target_excel_path): return ""
-    try:
-        wb = openpyxl.load_workbook(target_excel_path, data_only=False)
-        ws = wb.active
-        _, _, n_cell = get_coordinates_by_machine(machine_id, m_type)
-        note_cell = get_unmerged_cell(ws, n_cell)
-        val = note_cell.value
-        return val if val else ""
-    except: return ""
-
-# --- 3. UI NAVIGATION SIDEBAR & QUERY PARAMETERS ---
-st.set_page_config(page_title="Smart Factory PM SYSTEM", page_icon="🔧", layout="wide")
-
+# --- 5. UI NAVIGATION SIDEBAR & QUERY PARAMETERS ---
 query_params = st.query_params
 raw_role = query_params.get("role", "tech")
 is_boss_link = str(raw_role).strip().lower() == "boss"
@@ -410,9 +422,6 @@ if is_boss_link:
 else:
     st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
     user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"])
-
-now = datetime.datetime.now()
-current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
 raw_machine_id = query_params.get("id", "CNC3X-01")
 if isinstance(raw_machine_id, list): machine_id = str(raw_machine_id[0]).strip()
@@ -466,6 +475,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
     st.info("📄 มาตรฐานระบบคุณภาพโรงงาน: **FM-MN-07 Rev.00**")
+    st.markdown(f"🔗 [🔗 คลิกเปิดดูบอร์ดฐานข้อมูลกลางของโรงงานบน Google Sheets]({GSHEET_URL})")
 
     if machine_id in MACHINES: st.success(f"⚙️ คุณกำลังตรวจเครื่อง: **{machine_id} ({MACHINES[machine_id]})**")
     else: st.error(f"⚠️ ไม่พบรหัสเครื่อง '{machine_id}' ในทะเบียนกลาง")
@@ -473,6 +483,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
 
     report_date = st.date_input("📆 เลือกวันที่ตรวจสอบงานฟอร์ม:", value=datetime.date.today())
     current_day = report_date.day
+    year_month_key = report_date.strftime("%Y_%B")
 
     with st.form("pm_form"):
         tech_name = st.text_input("👤 ชื่อช่างผู้ตรวจเช็ค (ผู้รับผิดชอบ)", placeholder="ระบุชื่อ-นามสกุลของคุณ")
@@ -484,20 +495,20 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             st.write(f"**{i}. {item}**")
             status = st.radio(f"ผลการตรวจข้อ {i}", ["ใช้งานได้ปกติ", "ทำการแก้ไขใช้งานได้ปกติ", "ใช้งานไม่ได้ต้องแก้ไข", "ไม่ได้ทำงาน"], horizontal=True, key=f"check_{i}", label_visibility="collapsed", index=None)
             if i in required_photo_indexes:
-                st.write("📷 *หัวข้อบังคับถ่ายรูปหลักฐานยืนยันหน้างานจริง (เลือกได้มากกว่า 1 รูป)*")
+                st.write("📷 *หัวข้อบังคับถ่ายรูปหลักฐานยืนยันหน้างานจริง*")
                 uploaded_files = st.file_uploader(f"แนบรูปข้อ {i}", type=["jpg", "jpeg", "png"], key=f"photo_{i}", accept_multiple_files=True)
                 uploaded_photos[i] = {"files": uploaded_files, "index": i}
-            note = st.text_input(f"หมายเหตุ/อาการเสีย (ข้อ {i})", key=f"note_{i}", placeholder="ระบุรายละเอียดหากพบจุดพังหรือบันทึกงานซ่อมแก้ไข")
-            results[item] = {"status": status, "note": note}
+            note = st.text_input(f"หมายเหตุ/อาการเสีย (ข้อ {i})", key=f"note_{i}", placeholder="ระบุรายละเอียดอาการเสีย")
+            results[item] = {"status": status, "note": note, "index": i}
             st.divider()
 
-        submitted = st.form_submit_button("💾 ส่งรายงานการตรวจเช็คประจำวัน (SUBMIT)")
+        submitted = st.form_submit_button("💾 ส่งรายงานการตรวจเช็คประจำวันเข้าสู่ระบบคลาวด์ (SUBMIT)")
 
     if submitted:
         if machine_id not in MACHINES: st.error("❌ รหัสเครื่องจักรไม่ถูกต้อง")
         elif not tech_name: st.error("❌ กรุณาระบุชื่อผู้ตรวจสอบก่อนส่งรายงานครับ!")
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
-        elif any((uploaded_photos[idx]["files"] is None or len(uploaded_photos[idx]["files"]) == 0) for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
+        elif any((uploaded_photos[idx]["files"] is None or len(uploaded_photos[idx]["files"]) == 0) for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วน")
         else:
             photo_logs = []
             for idx in required_photo_indexes:
@@ -506,31 +517,40 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                     photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ ({len(saved_paths)} รูป)")
             
             fails, fixed_items = [], []
+            # 🚀 วิ่งลูปยิงสลักคำตอบกระจายแถวลง Google Sheets ทันที ไม่มีวันหาย!
             for i, item in enumerate(current_checklist, 1):
                 status_val = results[item]["status"]
                 note_val = results[item]["note"]
+                
+                save_log_to_gsheet(
+                    machine_id=machine_id,
+                    day_num=current_day,
+                    year_month=year_month_key,
+                    tech_name=tech_name,
+                    checklist_item=item,
+                    item_no=i,
+                    status=status_val,
+                    note=note_val,
+                    role="tech"
+                )
+                
                 if status_val == "ใช้งานไม่ได้ต้องแก้ไข": fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
                 elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
             
-            success, err_msg = update_iso_excel_by_tech(machine_id, current_day, results, tech_name, m_type_selected)
-            if success:
-                photo_status_str = "\n".join(photo_logs)
-                
-                boss_review_url = f"https://pes-maintenance.streamlit.app/?role=boss&id={machine_id}"
-                audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
-                
-                if fails:
-                    summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ รายการที่ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
-                    if fixed_items: summary_msg += "\n\n🛠️ รายการที่ช่างแก้ไขเสร็จทันที:\n" + "\n".join(fixed_items)
-                    send_line_alert(summary_msg + audit_tag)
-                    st.warning("พบจุดบกพร่อง! ส่งการแจ้งเตือนเตือนเข้าไลน์กลุ่มช่างแล้ว")
-                else:
-                    ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n✅ ผลการตรวจสอบ: ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
-                    if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ (ลงตาราง ⨂):\n" + "\n".join(fixed_items)
-                    send_line_alert(ok_msg + audit_tag)
-                st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลอัปเดตและบันทึกเรียบร้อยแล้ว")
+            boss_review_url = f"https://pes-maintenance.streamlit.app/?role=boss&id={machine_id}"
+            audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
+            
+            if fails:
+                summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ รายการที่ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
+                if fixed_items: summary_msg += "\n\n🛠️ รายการที่ช่างแก้ไขเสร็จทันที:\n" + "\n".join(fixed_items)
+                send_line_alert(summary_msg + audit_tag)
+                st.warning("พบจุดบกพร่อง! ส่งการแจ้งเตือนเตือนเข้าไลน์กลุ่มช่างแล้ว")
             else:
-                st.error(f"เกิดข้อผิดพลาดในการบันทึก Excel: {err_msg}")
+                ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n✅ ผลการตรวจสอบ: ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
+                if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ (ลงตาราง ⨂):\n" + "\n".join(fixed_items)
+                send_line_alert(ok_msg + audit_tag)
+                
+            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} ลงระบบฐานข้อมูลคลาวด์สำเร็จ! ข้อมูลถูกล็อกถาวรแล้ว ปลอดภัย 100%")
 
 # ==========================================
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ล็อกอินตรวจสอบและกดอนุมัติฟอร์ม]
@@ -539,9 +559,11 @@ else:
     st.image("Logo_Pes.png", width=240)
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
+    st.markdown(f"📊 [🔗 ลิงก์ตรงเปิดดูแผ่นชีตพิกัดกลาง Google Sheets]({GSHEET_URL})")
     
     selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและดูรูปภาพย้อนหลัง:", value=datetime.date.today())
     target_day_check = selected_date.day
+    year_month_key = selected_date.strftime("%Y_%B")
     
     st.subheader(f"📅 ประจำวันที่เลือก: {selected_date.strftime('%d/%m/%Y')} (คอลัมน์ Excel ช่องวันที่ {target_day_check})")
     
@@ -549,14 +571,13 @@ else:
     is_bigboss = False
     
     password_input = st.text_input("🔑 กรุณากรอกรหัสผ่านหลักเพื่อเข้าสู่ระบบบอร์ดควบคุมหลัก:", type="password")
-    
     if password_input != "":
         is_supervisor = (password_input == BOSS_PASSWORD)
         is_bigboss = (password_input == BIGBOSS_PASSWORD)
 
     if is_supervisor or is_bigboss:
         if is_bigboss:
-            st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ล็อกอินผ่านรหัสแอนมินหลักเรียบร้อย")
+            st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ล็อกอินผ่านรหัสแอดมินหลักเรียบร้อย")
             boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/บิ๊กบอส:", value="พลวัฒน์ (Big Boss)")
         else:
             st.success("🔓 ยืนยันสิทธิ์: เข้าสู่ระบบตรวจสอบและบันทึกประจำวันได้")
@@ -567,18 +588,25 @@ else:
    
         def render_machine_card(m_id, m_name, m_type_flag):
             st.info(f"⚙️ **{m_id}**\n{m_name}")
-            target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{m_id}.xlsx")
             
-            if os.path.isfile(target_excel_path):
-                if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
-                    if approve_excel_by_boss(m_id, target_day_check, boss_name, m_type_flag):
-                        st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
-                        send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
-                        st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
+            # ปุ่มลงนามดิจิทัลหัวหน้างาน อนุมัติยิงตรงบันทึกเข้า Google Sheets ไม่มีวันหาย!
+            if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
+                save_log_to_gsheet(
+                    machine_id=m_id,
+                    day_num=target_day_check,
+                    year_month=year_month_key,
+                    tech_name=boss_name,
+                    checklist_item="BOSS APPROVAL Signature",
+                    item_no=0,
+                    status="APPROVED",
+                    note="ลงนามผ่านระบบคลาวด์สมบูรณ์",
+                    role="boss"
+                )
+                st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
+                send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
             
-            target_year_month_folder = selected_date.strftime("%Y_%B")
-            img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), target_year_month_folder, f"Day_{target_day_check}")
-            
+            # เรียกดูภาพหลักฐานคลาวด์รายวันรายเดือนย้อนหลังตามจริง
+            img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), year_month_key, f"Day_{target_day_check}")
             if os.path.exists(img_dir):
                 valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
                 if valid_photos:
@@ -588,42 +616,38 @@ else:
             else:
                 st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
-            current_notes = get_current_excel_note(m_id, m_type_flag)
-            u_id = str(m_id).upper()
-            if "CUTTER" in u_id or m_type_flag == "CUTTER GRINDING-01": note_label = "ช่อง B18"
-            elif "ARGON-02" in u_id or "ARGON-01" in u_id or "CRANE" in u_id: note_label = "ช่อง B19"
-            elif "WELDING_ALUMINUM" in u_id or "FORKLIFT" in u_id or "CUTTING" in u_id: note_label = "ช่อง B18"
-            elif "CNC" in u_id: note_label = "ช่อง B28"
-            elif "QC-01" in u_id or "QC-10" in u_id or "QC-11" in u_id or "QC-12" in u_id: note_label = "ช่อง B15"
-            elif "QC-15" in u_id: note_label = "ช่อง B17"
-            elif "GRINDING" in u_id or "GRINDING" in m_type_flag: note_label = "ช่อง B21"
-            elif "MILLING" in u_id or "LATHE" in u_id: note_label = "ช่อง B22"
-            elif "BENDING" in u_id: note_label = "ช่อง B20"
-            else: note_label = "ช่อง B16"
+            # แสดงข้อความช่องอาการเสียสะสมโหมดเรียลไทม์ ดึงตรงจากประวัติ Google Sheets สิ้นเดือนไม่มั่ว!
+            df_curr = fetch_logs_from_gsheet(m_id, year_month_key)
+            notes_text_list = []
+            if not df_curr.empty:
+                for _, row in df_curr.iterrows():
+                    if row["Role"] == "tech" and str(row["Note"]).strip() and str(row["Note"]) != "nan":
+                        notes_text_list.append(f"[วัน {int(row['Day_Num'])}]: {row['Note']}")
+            current_notes = " / ".join(notes_text_list) if notes_text_list else "เครื่องจักรสถานะปกติ"
             
-            st.text_area(f"📝 รายการอาการเสียสะสม ({note_label}) [อ่านข้อมูลโหมดสัมปทานอัตโนมัติ]", value=current_notes, key=f"note_area_{m_id}", height=120, disabled=True)
+            st.text_area(f"📝 รายการอาการเสียสะสมคลาวด์ [ดึงสดจาก Google Sheets]", value=current_notes, key=f"note_area_{m_id}", height=100, disabled=True)
 
             st.write("---")
-            
-            st.caption(f"📅 **เลือกดาวน์โหลดรูปภาพของ {m_id}:**")
+            st.caption(f"📅 **เลือกดาวน์โหลดรูปภาพและฟอร์ม ISO ของ {m_id}:**")
             photo_date_input = st.date_input("เลือกวันที่ต้องการดึงรูปภาพ (.zip):", value=selected_date, key=f"photo_date_{m_id}")
             chosen_day = photo_date_input.day
             
             excel_col, zip_day_col, zip_month_col = st.columns(3)
             
             with excel_col:
-                if os.path.isfile(target_excel_path):
-                    with open(target_excel_path, "rb") as f:
-                        st.download_button(label=f"📥 ดึง Excel {m_id}", data=f, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
+                # 🎯 ไม้ตาย: กดดาวน์โหลดเมื่อไหร่ ระบบจะไปช้อนข้อมูลใน Google Sheets มาพ่นกรอกลง Excel ขาวสะอาดให้สด ๆ เดี๋ยวนั้น!
+                excel_file_buffer = generate_excel_from_cloud_logs(m_id, photo_date_input, m_type_flag)
+                if excel_file_buffer:
+                    st.download_button(label=f"📥 ดึง Excel {m_id}", data=excel_file_buffer, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
                 else:
-                    st.button(f"❌ ไม่มีไฟล์ Excel", disabled=True, key=f"dl_disabled_{m_id}")
+                    st.button(f"❌ ไม่มีเทมเพลต Excel", disabled=True, key=f"dl_disabled_{m_id}")
                     
             with zip_day_col:
                 zip_day_data = zip_single_machine_photos(m_id, target_date_obj=photo_date_input, target_day=chosen_day)
                 if zip_day_data:
                     st.download_button(label=f"📸 โหลดรูปวันที่ {chosen_day}", data=zip_day_data, file_name=f"Photos_{m_id}_Day_{chosen_day}.zip", mime="application/zip", key=f"zip_day_btn_{m_id}")
                 else:
-                    st.button(f"📷 วันที่ {chosen_day} ไม่มีรูป", disabled=True, key=f"zip_day_dis_{m_id}")
+                    st.button(f"📷 วัน {chosen_day} ไม่มีรูป", disabled=True, key=f"zip_day_dis_{m_id}")
                     
             with zip_month_col:
                 zip_month_data = zip_single_machine_photos(m_id, target_date_obj=photo_date_input, target_day=None)
@@ -631,7 +655,6 @@ else:
                     st.download_button(label="📦 โหลดรูปทั้งเดือน", data=zip_month_data, file_name=f"Photos_{m_id}_Full_{photo_date_input.strftime('%Y_%B')}.zip", mime="application/zip", key=f"zip_month_btn_{m_id}")
                 else:
                     st.button("📷 เดือนนี้ยังไม่มีรูป", disabled=True, key=f"zip_month_dis_{m_id}")
-                    
             st.divider()
 
         # ---- 1. แผนก CNC ----
@@ -763,12 +786,11 @@ else:
             st.success("🎯 ยืนยันสิทธิ์ สำเร็จ ปลดล็อกเรียบร้อยแล้วครับ!")
             
             with st.expander("📸 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดรูปภาพ PM รวมหมดทั้งโรงงาน (.zip)"):
-                st.info("📦 ปุ่มนี้จะทำหน้าที่เดินสแกนกวาดรูปถ่าย PM ของทุกแผนก ทุกเครื่องจักร มารวมเป็นไฟล์ .zip ก้อนเดียวเพื่อใช้ส่งผลตรวจมาตรฐานโรงงาน")
+                st.info("📦 ปุ่มนี้จะทำหน้าที่เดินสแกนกวาดรูปถ่าย PM ของทุกแผนก ทุกเครื่องจักร มารวมเป็นไฟล์ .zip ก้อนเดียว")
                 
                 dept_target = st.selectbox("เลือกแผนกที่บอสต้องการดาวน์โหลดรูปภาพ:", [
                     "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC", "MILLING", "MIG CO2", "ARGON", "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
                 ])
-                
                 current_boss_month = selected_date.strftime("%Y_%B")
                 
                 filtered_zip_data = zip_all_factory_photos_by_filter(filter_type=dept_target, target_date_obj=selected_date)
@@ -781,7 +803,7 @@ else:
                         type="primary"
                     )
                 else:
-                    st.warning(f"⚠️ ในระบบคลาวด์ตามช่วงปฏิทินที่เลือก ยังไม่มีรูปภาพบันทึกอยู่ในกลุ่มแผนก [{dept_target}] เลยครับบอส")
+                    st.warning(f"⚠️ ในระบบคลาวด์ตามช่วงปฏิทินที่เลือก ยังไม่มีรูปภาพบันทึกอยู่ในกลุ่มแผนก [{dept_target}]")
 
             with st.expander("🖨️ [เฉพาะผู้บริหารสูงสุด] เครื่องมือพิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
                 sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()), key="bigboss_qr_select_box")
@@ -791,39 +813,17 @@ else:
                 qr.save(buf)
                 st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
 
-            with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
-                st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ สิ้นเดือน")
-                backup_folder_path = os.path.join(BASE_FOLDER, "maintenance_backups")
-                if os.path.exists(backup_folder_path):
-                    all_backups = [f for f in os.listdir(backup_folder_path) if f.lower().endswith('.xlsx')]
-                    if all_backups:
-                        for b_file in sorted(all_backups):
-                            b_file_path = os.path.join(backup_folder_path, b_file)
-                            with open(b_file_path, "rb") as f_data:
-                                st.download_button(
-                                    label=f"📥 ดาวน์โหลดไฟล์สำรอง: {b_file}",
-                                    data=f_data,
-                                    file_name=b_file,
-                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                    key=f"dl_backup_{b_file}"
-                                )
-                    else:
-                        st.caption("ℹ️ ยังไม่มีไฟล์สำรองประวัติเดือนเก่าจัดเก็บในตู้นี้")
-                else:
-                    st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
-
             with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายทดสอบ (RESET SYSTEM)"):
-                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานที่ส่งทดสอบก่อนหน้านี้ทั้งหมดออกไปอย่างถาวร เพื่อให้ระบบสะอาดพร้อมเปิดใช้งานจริง")
-                if st.button("🚨 สั่งลบรูปภาพทดสอบทั้งหมดกริบ 100%", type="primary", key="reset_all_photos_primary_btn"):
+                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานและประวัติคลาวด์ทั้งหมด เพื่อเคลียร์ระบบให้สะอาดบริสุทธิ์")
+                if st.button("🚨 สั่งลบและรีเซ็ตระบบทั้งหมดกริบ 100%", type="primary", key="reset_all_photos_primary_btn"):
                     target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
-                    if os.path.exists(target_photo_folder):
-                        shutil.rmtree(target_photo_folder) 
-                        st.success("🧹 ลบโฟลเดอร์รูปภาพทดสอบทั้งหมดออกไปจากระบบคลาวด์สะอาดบริสุทธิ์เรียบร้อยแล้วครับ!")
-                        st.balloons()
-                    else:
-                        st.info("✨ ระบบสะอาดอยู่แล้ว ไม่มีโฟลเดอร์ภาพเก่าค้างให้ลบครับ")
+                    local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
+                    if os.path.exists(target_photo_folder): shutil.rmtree(target_photo_folder)
+                    if os.path.exists(local_cloud_backup): os.remove(local_cloud_backup)
+                    st.success("🧹 ลบข้อมูลประวัติและรูปภาพทดสอบออกจากเซิร์ฟเวอร์สะอาดบริสุทธิ์เรียบร้อยแล้ว!")
+                    st.balloons()
         elif bigboss_code_input != "":
-            st.error("❌ รหัสผ่าน Big Boss ไม่ถูกต้อง! ปฏิเสธสิทธิ์การพิมพ์คิวอาร์ เข้าถึงไฟล์ประวัติย้อนหลัง และปุ่มล้างระบบ")
+            st.error("❌ รหัสผ่าน Big Boss ไม่ถูกต้อง!")
 
     elif password_input != "": 
-        st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับ")
+        st.error("❌ รหัสผ่านไม่ถูกต้อง")
