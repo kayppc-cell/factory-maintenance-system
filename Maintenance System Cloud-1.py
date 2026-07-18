@@ -18,13 +18,9 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 
-# 🎯 ประกาศเวลาสตรีมสดส่วนกลาง ป้องกัน NameError หายขาดถาวร!
+# 🎯 ตัวแปรเวลาสตรีมสดส่วนกลาง
 now = datetime.datetime.now()
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
-
-# ลิงก์คลาวด์ Google Sheets ของบอสอมตะคลาวด์
-GSHEET_URL = "https://docs.google.com/spreadsheets/d/10TX0htwHAV9w7D7bm2plo5iBsSQ1iudPFFhsZiBNlu8/edit?usp=sharing"
-GSHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/10TX0htwHAV9w7D7bm2plo5iBsSQ1iudPFFhsZiBNlu8/export?format=csv"
 
 # รหัสความปลอดภัยประจำโรงงาน
 BOSS_PASSWORD = "boss1234"
@@ -145,7 +141,7 @@ CHECKLISTS = {
         "ตรวจสอบการทำงานของไฟฟ้าแสงสว่างของเครื่อง", "ตรวจสอบฟันพับของร่อง  V",
         "ตรวจสอบความพร้อมและสภาพโดยรวมของเครื่องจักรและอุกรณ์เสริมต่าง ๆ"
     ],
-    "MIG CO2": ["ตรวจสภาพความพร้อมโดยรวมของเครื่อง", "เช็ค BREAKER เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์ และสวิชท์ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดัน ของก๊าซ CO2 และปรับตั้งอย่างถูกต้อง", "ตรวจจุดต่อของก๊าซ CO2 รั่วหรือไม่", "ตรวจสภาพความพร้อมของสายไฟ สายก๊าซ  CO2 ว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราวด์", "ทำความสะอาดหัวเชื่อมก่อนใช้งาน"],
+    "MIG CO2": ["ตรวจสภาพความพร้อมโดยรวม of เครื่อง", "เช็ค BREAKER เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์ และสวิชท์ต่าง ๆ", "ตรวจสภาพความพร้อมofมาตราวัดแรงดัน ของก๊าซ CO2 และปรับตั้งอย่างถูกต้อง", "ตรวจจุดต่อของก๊าซ CO2 รั่วหรือไม่", "ตรวจสภาพความพร้อมของสายไฟ สายก๊าซ  CO2 ว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราวด์", "ทำความสะอาดหัวเชื่อมก่อนใช้งาน"],
     "ARGON": [
         "ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", 
         "ตรวจสภาพความพร้อมของมาตราวัดแรงดันของมาตรา วัดแรงดันของก๊าช  ARGON  และปรับตั้งอย่างถูกวิธี", "ตรวจุดต่อของสายก๊าช  ARGON  ก่อนว่ารั่วหรือไม่", 
@@ -160,7 +156,7 @@ CHECKLISTS = {
     ],
     "BAND SAW": ["เช็ค Auto Up-Down Back Gauge และ Manual (ความคล่องตัวในการเคลื่อนที่ of Spindle)", "เช็คระดับน้ำมันไฮดรอลิค", "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั๊ม COOLANT และสภาพของน้ำ COOLANT", "ตรวจสอบ Switch (สวิตซ์) หน้า BOX CONTROL", "ตรวจสอบระดับน้ำมันหล่อลื่นในห้องเกียร์"],
     "FORKLIFT": [
-        "ตรวจเช็คระบบน้ำหม้อน้ำให้อยู่ในระดับ Hight", "ตรวจเช็คน้ำมันเครื่องยนต์ต้องอยู่ไม่เกินขีดที่3ของตัวเช็ค", "ตรวจเช็คไส้กรองและเป่าลมทำความสะอาด",
+        "ตรวจเช็คระบบน้ำหม้อน้ำให้อยู่ในระดับ Hight", "ตรวจเช็คน้ำมันเครื่องยนต์ต้องอยู่ไม่เกินขีดที่3ofตัวเช็ค", "ตรวจเช็คไส้กรองและเป่าลมทำความสะอาด",
         "ตรวจเช็คการรั่วซึมofน้ำมันไฮดรอริก", "ตรวจเช็คระบบเบรคและน้ำมันเบรค", "ตรวจเช็คไฟส่องสว่างและไฟเลี้ยว",
         "ตรวจเช็คสัญญานแตร"
     ]
@@ -204,6 +200,7 @@ def get_unmerged_cell(ws, coordinate_str):
             return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
     return cell
 
+# --- 2. 🛡️ ฟังก์ชันคลาวด์กระจกเงาคู่ขนาน (อยู่ยงคงกระพัน 100%) ---
 def save_log_to_gsheet(machine_id, day_num, year_month, tech_name, checklist_item, item_no, status, note, role="tech"):
     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
     new_data = {
@@ -235,6 +232,7 @@ def fetch_logs_from_gsheet(machine_id, year_month):
     except:
         return pd.DataFrame()
 
+# --- 3. PHOTO FUNCTIONS ---
 def save_uploaded_photos_list(machine_id, day_num, item_index, files_list, current_date_obj):
     saved_paths = []
     if files_list:
@@ -386,13 +384,6 @@ def generate_excel_from_cloud_logs(machine_id, target_date_obj, m_type):
         print(f"Excel Generation Error: {e}")
         return None
 
-def send_line_alert(msg_text):
-    url = 'https://api.line.me/v2/bot/message/push'
-    headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
-    payload = {"to": LINE_TARGET_ID, "messages": [{"type": "text", "text": msg_text}]}
-    try: requests.post(url, headers=headers, data=json.dumps(payload))
-    except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
-
 # --- 5. UI NAVIGATION SIDEBAR & QUERY PARAMETERS ---
 st.set_page_config(page_title="Smart Factory PM SYSTEM", page_icon="🔧", layout="wide")
 
@@ -458,7 +449,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
     st.info("📄 มาตรฐานระบบคุณภาพโรงงาน: **FM-MN-07 Rev.00**")
-    st.markdown(f"🔗 [🔗 คลิกเปิดดูบอร์ดฐานข้อมูลกลางของโรงงานบน Google Sheets]({GSHEET_URL})")
 
     if machine_id in MACHINES: st.success(f"⚙️ คุณกำลังตรวจเครื่อง: **{machine_id} ({MACHINES[machine_id]})**")
     else: st.error(f"⚠️ ไม่พบรหัสเครื่อง '{machine_id}' ในทะเบียนกลาง")
@@ -485,7 +475,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             results[item] = {"status": status, "note": note, "index": i}
             st.divider()
 
-        submitted = st.form_submit_button("💾 ส่งรายงานการตรวจเช็คประจำวันเข้าสู่ระบบคลาวด์ (SUBMIT)")
+        submitted = st.form_submit_button("💾 ส่งรายงานการตรวจเช็คประจำวันเข้าสู่ระบบกระจกเงาคลาวด์ (SUBMIT)")
 
     if submitted:
         if machine_id not in MACHINES: st.error("❌ รหัสเครื่องจักรไม่ถูกต้อง")
@@ -532,7 +522,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ (ลงตาราง ⨂):\n" + "\n".join(fixed_items)
                 send_line_alert(ok_msg + audit_tag)
                 
-            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} ลงระบบฐานข้อมูลคลาวด์สำเร็จ! ข้อมูลถูกล็อกถาวรแล้ว ปลอดภัย 100%")
+            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} ลงระบบฐานข้อมูลสำเร็จ! สิ้นเดือนไม่มั่ว แยกสัดส่วนรายวันรายเดือนเรียบร้อย")
 
 # ==========================================
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ล็อกอินตรวจสอบและกดอนุมัติฟอร์ม]
@@ -541,7 +531,6 @@ else:
     st.image("Logo_Pes.png", width=240)
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
-    st.markdown(f"📊 [🔗 ลิงก์ตรงเปิดดูแผ่นชีตพิกัดกลาง Google Sheets]({GSHEET_URL})")
     
     selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและดูรูปภาพย้อนหลัง:", value=datetime.date.today())
     target_day_check = selected_date.day
@@ -580,7 +569,7 @@ else:
                     checklist_item="BOSS APPROVAL Signature",
                     item_no=0,
                     status="APPROVED",
-                    note="ลงนามผ่านระบบคลาวด์สมบูรณ์",
+                    note="ลงนามดิจิทัลสำเร็จ",
                     role="boss"
                 )
                 st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
@@ -604,7 +593,7 @@ else:
                         notes_text_list.append(f"[วัน {int(row['Day_Num'])}]: {row['Note']}")
             current_notes = " / ".join(notes_text_list) if notes_text_list else "เครื่องจักรสถานะปกติ"
             
-            st.text_area(f"📝 รายการอาการเสียสะสมคลาวด์ [ดึงสดจาก Google Sheets]", value=current_notes, key=f"note_area_{m_id}", height=100, disabled=True)
+            st.text_area(f"📝 รายการอาการเสียสะสมคลาวด์ [ดึงสดจากกระจกหลังบ้าน]", value=current_notes, key=f"note_area_{m_id}", height=100, disabled=True)
 
             st.write("---")
             st.caption(f"📅 **เลือกดาวน์โหลดรูปภาพและฟอร์ม ISO ของ {m_id}:**")
@@ -758,11 +747,26 @@ else:
         # 👑 พื้นที่ควบคุมระดับความปลอดภัยสูงสุด (สำหรับผู้บริหารสูงสุด)
         st.markdown("---")
         st.write("### 👑 พื้นที่ควบคุมระดับความปลอดภัยสูงสุด (สำหรับผู้บริหาร)")
-        bigboss_code_input = st.text_input("🔐 กรุณากรอกรหัสผ่านผู้บริหาร เพื่อเปิดตู้นิรภัย พิมพ์คิวอาร์โค้ด และระบบล้างประวัติหลังบ้าน:", type="password", key="bigboss_secret_key_field")
+        bigboss_code_input = st.text_input("🔐 กรุณากรอกรหัสผ่านผู้บริหาร เพื่อดาวน์โหลดฐานข้อมูลคลาวด์ดิบ พิมพ์คิวอาร์โค้ด และระบบล้างประวัติหลังบ้าน:", type="password", key="bigboss_secret_key_field")
         
         if bigboss_code_input == BIGBOSS_PASSWORD:
             st.success("🎯 ยืนยันสิทธิ์ สำเร็จ ปลดล็อกเรียบร้อยแล้วครับ!")
             
+            with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดไฟล์ดิบฐานข้อมูลหลัก (DATABASE BLACKUP DISK)"):
+                st.info("📂 ปุ่มนี้ทำหน้าที่ดึงไฟล์ประวัติการติ๊กและหมายเหตุสะสมทั้งหมดของเครื่องจักรทุกแผนกบนระบบคลาวด์ออกมาเป็นไฟล์ .csv เพื่อเก็บเป็นประวัติถาวรในคอมพิวเตอร์ของบอส")
+                local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
+                if os.path.exists(local_cloud_backup):
+                    with open(local_cloud_backup, "rb") as f_data:
+                        st.download_button(
+                            label="📥 ดาวน์โหลดไฟล์ฐานข้อมูลดิบกลาง (gsheet_cloud_mirror.csv)",
+                            data=f_data,
+                            file_name=f"Backup_Master_Database_{datetime.datetime.now().strftime('%Y_%m_%d')}.csv",
+                            mime="text/csv",
+                            type="primary"
+                        )
+                else:
+                    st.caption("ℹ️ ระบบพร้อมจัดเก็บ (จะปรากฏปุ่มให้ดาวน์โหลดเมื่อช่างมีการคีย์งานส่งเข้ามาคนแรกครับ)")
+
             with st.expander("📸 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดรูปภาพ PM รวมหมดทั้งโรงงาน (.zip)"):
                 st.info("📦 ปุ่มนี้จะทำหน้าที่เดินสแกนกวาดรูปถ่าย PM ของทุกแผนก ทุกเครื่องจักร มารวมเป็นไฟล์ .zip ก้อนเดียว")
                 
@@ -777,8 +781,7 @@ else:
                         label=f"📥 ดาวน์โหลดรูปภาพแผนก [{dept_target}]", 
                         data=filtered_zip_data, 
                         file_name=f"Photos_Filter_{dept_target}_{current_boss_month}.zip", 
-                        mime="application/zip", 
-                        type="primary"
+                        mime="application/zip"
                     )
                 else:
                     st.warning(f"⚠️ ในระบบคลาวด์ตามช่วงปฏิทินที่เลือก ยังไม่มีรูปภาพบันทึกอยู่ในกลุ่มแผนก [{dept_target}]")
