@@ -229,7 +229,7 @@ def fetch_logs_from_mirror_db(machine_id, year_month):
         return pd.DataFrame()
 
 def apply_mirror_history_to_excel(machine_id, year_month, m_type):
-    """🎯 แก้ไขจุดหัวใจสำคัญ: กวาดข้อมูลกระจกเงาเขียนลง Excel แบบรวมวันเดียว ไม่เบิ้ลซ้ำ!"""
+    """กวาดข้อมูลกระจกเงาเขียนลง Excel แบบไม่เบิ้ลซ้ำ และซ่อมบั๊กตำแหน่งเซลล์อนุมัติ"""
     target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
     if not os.path.isfile(target_excel_path):
         return
@@ -241,7 +241,6 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
         ws = wb.active
         t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
         
-        # 1. เคลียร์ช่อง Note B ก่อนรวมประวัติใหม่ทั้งหมด ป้องกันการเขียนเบิ้ลสะสม
         note_cell = get_unmerged_cell(ws, n_cell)
         note_cell.value = ""
         
@@ -268,7 +267,6 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
                 tech_cell.value = row["Tech_Name"]
                 tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
                 
-                # เก็บข้อความแยกตามวัน ไม่ให้เบิ้ลซ้ำ
                 if str(row["Note"]).strip() and str(row["Note"]) != "nan":
                     if day_val not in notes_by_day:
                         notes_by_day[day_val] = []
@@ -276,11 +274,11 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
                         notes_by_day[day_val].append(str(row["Note"]).strip())
 
             elif row["Role"] == "boss":
+                # 🎯 [จุดแก้ไขถอดถอนบั๊กระเบิด]: ใช้ boss_row แทน col_letter
                 boss_cell = get_unmerged_cell(ws, f"{col_letter}{boss_row}")
                 boss_cell.value = row["Tech_Name"]
                 boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
 
-        # 2. นำข้อความที่รวบรวมได้ พ่นลงช่อง Note B บรรทัดเดียวจบ สวยงาม
         final_notes_list = []
         for d_key in sorted(notes_by_day.keys()):
             day_txt = f"[วันที่ {d_key}]: " + ", ".join(notes_by_day[d_key])
@@ -395,7 +393,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         check_col_1 = get_column_letter(3) 
         first_cell_of_month = get_unmerged_cell(ws, f"{check_col_1}{t_row}")
         
-        # ล้างตารางเริ่มเดือนใหม่
         if day_num == 1 and (first_cell_of_month.value is None or first_cell_of_month.value == ""):
             backup_folder = os.path.join(BASE_FOLDER, "maintenance_backups")
             if not os.path.exists(backup_folder): os.makedirs(backup_folder, exist_ok=True)
@@ -565,7 +562,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if saved_paths: 
                     photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ ({len(saved_paths)} รูป)")
             
-            # บันทึกประวัติลงฐานข้อมูลเงา
             for i, item in enumerate(current_checklist, 1):
                 save_log_to_mirror_db(machine_id, current_day, year_month_key, tech_name, item, i, results[item]["status"], results[item]["note"], "tech")
 
