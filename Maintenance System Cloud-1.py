@@ -18,11 +18,12 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 
-# รหัสความปลอดภัยประจำโรงงาน
 BOSS_PASSWORD = "boss1234"
 BIGBOSS_PASSWORD = "bigboss9999"
 
-# ทะเบียนเครื่องจักรกลางประจำโรงงาน
+now = datetime.datetime.now()
+current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
+
 MACHINES = {
     "CNC3X-01": "CNC 3 แกน #01", "CNC3X-02": "CNC 3 แกน #02",
     "CNC3X-03": "CNC 3 แกน #03", "CNC3X-04": "CNC 3 แกน #04",
@@ -66,7 +67,6 @@ MACHINES = {
     "FORKLIFT-01": "รถโฟคลิฟ FORKLIFT #01"
 }
 
-# รายการเช็คลิสต์แยกตามประเภทแผนก
 CHECKLISTS = {
     "CNC": [
         "Worm up เครื่องจักร 15 นาที ทุกครั้งที่ใช้งาน", "เช็คระดับนำมัน Oil Matic Mesh ทุกวัน เติมเมื่อพร่อง",
@@ -196,7 +196,7 @@ def get_unmerged_cell(ws, coordinate_str):
             return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
     return cell
 
-# --- 2. 🛡️ ฐานข้อมูลเงารองรับประวัติถาวร (เบื้องหลัง) ---
+# --- 2. 🛡️ ฐานข้อมูลกระจกเงาคู่ขนานรักษาประวัติถาวร ---
 def save_log_to_mirror_db(machine_id, day_num, year_month, tech_name, checklist_item, item_no, status, note, role="tech"):
     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
     new_data = {
@@ -229,7 +229,7 @@ def fetch_logs_from_mirror_db(machine_id, year_month):
         return pd.DataFrame()
 
 def apply_mirror_history_to_excel(machine_id, year_month, m_type):
-    """ฟังก์ชันกู้คืนระบบอัตโนมัติเมื่อข้อมูลหาย: กวาดข้อมูลกระจกเงาเขียนลง Excel เสมอ"""
+    """🎯 แก้ไขจุดหัวใจสำคัญ: กวาดข้อมูลกระจกเงาเขียนลง Excel แบบรวมวันเดียว ไม่เบิ้ลซ้ำ!"""
     target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
     if not os.path.isfile(target_excel_path):
         return
@@ -240,9 +240,14 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
         t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
-        checklist_items = CHECKLISTS[m_type]
+        
+        # 1. เคลียร์ช่อง Note B ก่อนรวมประวัติใหม่ทั้งหมด ป้องกันการเขียนเบิ้ลสะสม
+        note_cell = get_unmerged_cell(ws, n_cell)
+        note_cell.value = ""
         
         df_logs = df_logs.sort_values(by="Timestamp")
+        notes_by_day = {}
+        
         for _, row in df_logs.iterrows():
             day_val = int(row["Day_Num"])
             col_letter = get_column_letter(2 + day_val)
@@ -263,19 +268,28 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
                 tech_cell.value = row["Tech_Name"]
                 tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
                 
+                # เก็บข้อความแยกตามวัน ไม่ให้เบิ้ลซ้ำ
                 if str(row["Note"]).strip() and str(row["Note"]) != "nan":
-                    note_cell = get_unmerged_cell(ws, n_cell)
-                    old_note = str(note_cell.value).strip() if note_cell.value else ""
-                    append_txt = f"[วันที่ {day_val}]: " + str(row["Note"])
-                    if old_note and old_note != "None" and old_note != "":
-                        note_cell.value = old_note + ",  " + append_txt
-                    else:
-                        note_cell.value = append_txt
-                    note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+                    if day_val not in notes_by_day:
+                        notes_by_day[day_val] = []
+                    if str(row["Note"]).strip() not in notes_by_day[day_val]:
+                        notes_by_day[day_val].append(str(row["Note"]).strip())
+
             elif row["Role"] == "boss":
-                boss_cell = get_unmerged_cell(ws, f"{col_letter}{col_letter}")
+                boss_cell = get_unmerged_cell(ws, f"{col_letter}{boss_row}")
                 boss_cell.value = row["Tech_Name"]
                 boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
+
+        # 2. นำข้อความที่รวบรวมได้ พ่นลงช่อง Note B บรรทัดเดียวจบ สวยงาม
+        final_notes_list = []
+        for d_key in sorted(notes_by_day.keys()):
+            day_txt = f"[วันที่ {d_key}]: " + ", ".join(notes_by_day[d_key])
+            final_notes_list.append(day_txt)
+            
+        if final_notes_list:
+            note_cell.value = ",  ".join(final_notes_list)
+            note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+
         wb.save(target_excel_path)
     except:
         pass
@@ -370,7 +384,6 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
     except:
         return None
 
-# 🌟 ฟังก์ชันหลักสำหรับเขียนลง Excel จริง (คงเดิมไว้ตามสูตรบอส 100%)
 def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_type):
     target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
     if not os.path.isfile(target_excel_path): return False, f"ไม่พบไฟล์แบบฟอร์ม `{target_excel_path}` บนระบบคลาวด์"
@@ -382,6 +395,7 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
         check_col_1 = get_column_letter(3) 
         first_cell_of_month = get_unmerged_cell(ws, f"{check_col_1}{t_row}")
         
+        # ล้างตารางเริ่มเดือนใหม่
         if day_num == 1 and (first_cell_of_month.value is None or first_cell_of_month.value == ""):
             backup_folder = os.path.join(BASE_FOLDER, "maintenance_backups")
             if not os.path.exists(backup_folder): os.makedirs(backup_folder, exist_ok=True)
@@ -410,36 +424,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             note_cell.value = ""
             note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
-        col_letter = get_column_letter(2 + day_num)
-        checklist_items = CHECKLISTS[m_type]
-        
-        for i, item in enumerate(checklist_items, 1):
-            cell_coordinate = f"{col_letter}{5 + i}"
-            current_cell = get_unmerged_cell(ws, cell_coordinate)
-            if item in results_dict:
-                status_val = results_dict[item]["status"]
-                if status_val == "ใช้งานได้ปกติ": current_cell.value = "/"
-                elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": current_cell.value = "⨂"
-                elif status_val == "ใช้งานไม่ได้ต้องแก้ไข": current_cell.value = "X"
-                elif status_val == "ไม่ได้ทำงาน": current_cell.value = "-"
-                current_cell.alignment = Alignment(horizontal='center', vertical='center')
-                
-        tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")
-        tech_cell.value = tech_name
-        tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
-        
-        note_cell = get_unmerged_cell(ws, n_cell)
-        old_val = str(note_cell.value).strip() if note_cell.value else ""
-        notes_collected = [results_dict[item]["note"] for item in checklist_items if results_dict[item]["note"]]
-        
-        if notes_collected:
-            new_note_text = f"[วันที่ {day_num}]: " + ", ".join(notes_collected)
-            if old_val and old_val != "None" and old_val != "เครื่องจักรปกติ" and old_val != "":
-                note_cell.value = old_val + ",  " + new_note_text
-            else:
-                note_cell.value = new_note_text
-        note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-            
         wb.save(target_excel_path)
         return True, ""
     except Exception as e:
@@ -550,9 +534,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     current_day = report_date.day
     year_month_key = report_date.strftime("%Y_%B")
 
-    # 🦾 ระบบป้องกันไฟล์หายจำลอง: ถ้าตรวจพบเงาเบื้องหลัง ให้ดึงมาช้อนเติมไฟล์จริงกันเหนียวทันที
-    apply_mirror_history_to_excel(machine_id, year_month_key, m_type_selected)
-
     with st.form("pm_form"):
         tech_name = st.text_input("👤 ชื่อช่างผู้ตรวจเช็ค (ผู้รับผิดชอบ)", placeholder="ระบุชื่อ-นามสกุลของคุณ")
         results, uploaded_photos = {}, {}
@@ -584,7 +565,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if saved_paths: 
                     photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ ({len(saved_paths)} รูป)")
             
-            # 🚀 บันทึกประวัติลงไฟล์เงาหลังบ้านเบื้องหลังแบบ Append เพื่อความอมตะ 100%
+            # บันทึกประวัติลงฐานข้อมูลเงา
             for i, item in enumerate(current_checklist, 1):
                 save_log_to_mirror_db(machine_id, current_day, year_month_key, tech_name, item, i, results[item]["status"], results[item]["note"], "tech")
 
@@ -595,24 +576,22 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if status_val == "ใช้งานไม่ได้ต้องแก้ไข": fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
                 elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
             
-            success, err_msg = update_iso_excel_by_tech(machine_id, current_day, results, tech_name, m_type_selected)
-            if success:
-                photo_status_str = "\n".join(photo_logs)
-                boss_review_url = f"https://pes-maintenance.streamlit.app/?role=boss&id={machine_id}"
-                audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
-                
-                if fails:
-                    summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ รายการที่ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
-                    if fixed_items: summary_msg += "\n\n🛠️ รายการที่ช่างแก้ไขเสร็จทันที:\n" + "\n".join(fixed_items)
-                    send_line_alert(summary_msg + audit_tag)
-                    st.warning("พบจุดบกพร่อง! ส่งการแจ้งเตือนเตือนเข้าไลน์กลุ่มช่างแล้ว")
-                else:
-                    ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n✅ ผลการตรวจสอบ: ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
-                    if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ (ลงตาราง ⨂):\n" + "\n".join(fixed_items)
-                    send_line_alert(ok_msg + audit_tag)
-                st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลอัปเดตและบันทึกเรียบร้อยแล้ว")
+            update_iso_excel_by_tech(machine_id, current_day, results, tech_name, m_type_selected)
+            apply_mirror_history_to_excel(machine_id, year_month_key, m_type_selected)
+            
+            boss_review_url = f"https://pes-maintenance.streamlit.app/?role=boss&id={machine_id}"
+            audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
+            
+            if fails:
+                summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ รายการที่ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
+                if fixed_items: summary_msg += "\n\n🛠️ รายการที่ช่างแก้ไขเสร็จทันที:\n" + "\n".join(fixed_items)
+                send_line_alert(summary_msg + audit_tag)
+                st.warning("พบจุดบกพร่อง! ส่งการแจ้งเตือนเตือนเข้าไลน์กลุ่มช่างแล้ว")
             else:
-                st.error(f"เกิดข้อผิดพลาดในการบันทึก Excel: {err_msg}")
+                ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n✅ ผลการตรวจสอบ: ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
+                if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ (ลงตาราง ⨂):\n" + "\n".join(fixed_items)
+                send_line_alert(ok_msg + audit_tag)
+            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลอัปเดตเรียบร้อยแล้ว")
 
 # ==========================================
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ล็อกอินตรวจสอบและกดอนุมัติฟอร์ม]
@@ -649,7 +628,6 @@ else:
         st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
    
         def render_machine_card(m_id, m_name, m_type_flag):
-            # 🎯 [ความลับปลดล็อกปุ่มเทา]: ซ่อมแซมรักษากลไกการดึงชื่อไฟล์ตามเงื่อนไขของบอสให้เสถียรไร้ที่ติ
             target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{m_id}.xlsx")
             apply_mirror_history_to_excel(m_id, year_month_key, m_type_flag)
             
@@ -839,7 +817,6 @@ else:
         fork_col1, = st.columns(1)
         with fork_col1: render_machine_card("FORKLIFT-01", MACHINES["FORKLIFT-01"], "FORKLIFT")
 
-        # 👑 พื้นที่ควบคุมระดับความปลอดภัยสูงสุด (สำหรับผู้บริหารสูงสุด)
         st.markdown("---")
         st.write("### 👑 พื้นที่ควบคุมระดับความปลอดภัยสูงสุด (สำหรับผู้บริหาร)")
         bigboss_code_input = st.text_input("🔐 กรุณากรอกรหัสผ่านผู้บริหาร เพื่อเปิดตู้นิรภัย พิมพ์คิวอาร์โค้ด และระบบล้างประวัติหลังบ้าน:", type="password", key="bigboss_secret_key_field")
