@@ -11,6 +11,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment
 import zipfile
 import pandas as pd
+import base64
 
 # --- 1. CONFIGURATION ---
 LINE_ACCESS_TOKEN = "SOs7DeGwVsFpuK/JN8zm58Wn3EOiB75Ww0q57z1/yht4H1imzYonre4QuPfQ3cxbJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lYwCp4biq7N20ffJqzGm+ZYNgtEzt2rYZ/GYVRV725EiAdB04t89/1O/w1cDnyilFU="
@@ -196,6 +197,46 @@ def get_unmerged_cell(ws, coordinate_str):
             return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
     return cell
 
+# --- 🎯 🌟 ฟังก์ชันมหาอมตะ AUTO-PUSH ข้อมูลขึ้น GITHUB อัตโนมัติ ---
+def push_file_to_github(file_path_relative, commit_message="Auto-update maintenance data"):
+    try:
+        token = st.secrets.get("GITHUB_TOKEN")
+        repo = st.secrets.get("GITHUB_REPO")
+        if not token or not repo:
+            return False
+            
+        full_file_path = os.path.join(BASE_FOLDER, file_path_relative)
+        if not os.path.exists(full_file_path):
+            return False
+            
+        url = f"https://api.github.com/repos/{repo}/contents/{file_path_relative}"
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        with open(full_file_path, "rb") as f:
+            content = base64.b64encode(f.read()).decode("utf-8")
+            
+        # ดึง sha ของไฟล์เดิมถ้ามีอยู่แล้ว
+        sha = None
+        get_res = requests.get(url, headers=headers)
+        if get_res.status_code == 200:
+            sha = get_res.json().get("sha")
+            
+        payload = {
+            "message": commit_message,
+            "content": content
+        }
+        if sha:
+            payload["sha"] = sha
+            
+        put_res = requests.put(url, headers=headers, data=json.dumps(payload))
+        return put_res.status_code in [200, 201]
+    except Exception as e:
+        print(f"GitHub Push Error: {e}")
+        return False
+
 # --- 2. 🛡️ ฐานข้อมูลกระจกเงาคู่ขนานรักษาประวัติถาวร ---
 def save_log_to_mirror_db(machine_id, day_num, year_month, tech_name, checklist_item, item_no, status, note, role="tech"):
     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
@@ -216,6 +257,9 @@ def save_log_to_mirror_db(machine_id, day_num, year_month, tech_name, checklist_
         df_new.to_csv(local_cloud_backup, index=False, encoding="utf-8-sig")
     else:
         df_new.to_csv(local_cloud_backup, mode='a', header=False, index=False, encoding="utf-8-sig")
+        
+    # สั่ง Push ไฟล์ CSV ขึ้น GitHub ทันที
+    push_file_to_github("gsheet_cloud_mirror.csv", f"Auto-Sync CSV for {machine_id} Day {day_num}")
 
 def fetch_logs_from_mirror_db(machine_id, year_month):
     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
@@ -229,8 +273,9 @@ def fetch_logs_from_mirror_db(machine_id, year_month):
         return pd.DataFrame()
 
 def apply_mirror_history_to_excel(machine_id, year_month, m_type):
-    """กวาดข้อมูลกระจกเงาเขียนลง Excel แบบไม่เบิ้ลซ้ำ และซ่อมบั๊กตำแหน่งเซลล์อนุมัติ"""
-    target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
+    """กวาดข้อมูลกระจกเงาเขียนลง Excel แบบไม่เบิ้ลซ้ำ"""
+    excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
+    target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
     if not os.path.isfile(target_excel_path):
         return
     df_logs = fetch_logs_from_mirror_db(machine_id, year_month)
@@ -274,7 +319,6 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
                         notes_by_day[day_val].append(str(row["Note"]).strip())
 
             elif row["Role"] == "boss":
-                # 🎯 [จุดแก้ไขถอดถอนบั๊กระเบิด]: ใช้ boss_row แทน col_letter
                 boss_cell = get_unmerged_cell(ws, f"{col_letter}{boss_row}")
                 boss_cell.value = row["Tech_Name"]
                 boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
@@ -383,7 +427,8 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
         return None
 
 def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_type):
-    target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
+    excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
+    target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
     if not os.path.isfile(target_excel_path): return False, f"ไม่พบไฟล์แบบฟอร์ม `{target_excel_path}` บนระบบคลาวด์"
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
@@ -422,12 +467,15 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
         wb.save(target_excel_path)
+        # สั่ง Push ไฟล์ Excel ขึ้น GitHub หลังอัปเดต
+        push_file_to_github(excel_file_name, f"Auto-Sync Excel {machine_id} Day {day_num}")
         return True, ""
     except Exception as e:
         return False, str(e)
 
 def approve_excel_by_boss(machine_id, day_num, boss_name, m_type):
-    target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
+    excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
+    target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
     if not os.path.isfile(target_excel_path): return False
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
@@ -439,6 +487,8 @@ def approve_excel_by_boss(machine_id, day_num, boss_name, m_type):
         boss_cell.value = boss_name
         boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
         wb.save(target_excel_path)
+        # สั่ง Push ไฟล์ Excel ขึ้น GitHub หลังบอสเซ็นอนุมัติ
+        push_file_to_github(excel_file_name, f"Auto-Sync Boss Approval {machine_id} Day {day_num}")
         return True
     except Exception as e: print(f"Boss approve error: {e}"); return False
 
@@ -587,7 +637,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n✅ ผลการตรวจสอบ: ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
                 if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ (ลงตาราง ⨂):\n" + "\n".join(fixed_items)
                 send_line_alert(ok_msg + audit_tag)
-            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลอัปเดตเรียบร้อยแล้ว")
+            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลอัปเดตและสำรองขึ้น GitHub เรียบร้อยแล้ว")
 
 # ==========================================
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ล็อกอินตรวจสอบและกดอนุมัติฟอร์ม]
@@ -880,7 +930,7 @@ else:
                                     key=f"dl_backup_{b_file}"
                                 )
                     else:
-                        st.caption("ℹ️ ยังไม่มีไฟล์สำรองประวัติเดือนเก่าจัดเก็บในตู้นี้")
+                        st.caption("ℹ️ ยังไม่มีไฟล์สำรองประวัติเดือนเก่าจัดเก็บในตูี้")
                 else:
                     st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
 
