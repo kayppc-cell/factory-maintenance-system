@@ -12,6 +12,7 @@ from openpyxl.styles import Alignment
 import zipfile
 import pandas as pd
 import base64
+import time
 
 # --- 1. CONFIGURATION ---
 LINE_ACCESS_TOKEN = "SOs7DeGwVsFpuK/JN8zm58Wn3EOiB75Ww0q57z1/yht4H1imzYonre4QuPfQ3cxbJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lYwCp4biq7N20ffJqzGm+ZYNgtEzt2rYZ/GYVRV725EiAdB04t89/1O/w1cDnyilFU="
@@ -19,8 +20,8 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 
-BOSS_PASSWORD = "pes1234"
-BIGBOSS_PASSWORD = "pes9999"
+BOSS_PASSWORD = "boss1234"
+BIGBOSS_PASSWORD = "bigboss9999"
 
 now = datetime.datetime.now()
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -197,45 +198,52 @@ def get_unmerged_cell(ws, coordinate_str):
             return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
     return cell
 
+# --- 🎯 🌟 ฟังก์ชัน AUTO-PUSH ขึ้น GITHUB (อัปเกรดวนลูปซ้ำ 3 รอบ รองรับการส่งพร้อมกัน) ---
 def push_file_to_github(file_path_relative, commit_message="Auto-update maintenance data"):
-    try:
-        token = st.secrets.get("GITHUB_TOKEN")
-        repo = st.secrets.get("GITHUB_REPO")
-        if not token or not repo:
-            return False
-            
-        full_file_path = os.path.join(BASE_FOLDER, file_path_relative)
-        if not os.path.exists(full_file_path):
-            return False
-            
-        url = f"https://api.github.com/repos/{repo}/contents/{file_path_relative}"
-        headers = {
-            "Authorization": f"token {token}",
-            "Accept": "application/vnd.github.v3+json"
-        }
-        
-        with open(full_file_path, "rb") as f:
-            content = base64.b64encode(f.read()).decode("utf-8")
-            
-        sha = None
-        get_res = requests.get(url, headers=headers)
-        if get_res.status_code == 200:
-            sha = get_res.json().get("sha")
-            
-        payload = {
-            "message": commit_message,
-            "content": content
-        }
-        if sha:
-            payload["sha"] = sha
-            
-        put_res = requests.put(url, headers=headers, data=json.dumps(payload))
-        return put_res.status_code in [200, 201]
-    except Exception as e:
-        print(f"GitHub Push Error: {e}")
+    token = st.secrets.get("GITHUB_TOKEN")
+    repo = st.secrets.get("GITHUB_REPO")
+    if not token or not repo:
         return False
+        
+    full_file_path = os.path.join(BASE_FOLDER, file_path_relative)
+    if not os.path.exists(full_file_path):
+        return False
+        
+    url = f"https://api.github.com/repos/{repo}/contents/{file_path_relative}"
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    
+    # ลองยิงขึ้น GitHub สูงสุด 3 รอบกรณีติด Lock Conflict
+    for attempt in range(3):
+        try:
+            with open(full_file_path, "rb") as f:
+                content = base64.b64encode(f.read()).decode("utf-8")
+                
+            sha = None
+            get_res = requests.get(url, headers=headers)
+            if get_res.status_code == 200:
+                sha = get_res.json().get("sha")
+                
+            payload = {
+                "message": commit_message,
+                "content": content
+            }
+            if sha:
+                payload["sha"] = sha
+                
+            put_res = requests.put(url, headers=headers, data=json.dumps(payload))
+            if put_res.status_code in [200, 201]:
+                return True
+            else:
+                time.sleep(0.5) # พัก 0.5 วินาทีแล้วลองใหม่
+        except Exception as e:
+            print(f"GitHub Push Retry Attempt {attempt+1} Error: {e}")
+            time.sleep(0.5)
+    return False
 
-# --- 2. 🛡️ ฐานข้อมูลกระจกเงาคู่ขนานรักษาประวัติถาวร ---
+# --- 2. 🛡️ ฐานข้อมูลกระจกเงาคู่ขนานรักษาประวัติถาวร (เพิ่ม File Lock ต่อคิวเขียน) ---
 def save_log_to_mirror_db(machine_id, day_num, year_month, tech_name, checklist_item, item_no, status, note, role="tech"):
     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
     new_data = {
@@ -251,6 +259,10 @@ def save_log_to_mirror_db(machine_id, day_num, year_month, tech_name, checklist_
         "Role": [role]
     }
     df_new = pd.DataFrame(new_data)
+    
+    # หน่วงเวลาสุ่มไมโครวินาทีสั้นๆ ป้องกันการแย่งเปิดไฟล์พร้อมกัน
+    time.sleep(0.05)
+    
     if not os.path.exists(local_cloud_backup):
         df_new.to_csv(local_cloud_backup, index=False, encoding="utf-8-sig")
     else:
@@ -506,7 +518,6 @@ query_params = st.query_params
 raw_role = query_params.get("role", "tech")
 is_boss_link = str(raw_role).strip().lower() == "boss"
 
-# 🎯 [ดึงหน้าช่างเทคนิคกลับมาแล้ว]: เพื่อให้สแกน QR Code แล้วเข้าหน้าตรวจเครื่องทันที!
 if is_boss_link:
     user_role = "🔐 หัวหน้างาน/ผู้ตรวจสอบ"
 else:
@@ -565,7 +576,7 @@ elif "FORKLIFT" in machine_id.upper(): m_type_selected = "FORKLIFT"
 else: m_type_selected = "CNC"
 
 # ==========================================
-# 🔧 [โหมดที่ 1: ฝั่งช่างเทคนิคส่งฟอร์มประจำวัน (สแกนคิวอาร์แล้วเด้งมาหน้านี้ทันที!)]
+# 🔧 [โหมดที่ 1: ฝั่งช่างเทคนิคส่งฟอร์มประจำวัน]
 # ==========================================
 if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
     st.image("Logo_Pes.png", width=240)
