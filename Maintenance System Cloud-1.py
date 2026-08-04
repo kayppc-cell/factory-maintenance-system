@@ -506,15 +506,14 @@ query_params = st.query_params
 raw_role = query_params.get("role", "tech")
 is_boss_link = str(raw_role).strip().lower() == "boss"
 
-# 🎯 [ย้ายโซนผู้บริหารออกไว้ด้านนอก]: เพิ่มเมนูตัวเลือกผู้บริหารใน Sidebar
+# 🎯 [ปรับกลับมาเป็น 2 เมนูดั้งเดิมใน Sidebar]: เรียบหรู ใช้งานง่าย
 if is_boss_link:
     user_role = "🔐 หัวหน้างาน/ผู้ตรวจสอบ"
 else:
     st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
     user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", [
         "🔧 ช่างเทคนิค (ส่งฟอร์ม)", 
-        "🔐 หัวหน้างาน/ผู้ตรวจสอบ",
-        "👑 ผู้บริหารสูงสุด (Big Boss Zone)"
+        "🔐 หัวหน้างาน/ผู้ตรวจสอบ"
     ])
 
 now = datetime.datetime.now()
@@ -640,9 +639,9 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลอัปเดตและสำรองขึ้น GitHub เรียบร้อยแล้ว")
 
 # ==========================================
-# 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ล็อกอินตรวจสอบและกดอนุมัติฟอร์ม]
+# 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน / ผู้บริหารสูงสุด]
 # ==========================================
-elif user_role == "🔐 หัวหน้างาน/ผู้ตรวจสอบ":
+else:
     st.image("Logo_Pes.png", width=240)
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
@@ -653,13 +652,21 @@ elif user_role == "🔐 หัวหน้างาน/ผู้ตรวจส�
     
     st.subheader(f"📅 ประจำวันที่เลือก: {selected_date.strftime('%d/%m/%Y')} (คอลัมน์ Excel ช่องวันที่ {target_day_check})")
     
+    # 🎯 [ช่องกรอกรหัสเดียว ปลดล็อกสิทธิ์ 2 ระดับ]: ตามที่บอสต้องการเป๊ะ ๆ
     password_input = st.text_input("🔑 กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบบอร์ดควบคุมหัวหน้างาน:", type="password")
     
     if password_input != "":
-        if password_input == BOSS_PASSWORD or password_input == BIGBOSS_PASSWORD:
-            st.success("🔓 ยืนยันสิทธิ์: เข้าสู่ระบบตรวจสอบและบันทึกประจำวันได้")
-            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
-            
+        is_boss = (password_input == BOSS_PASSWORD)
+        is_bigboss = (password_input == BIGBOSS_PASSWORD)
+        
+        if is_boss or is_bigboss:
+            if is_bigboss:
+                st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ล็อกอินด้วยรหัส Big Boss สำเร็จ! ปลดล็อกเมนูควบคุมระดับสูงเรียบร้อย")
+                boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/บิ๊กบอส:", value="พลวัฒน์ (Big Boss)")
+            else:
+                st.success("🔓 ยืนยันสิทธิ์: เข้าสู่ระบบตรวจสอบและบันทึกประจำวันได้")
+                boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
+                
             st.divider()
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
        
@@ -794,7 +801,7 @@ elif user_role == "🔐 หัวหน้างาน/ผู้ตรวจส�
             mill_idx = 0
             for m_id, m_name in MACHINES.items():
                 if "MILLING" in m_id:
-                    with (mill_col1 if mill_idx % 3 == 0 else (mill_col2 if mill_idx % 3 == 1 else mill_col3)):
+                    with (mill_col1 if mill_idx % 3 == 0 else (mill_idx % 3 == 1 and mill_col2 or mill_col3)):
                         render_machine_card(m_id, m_name, "MILLING")
                     mill_idx += 1
 
@@ -852,99 +859,84 @@ elif user_role == "🔐 หัวหน้างาน/ผู้ตรวจส�
             st.write("#### 🔹 รถโฟคลิฟ FORKLIFT (1 เครื่อง)")
             fork_col1, = st.columns(1)
             with fork_col1: render_machine_card("FORKLIFT-01", MACHINES["FORKLIFT-01"], "FORKLIFT")
-        else:
-            st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับ")
 
-# ==========================================
-# 👑 [โหมดที่ 3: 👑 พื้นที่ควบคุมผู้บริหารสูงสุด (ย้ายออกมาอยู่นอกสุดแล้ว)]
-# ==========================================
-else:
-    st.image("Logo_Pes.png", width=240)
-    st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
-    st.title("👑 ศูนย์ควบคุมระบบผู้บริหารสูงสุด (Big Boss Zone)")
-    st.info("🔐 พื้นที่ความปลอดภัยระดับสูง สำหรับดาวน์โหลดไฟล์สำรอง พิมพ์คิวอาร์โค้ด และจัดการฐานข้อมูลหลัก")
-    
-    bigboss_code_input = st.text_input("🔑 กรุณากรอกรหัสผ่านผู้บริหารสูงสุด เพื่อปลดล็อกศูนย์ควบคุม:", type="password", key="bigboss_outside_secret_key")
-    
-    if bigboss_code_input != "":
-        if bigboss_code_input == BIGBOSS_PASSWORD:
-            st.success("🎯 ยืนยันสิทธิ์ผู้บริหารสูงสุด สำเร็จ ปลดล็อกเรียบร้อยแล้วครับ!")
-            st.divider()
-            
-            selected_date = st.date_input("📆 เลือกวันที่สำหรับอ้างอิงการดาวน์โหลดข้อมูลย้อนหลัง:", value=datetime.date.today())
-            
-            with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดไฟล์ดิบฐานข้อมูลหลัก (DATABASE BACKUP DISK)"):
-                st.info("📂 ปุ่มนี้ทำหน้าที่ดึงไฟล์ประวัติการติ๊กและหมายเหตุสะสมทั้งหมดของเครื่องจักรทุกแผนกบนระบบคลาวด์กระจกเงาออกเป็นไฟล์ .csv เพื่อเก็บเป็นประวัติถาวร")
-                local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
-                if os.path.exists(local_cloud_backup):
-                    with open(local_cloud_backup, "rb") as f_data:
+            # 👑 [โซนผู้บริหารสูงสุด]: จะแสดงผลอัตโนมัติเฉพาะเมื่อกรอกรหัส `bigboss9999` ในหน้านี้!
+            if is_bigboss:
+                st.markdown("---")
+                st.write("### 👑 พื้นที่ควบคุมระดับความปลอดภัยสูงสุด (สำหรับผู้บริหารสูงสุด)")
+                
+                with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดไฟล์ดิบฐานข้อมูลหลัก (DATABASE BACKUP DISK)"):
+                    st.info("📂 ปุ่มนี้ทำหน้าที่ดึงไฟล์ประวัติการติ๊กและหมายเหตุสะสมทั้งหมดของเครื่องจักรทุกแผนกบนระบบคลาวด์กระจกเงาออกเป็นไฟล์ .csv เพื่อเก็บเป็นประวัติถาวร")
+                    local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
+                    if os.path.exists(local_cloud_backup):
+                        with open(local_cloud_backup, "rb") as f_data:
+                            st.download_button(
+                                label="📥 ดาวน์โหลดไฟล์ฐานข้อมูลดิบกลาง (gsheet_cloud_mirror.csv)",
+                                data=f_data,
+                                file_name=f"Backup_Master_Database_{datetime.datetime.now().strftime('%Y_%m_%d')}.csv",
+                                mime="text/csv",
+                                type="primary"
+                            )
+                    else:
+                        st.caption("ℹ️ ระบบพร้อมจัดเก็บ (จะปรากฏปุ่มให้ดาวน์โหลดเมื่อช่างมีการคีย์งานส่งเข้ามาคนแรกครับ)")
+
+                with st.expander("📸 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดรูปภาพ PM รวมหมดทั้งโรงงาน (.zip)"):
+                    st.info("📦 ปุ่มนี้จะทำหน้าที่เดินสแกนกวาดรูปถ่าย PM ของทุกแผนก ทุกเครื่องจักร มารวมเป็นไฟล์ .zip ก้อนเดียวเพื่อใช้ส่งผลตรวจมาตรฐานโรงงาน")
+                    
+                    dept_target = st.selectbox("เลือกแผนกที่บอสต้องการดาวน์โหลดรูปภาพ:", [
+                        "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC", "MILLING", "MIG CO2", "ARGON", "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
+                    ])
+                    current_boss_month = selected_date.strftime("%Y_%B")
+                    
+                    filtered_zip_data = zip_all_factory_photos_by_filter(filter_type=dept_target, target_date_obj=selected_date)
+                    if filtered_zip_data:
                         st.download_button(
-                            label="📥 ดาวน์โหลดไฟล์ฐานข้อมูลดิบกลาง (gsheet_cloud_mirror.csv)",
-                            data=f_data,
-                            file_name=f"Backup_Master_Database_{datetime.datetime.now().strftime('%Y_%m_%d')}.csv",
-                            mime="text/csv",
+                            label=f"📥 ดาวน์โหลดรูปภาพแผนก [{dept_target}]", 
+                            data=filtered_zip_data, 
+                            file_name=f"Photos_Filter_{dept_target}_{current_boss_month}.zip", 
+                            mime="application/zip", 
                             type="primary"
                         )
-                else:
-                    st.caption("ℹ️ ระบบพร้อมจัดเก็บ (จะปรากฏปุ่มให้ดาวน์โหลดเมื่อช่างมีการคีย์งานส่งเข้ามาคนแรกครับ)")
-
-            with st.expander("📸 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดรูปภาพ PM รวมหมดทั้งโรงงาน (.zip)"):
-                st.info("📦 ปุ่มนี้จะทำหน้าที่เดินสแกนกวาดรูปถ่าย PM ของทุกแผนก ทุกเครื่องจักร มารวมเป็นไฟล์ .zip ก้อนเดียวเพื่อใช้ส่งผลตรวจมาตรฐานโรงงาน")
-                
-                dept_target = st.selectbox("เลือกแผนกที่บอสต้องการดาวน์โหลดรูปภาพ:", [
-                    "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC", "MILLING", "MIG CO2", "ARGON", "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
-                ])
-                current_boss_month = selected_date.strftime("%Y_%B")
-                
-                filtered_zip_data = zip_all_factory_photos_by_filter(filter_type=dept_target, target_date_obj=selected_date)
-                if filtered_zip_data:
-                    st.download_button(
-                        label=f"📥 ดาวน์โหลดรูปภาพแผนก [{dept_target}]", 
-                        data=filtered_zip_data, 
-                        file_name=f"Photos_Filter_{dept_target}_{current_boss_month}.zip", 
-                        mime="application/zip", 
-                        type="primary"
-                    )
-                else:
-                    st.warning(f"⚠️ ในระบบคลาวด์ตามช่วงปฏิทินที่เลือก ยังไม่มีรูปภาพบันทึกอยู่ในกลุ่มแผนก [{dept_target}] เลยครับบอส")
-
-            with st.expander("🖨️ [เฉพาะผู้บริหารสูงสุด] เครื่องมือพิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
-                sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()), key="bigboss_qr_select_box_outside")
-                qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" 
-                qr = qrcode.make(qr_url)
-                buf = BytesIO()
-                qr.save(buf)
-                st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
-
-            with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
-                st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ สิ้นเดือน")
-                backup_folder_path = os.path.join(BASE_FOLDER, "maintenance_backups")
-                if os.path.exists(backup_folder_path):
-                    all_backups = [f for f in os.listdir(backup_folder_path) if f.lower().endswith('.xlsx')]
-                    if all_backups:
-                        for b_file in sorted(all_backups):
-                            b_file_path = os.path.join(backup_folder_path, b_file)
-                            with open(b_file_path, "rb") as f_data:
-                                st.download_button(
-                                    label=f"📥 ดาวน์โหลดไฟล์สำรอง: {b_file}",
-                                    data=f_data,
-                                    file_name=b_file,
-                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                    key=f"dl_backup_{b_file}"
-                                )
                     else:
-                        st.caption("ℹ️ ยังไม่มีไฟล์สำรองประวัติเดือนเก่าจัดเก็บในตู้นี้")
-                else:
-                    st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
+                        st.warning(f"⚠️ ในระบบคลาวด์ตามช่วงปฏิทินที่เลือก ยังไม่มีรูปภาพบันทึกอยู่ในกลุ่มแผนก [{dept_target}] เลยครับบอส")
 
-            with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและฐานข้อมูลกระจกเงา (RESET SYSTEM)"):
-                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานที่ส่งทดสอบและประวัติประจักษ์กระจกเงาทั้งหมดออกไปอย่างถาวร เพื่อให้ระบบสะอาดพร้อมเปิดใช้งานจริง")
-                if st.button("🚨 สั่งลบรูปภาพและฐานข้อมูลกระจกเงาทั้งหมดกริบ 100%", type="primary", key="reset_all_photos_primary_btn_outside"):
-                    target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
-                    local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
-                    if os.path.exists(target_photo_folder): shutil.rmtree(target_photo_folder) 
-                    if os.path.exists(local_cloud_backup): os.remove(local_cloud_backup)
-                    st.success("🧹 ลบโฟลเดอร์รูปภาพและกระจกเงาออกไปจากระบบคลาวด์สะอาดบริสุทธิ์เรียบร้อยแล้วครับ!")
-                    st.balloons()
+                with st.expander("🖨️ [เฉพาะผู้บริหารสูงสุด] เครื่องมือพิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
+                    sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()), key="bigboss_qr_select_box_inside")
+                    qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" 
+                    qr = qrcode.make(qr_url)
+                    buf = BytesIO()
+                    qr.save(buf)
+                    st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
+
+                with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
+                    st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ สิ้นเดือน")
+                    backup_folder_path = os.path.join(BASE_FOLDER, "maintenance_backups")
+                    if os.path.exists(backup_folder_path):
+                        all_backups = [f for f in os.listdir(backup_folder_path) if f.lower().endswith('.xlsx')]
+                        if all_backups:
+                            for b_file in sorted(all_backups):
+                                b_file_path = os.path.join(backup_folder_path, b_file)
+                                with open(b_file_path, "rb") as f_data:
+                                    st.download_button(
+                                        label=f"📥 ดาวน์โหลดไฟล์สำรอง: {b_file}",
+                                        data=f_data,
+                                        file_name=b_file,
+                                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                        key=f"dl_backup_{b_file}"
+                                    )
+                        else:
+                            st.caption("ℹ️ ยังไม่มีไฟล์สำรองประวัติเดือนเก่าจัดเก็บในตู้นี้")
+                    else:
+                        st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
+
+                with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและฐานข้อมูลกระจกเงา (RESET SYSTEM)"):
+                    st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานที่ส่งทดสอบและประวัติประจักษ์กระจกเงาทั้งหมดออกไปอย่างถาวร เพื่อให้ระบบสะอาดพร้อมเปิดใช้งานจริง")
+                    if st.button("🚨 สั่งลบรูปภาพและฐานข้อมูลกระจกเงาทั้งหมดกริบ 100%", type="primary", key="reset_all_photos_primary_btn_inside"):
+                        target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
+                        local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
+                        if os.path.exists(target_photo_folder): shutil.rmtree(target_photo_folder) 
+                        if os.path.exists(local_cloud_backup): os.remove(local_cloud_backup)
+                        st.success("🧹 ลบโฟลเดอร์รูปภาพและกระจกเงาออกไปจากระบบคลาวด์สะอาดบริสุทธิ์เรียบร้อยแล้วครับ!")
+                        st.balloons()
         else:
-            st.error("❌ รหัสผ่านผู้บริหารสูงสุดไม่ถูกต้อง! ปฏิเสธสิทธิ์การเข้าถึงศูนย์ควบคุมผู้บริหาร")
+            st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับ")
