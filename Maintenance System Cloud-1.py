@@ -19,8 +19,8 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 
-BOSS_PASSWORD = "pes1234"
-BIGBOSS_PASSWORD = "pes9999"
+BOSS_PASSWORD = "boss1234"
+BIGBOSS_PASSWORD = "bigboss9999"
 
 now = datetime.datetime.now()
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -506,12 +506,13 @@ query_params = st.query_params
 raw_role = query_params.get("role", "tech")
 is_boss_link = str(raw_role).strip().lower() == "boss"
 
-# 🎯 [ปรับแยก 2 เมนูด้านนอกชัดเจนตามสั่งบอส]: ตัดเมนูช่างเทคนิคออกเรียบร้อย
+# 🎯 [ดึงหน้าช่างเทคนิคกลับมาแล้ว]: เพื่อให้สแกน QR Code แล้วเข้าหน้าตรวจเครื่องทันที!
 if is_boss_link:
     user_role = "🔐 หัวหน้างาน/ผู้ตรวจสอบ"
 else:
     st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
     user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", [
+        "🔧 ช่างเทคนิค (ส่งฟอร์ม)",
         "🔐 หัวหน้างาน/ผู้ตรวจสอบ",
         "👑 ผู้บริหารสูงสุด (Big Boss Zone)"
     ])
@@ -564,9 +565,84 @@ elif "FORKLIFT" in machine_id.upper(): m_type_selected = "FORKLIFT"
 else: m_type_selected = "CNC"
 
 # ==========================================
-# 🔐 [โหมดที่ 1: ฝั่งหัวหน้างาน ดูบอร์ดตรวจเช็ค/กดอนุมัติ]
+# 🔧 [โหมดที่ 1: ฝั่งช่างเทคนิคส่งฟอร์มประจำวัน (สแกนคิวอาร์แล้วเด้งมาหน้านี้ทันที!)]
 # ==========================================
-if user_role == "🔐 หัวหน้างาน/ผู้ตรวจสอบ":
+if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
+    st.image("Logo_Pes.png", width=240)
+    st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
+    st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
+    st.info("📄 มาตรฐานระบบคุณภาพโรงงาน: **FM-MN-07 Rev.00**")
+
+    if machine_id in MACHINES: st.success(f"⚙️ คุณกำลังตรวจเครื่อง: **{machine_id} ({MACHINES[machine_id]})**")
+    else: st.error(f"⚠️ ไม่พบรหัสเครื่อง '{machine_id}' ในทะเบียนกลาง")
+    st.divider()
+
+    report_date = st.date_input("📆 เลือกวันที่ตรวจสอบงานฟอร์ม:", value=datetime.date.today())
+    current_day = report_date.day
+    year_month_key = report_date.strftime("%Y_%B")
+
+    with st.form("pm_form"):
+        tech_name = st.text_input("👤 ชื่อช่างผู้ตรวจเช็ค (ผู้รับผิดชอบ)", placeholder="ระบุชื่อ-นามสกุลของคุณ")
+        results, uploaded_photos = {}, {}
+        current_checklist = CHECKLISTS[m_type_selected]
+        required_photo_indexes = PHOTO_RULES[m_type_selected]
+        
+        for i, item in enumerate(current_checklist, 1):
+            st.write(f"**{i}. {item}**")
+            status = st.radio(f"ผลการตรวจข้อ {i}", ["ใช้งานได้ปกติ", "ทำการแก้ไขใช้งานได้ปกติ", "ใช้งานไม่ได้ต้องแก้ไข", "ไม่ได้ทำงาน"], horizontal=True, key=f"check_{i}", label_visibility="collapsed", index=None)
+            if i in required_photo_indexes:
+                st.write("📷 *หัวข้อบังคับถ่ายรูปหลักฐานยืนยันหน้างานจริง (เลือกได้มากกว่า 1 รูป)*")
+                uploaded_files = st.file_uploader(f"แนบรูปข้อ {i}", type=["jpg", "jpeg", "png"], key=f"photo_{i}", accept_multiple_files=True)
+                uploaded_photos[i] = {"files": uploaded_files, "index": i}
+            note = st.text_input(f"หมายเหตุ/อาการเสีย (ข้อ {i})", key=f"note_{i}", placeholder="ระบุรายละเอียดหากพบจุดพังหรือบันทึกงานซ่อมแก้ไข")
+            results[item] = {"status": status, "note": note}
+            st.divider()
+
+        submitted = st.form_submit_button("💾 ส่งรายงานการตรวจเช็คประจำวัน (SUBMIT)")
+
+    if submitted:
+        if machine_id not in MACHINES: st.error("❌ รหัสเครื่องจักรไม่ถูกต้อง")
+        elif not tech_name: st.error("❌ กรุณาระบุชื่อผู้ตรวจสอบก่อนส่งรายงานครับ!")
+        elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
+        elif any((uploaded_photos[idx]["files"] is None or len(uploaded_photos[idx]["files"]) == 0) for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
+        else:
+            photo_logs = []
+            for idx in required_photo_indexes:
+                saved_paths = save_uploaded_photos_list(machine_id, current_day, idx, uploaded_photos[idx]["files"], current_date_obj=report_date)
+                if saved_paths: 
+                    photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ ({len(saved_paths)} รูป)")
+            
+            for i, item in enumerate(current_checklist, 1):
+                save_log_to_mirror_db(machine_id, current_day, year_month_key, tech_name, item, i, results[item]["status"], results[item]["note"], "tech")
+
+            fails, fixed_items = [], []
+            for i, item in enumerate(current_checklist, 1):
+                status_val = results[item]["status"]
+                note_val = results[item]["note"]
+                if status_val == "ใช้งานไม่ได้ต้องแก้ไข": fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
+                elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
+            
+            update_iso_excel_by_tech(machine_id, current_day, results, tech_name, m_type_selected)
+            apply_mirror_history_to_excel(machine_id, year_month_key, m_type_selected)
+            
+            boss_review_url = f"https://pes-maintenance.streamlit.app/?role=boss&id={machine_id}"
+            audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
+            
+            if fails:
+                summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ รายการที่ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
+                if fixed_items: summary_msg += "\n\n🛠️ รายการที่ช่างแก้ไขเสร็จทันที:\n" + "\n".join(fixed_items)
+                send_line_alert(summary_msg + audit_tag)
+                st.warning("พบจุดบกพร่อง! ส่งการแจ้งเตือนเตือนเข้าไลน์กลุ่มช่างแล้ว")
+            else:
+                ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n✅ ผลการตรวจสอบ: ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
+                if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ (ลงตาราง ⨂):\n" + "\n".join(fixed_items)
+                send_line_alert(ok_msg + audit_tag)
+            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลอัปเดตและสำรองขึ้น GitHub เรียบร้อยแล้ว")
+
+# ==========================================
+# 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ดูบอร์ดตรวจเช็ค/กดอนุมัติ]
+# ==========================================
+elif user_role == "🔐 หัวหน้างาน/ผู้ตรวจสอบ":
     st.image("Logo_Pes.png", width=240)
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
@@ -605,7 +681,7 @@ if user_role == "🔐 หัวหน้างาน/ผู้ตรวจสอ
                 img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), target_year_month_folder, f"Day_{target_day_check}")
                 
                 if os.path.exists(img_dir):
-                    valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith('.png') or p.lower().endswith('.jpg') or p.lower().endswith('.jpeg')]
+                    valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
                     if valid_photos:
                         with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check} ({len(valid_photos)} รูป)"):
                             for p_path in sorted(valid_photos):
@@ -780,7 +856,7 @@ if user_role == "🔐 หัวหน้างาน/ผู้ตรวจสอ
             st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับ")
 
 # ==========================================
-# 👑 [โหมดที่ 2: 👑 ศูนย์ควบคุมผู้บริหารสูงสุด (Big Boss Zone)]
+# 👑 [โหมดที่ 3: 👑 พื้นที่ควบคุมผู้บริหารสูงสุด (Big Boss Zone)]
 # ==========================================
 else:
     st.image("Logo_Pes.png", width=240)
