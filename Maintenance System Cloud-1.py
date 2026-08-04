@@ -197,6 +197,7 @@ def get_unmerged_cell(ws, coordinate_str):
             return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
     return cell
 
+# --- 🎯 🌟 ฟังก์ชันมหาอมตะ AUTO-PUSH ข้อมูลขึ้น GITHUB อัตโนมัติ ---
 def push_file_to_github(file_path_relative, commit_message="Auto-update maintenance data"):
     try:
         token = st.secrets.get("GITHUB_TOKEN")
@@ -217,6 +218,7 @@ def push_file_to_github(file_path_relative, commit_message="Auto-update maintena
         with open(full_file_path, "rb") as f:
             content = base64.b64encode(f.read()).decode("utf-8")
             
+        # ดึง sha ของไฟล์เดิมถ้ามีอยู่แล้ว
         sha = None
         get_res = requests.get(url, headers=headers)
         if get_res.status_code == 200:
@@ -256,6 +258,7 @@ def save_log_to_mirror_db(machine_id, day_num, year_month, tech_name, checklist_
     else:
         df_new.to_csv(local_cloud_backup, mode='a', header=False, index=False, encoding="utf-8-sig")
         
+    # สั่ง Push ไฟล์ CSV ขึ้น GitHub ทันที
     push_file_to_github("gsheet_cloud_mirror.csv", f"Auto-Sync CSV for {machine_id} Day {day_num}")
 
 def fetch_logs_from_mirror_db(machine_id, year_month):
@@ -270,6 +273,7 @@ def fetch_logs_from_mirror_db(machine_id, year_month):
         return pd.DataFrame()
 
 def apply_mirror_history_to_excel(machine_id, year_month, m_type):
+    """กวาดข้อมูลกระจกเงาเขียนลง Excel แบบไม่เบิ้ลซ้ำ"""
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
     if not os.path.isfile(target_excel_path):
@@ -447,7 +451,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             
             if not os.path.exists(backup_excel_path):
                 shutil.copy2(target_excel_path, backup_excel_path)
-                push_file_to_github(f"maintenance_backups/{backup_file_name}", f"Auto-Backup Month {last_month_str} for {machine_id}")
                 try: send_line_alert(f"📦 [Auto-Backup]: สำรองไฟล์เครื่อง {machine_id} แล้ว")
                 except: pass
 
@@ -464,6 +467,7 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
         wb.save(target_excel_path)
+        # สั่ง Push ไฟล์ Excel ขึ้น GitHub หลังอัปเดต
         push_file_to_github(excel_file_name, f"Auto-Sync Excel {machine_id} Day {day_num}")
         return True, ""
     except Exception as e:
@@ -483,6 +487,7 @@ def approve_excel_by_boss(machine_id, day_num, boss_name, m_type):
         boss_cell.value = boss_name
         boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
         wb.save(target_excel_path)
+        # สั่ง Push ไฟล์ Excel ขึ้น GitHub หลังบอสเซ็นอนุมัติ
         push_file_to_github(excel_file_name, f"Auto-Sync Boss Approval {machine_id} Day {day_num}")
         return True
     except Exception as e: print(f"Boss approve error: {e}"); return False
@@ -506,15 +511,11 @@ query_params = st.query_params
 raw_role = query_params.get("role", "tech")
 is_boss_link = str(raw_role).strip().lower() == "boss"
 
-# 🎯 [ปรับกลับมาเป็น 2 เมนูดั้งเดิมใน Sidebar]: เรียบหรู ใช้งานง่าย
 if is_boss_link:
     user_role = "🔐 หัวหน้างาน/ผู้ตรวจสอบ"
 else:
     st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
-    user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", [
-        "🔧 ช่างเทคนิค (ส่งฟอร์ม)", 
-        "🔐 หัวหน้างาน/ผู้ตรวจสอบ"
-    ])
+    user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", ["🔧 ช่างเทคนิค (ส่งฟอร์ม)", "🔐 หัวหน้างาน/ผู้ตรวจสอบ"])
 
 now = datetime.datetime.now()
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -639,7 +640,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลอัปเดตและสำรองขึ้น GitHub เรียบร้อยแล้ว")
 
 # ==========================================
-# 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน / ผู้บริหารสูงสุด]
+# 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ล็อกอินตรวจสอบและกดอนุมัติฟอร์ม]
 # ==========================================
 else:
     st.image("Logo_Pes.png", width=240)
@@ -652,291 +653,298 @@ else:
     
     st.subheader(f"📅 ประจำวันที่เลือก: {selected_date.strftime('%d/%m/%Y')} (คอลัมน์ Excel ช่องวันที่ {target_day_check})")
     
-    # 🎯 [ช่องกรอกรหัสเดียว ปลดล็อกสิทธิ์ 2 ระดับ]: ตามที่บอสต้องการเป๊ะ ๆ
-    password_input = st.text_input("🔑 กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบบอร์ดควบคุมหัวหน้างาน:", type="password")
+    is_supervisor = False
+    is_bigboss = False
+    
+    password_input = st.text_input("🔑 กรุณากรอกรหัสผ่านหลักเพื่อเข้าสู่ระบบบอร์ดควบคุมหลัก:", type="password")
     
     if password_input != "":
-        is_boss = (password_input == BOSS_PASSWORD)
+        is_supervisor = (password_input == BOSS_PASSWORD)
         is_bigboss = (password_input == BIGBOSS_PASSWORD)
-        
-        if is_boss or is_bigboss:
-            if is_bigboss:
-                st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ล็อกอินด้วยรหัส Big Boss สำเร็จ! ปลดล็อกเมนูควบคุมระดับสูงเรียบร้อย")
-                boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/บิ๊กบอส:", value="พลวัฒน์ (Big Boss)")
+
+    if is_supervisor or is_bigboss:
+        if is_bigboss:
+            st.success("👑 [สิทธิ์ผู้บริหารสูงสุด]: ล็อกอินผ่านรหัสแอนมินหลักเรียบร้อย")
+            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/บิ๊กบอส:", value="พลวัฒน์ (Big Boss)")
+        else:
+            st.success("🔓 ยืนยันสิทธิ์: เข้าสู่ระบบตรวจสอบและบันทึกประจำวันได้")
+            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
+            
+        st.divider()
+        st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
+   
+        def render_machine_card(m_id, m_name, m_type_flag):
+            target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{m_id}.xlsx")
+            apply_mirror_history_to_excel(m_id, year_month_key, m_type_flag)
+            
+            st.info(f"⚙️ **{m_id}**\n{m_name}")
+            
+            if os.path.isfile(target_excel_path):
+                if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
+                    if approve_excel_by_boss(m_id, target_day_check, boss_name, m_type_flag):
+                        save_log_to_mirror_db(m_id, target_day_check, year_month_key, boss_name, "BOSS APPROVAL", 0, "APPROVED", "", "boss")
+                        st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
+                        send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
+                        st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
+            
+            target_year_month_folder = selected_date.strftime("%Y_%B")
+            img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), target_year_month_folder, f"Day_{target_day_check}")
+            
+            if os.path.exists(img_dir):
+                valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
+                if valid_photos:
+                    with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check} ({len(valid_photos)} รูป)"):
+                        for p_path in sorted(valid_photos):
+                            st.image(p_path, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
             else:
-                st.success("🔓 ยืนยันสิทธิ์: เข้าสู่ระบบตรวจสอบและบันทึกประจำวันได้")
-                boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
-                
-            st.divider()
-            st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
-       
-            def render_machine_card(m_id, m_name, m_type_flag):
-                target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{m_id}.xlsx")
-                apply_mirror_history_to_excel(m_id, year_month_key, m_type_flag)
-                
-                st.info(f"⚙️ **{m_id}**\n{m_name}")
-                
+                st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
+
+            current_notes = get_current_excel_note(m_id, m_type_flag)
+            u_id = str(m_id).upper()
+            if "CUTTER" in u_id or m_type_flag == "CUTTER GRINDING-01": note_label = "ช่อง B18"
+            elif "ARGON-02" in u_id or "ARGON-01" in u_id or "CRANE" in u_id: note_label = "ช่อง B19"
+            elif "WELDING_ALUMINUM" in u_id or "FORKLIFT" in u_id or "CUTTING" in u_id: note_label = "ช่อง B18"
+            elif "CNC" in u_id: note_label = "ช่อง B28"
+            elif "QC-01" in u_id or "QC-10" in u_id or "QC-11" in u_id or "QC-12" in u_id: note_label = "ช่อง B15"
+            elif "QC-15" in u_id: note_label = "ช่อง B17"
+            elif "GRINDING" in u_id or "GRINDING" in m_type_flag: note_label = "ช่อง B21"
+            elif "MILLING" in u_id or "LATHE" in u_id: note_label = "ช่อง B22"
+            elif "BENDING" in u_id: note_label = "ช่อง B20"
+            else: note_label = "ช่อง B16"
+            
+            st.text_area(f"📝 รายการอาการเสียสะสม ({note_label}) [อ่านข้อมูลโหมดสัมปทานอัตโนมัติ]", value=current_notes, key=f"note_area_{m_id}", height=120, disabled=True)
+
+            st.write("---")
+            st.caption(f"📅 **เลือกดาวน์โหลดรูปภาพของ {m_id}:**")
+            photo_date_input = st.date_input("เลือกวันที่ต้องการดึงรูปภาพ (.zip):", value=selected_date, key=f"photo_date_{m_id}")
+            chosen_day = photo_date_input.day
+            
+            excel_col, zip_day_col, zip_month_col = st.columns(3)
+            
+            with excel_col:
                 if os.path.isfile(target_excel_path):
-                    if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
-                        if approve_excel_by_boss(m_id, target_day_check, boss_name, m_type_flag):
-                            save_log_to_mirror_db(m_id, target_day_check, year_month_key, boss_name, "BOSS APPROVAL", 0, "APPROVED", "", "boss")
-                            st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
-                            send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
-                            st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
-                
-                target_year_month_folder = selected_date.strftime("%Y_%B")
-                img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), target_year_month_folder, f"Day_{target_day_check}")
-                
-                if os.path.exists(img_dir):
-                    valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
-                    if valid_photos:
-                        with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check} ({len(valid_photos)} รูป)"):
-                            for p_path in sorted(valid_photos):
-                                st.image(p_path, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
+                    with open(target_excel_path, "rb") as f:
+                        st.download_button(label=f"📥 ดึง Excel {m_id}", data=f, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
                 else:
-                    st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
-
-                current_notes = get_current_excel_note(m_id, m_type_flag)
-                u_id = str(m_id).upper()
-                if "CUTTER" in u_id or m_type_flag == "CUTTER GRINDING-01": note_label = "ช่อง B18"
-                elif "ARGON-02" in u_id or "ARGON-01" in u_id or "CRANE" in u_id: note_label = "ช่อง B19"
-                elif "WELDING_ALUMINUM" in u_id or "FORKLIFT" in u_id or "CUTTING" in u_id: note_label = "ช่อง B18"
-                elif "CNC" in u_id: note_label = "ช่อง B28"
-                elif "QC-01" in u_id or "QC-10" in u_id or "QC-11" in u_id or "QC-12" in u_id: note_label = "ช่อง B15"
-                elif "QC-15" in u_id: note_label = "ช่อง B17"
-                elif "GRINDING" in u_id or "GRINDING" in m_type_flag: note_label = "ช่อง B21"
-                elif "MILLING" in u_id or "LATHE" in u_id: note_label = "ช่อง B22"
-                elif "BENDING" in u_id: note_label = "ช่อง B20"
-                else: note_label = "ช่อง B16"
-                
-                st.text_area(f"📝 รายการอาการเสียสะสม ({note_label}) [อ่านข้อมูลโหมดสัมปทานอัตโนมัติ]", value=current_notes, key=f"note_area_{m_id}", height=120, disabled=True)
-
-                st.write("---")
-                st.caption(f"📅 **เลือกดาวน์โหลดรูปภาพของ {m_id}:**")
-                photo_date_input = st.date_input("เลือกวันที่ต้องการดึงรูปภาพ (.zip):", value=selected_date, key=f"photo_date_{m_id}")
-                chosen_day = photo_date_input.day
-                
-                excel_col, zip_day_col, zip_month_col = st.columns(3)
-                
-                with excel_col:
-                    if os.path.isfile(target_excel_path):
-                        with open(target_excel_path, "rb") as f:
-                            st.download_button(label=f"📥 ดึง Excel {m_id}", data=f, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
-                    else:
-                        st.button(f"❌ ไม่มีไฟล์ Excel", disabled=True, key=f"dl_disabled_{m_id}")
-                        
-                with zip_day_col:
-                    zip_day_data = zip_single_machine_photos(m_id, target_date_obj=photo_date_input, target_day=chosen_day)
-                    if zip_day_data:
-                        st.download_button(label=f"📸 โหลดรูปวันที่ {chosen_day}", data=zip_day_data, file_name=f"Photos_{m_id}_Day_{chosen_day}.zip", mime="application/zip", key=f"zip_day_btn_{m_id}")
-                    else:
-                        st.button(f"📷 วันที่ {chosen_day} ไม่มีรูป", disabled=True, key=f"zip_day_dis_{m_id}")
-                        
-                with zip_month_col:
-                    zip_month_data = zip_single_machine_photos(m_id, target_date_obj=photo_date_input, target_day=None)
-                    if zip_month_data:
-                        st.download_button(label="📦 โหลดรูปทั้งเดือน", data=zip_month_data, file_name=f"Photos_{m_id}_Full_{photo_date_input.strftime('%Y_%B')}.zip", mime="application/zip", key=f"zip_month_btn_{m_id}")
-                    else:
-                        st.button("📷 เดือนนี้ยังไม่มีรูป", disabled=True, key=f"zip_month_dis_{m_id}")
-                st.divider()
-
-            # ---- 1. แผนก CNC ----
-            st.write("#### 🔹 เครื่อง CNC (9 เครื่อง)")
-            cnc_col1, cnc_col2, cnc_col3 = st.columns(3)
-            cnc_idx = 0
-            for m_id, m_name in MACHINES.items():
-                if "CNC" in m_id and "CRANE" not in m_id.upper() and "QC-" not in m_id.upper():
-                    with (cnc_col1 if cnc_idx % 3 == 0 else (cnc_col2 if cnc_idx % 3 == 1 else cnc_col3)):
-                        render_machine_card(m_id, m_name, "CNC")
-                    cnc_idx += 1
-
-            # ---- 2. แผนก GRINDING ----
-            st.write("#### 🔹 เครื่องเจียรผิว GRINDING (2 เครื่อง)")
-            grind_col1, grind_col2 = st.columns(2)
-            grind_idx = 0
-            for m_id, m_name in MACHINES.items():
-                if "GRINDING" in m_id and "CUTTER" not in m_id:
-                    with (grind_col1 if grind_idx % 2 == 0 else grind_col2):
-                        render_machine_card(m_id, m_name, "GRINDING")
-                    grind_idx += 1
-
-            # ---- 3. แผนก CUTTER GRINDING ----
-            st.write("#### 🔹 เครื่องลับคม CUTTER GRINDING (1 เครื่อง)")
-            cutter_grind_col1, = st.columns(1)
-            with cutter_grind_col1: render_machine_card("CUTTER GRINDING-01", MACHINES["CUTTER GRINDING-01"], "CUTTER GRINDING-01")
-
-            # ---- 4. แผนกปั๊มลม COMPRESSOR ----
-            st.write("#### 🔹 เครื่องปั๊มลม AIR COMPRESSOR (2 เครื่อง)")
-            comp_col1, comp_col2, comp_col3 = st.columns(3)
-            comp_idx = 0
-            for m_id, m_name in MACHINES.items():
-                if "COMP-" in m_id.upper():
-                    with (comp_col1 if comp_idx % 3 == 0 else (comp_col2 if comp_idx % 3 == 1 else comp_col3)):
-                        render_machine_card(m_id, m_name, m_id) 
-                    comp_idx += 1
-
-            # ---- 5. แผนก CRANE ----
-            st.write("#### 🔹 เครน CRANE (2 แผนก)")
-            crane_col1, crane_col2 = st.columns(2)
-            crane_idx = 0
-            for m_id, m_name in MACHINES.items():
-                if "CRANE" in m_id.upper() or "Crane" in m_id:
-                    with (crane_col1 if crane_idx % 2 == 0 else crane_col2):
-                        render_machine_card(m_id, m_name, "Crane no.1" if "no.1" in m_id else "Crane no.2") 
-                    crane_idx += 1
-
-            # ---- 6. แผนก QC ----
-            st.write("#### 🔹 เครื่องมือวัดคุณภาพ QC (19 เครื่องมือวัด, 2 เครื่องจักรทำงาน)")
-            qc_col1, qc_col2, qc_col3 = st.columns(3)
-            qc_idx = 0
-            for m_id, m_name in MACHINES.items():
-                if "QC-" in m_id.upper():
-                    with (qc_col1 if qc_idx % 3 == 0 else (qc_col2 if qc_idx % 3 == 1 else qc_col3)):
-                        render_machine_card(m_id, m_name, m_id) 
-                    qc_idx += 1
-
-            # ---- 7. แผนก MILLING ----
-            st.write("#### 🔹 เครื่องมิลลิ่ง MILLING (4 เครื่อง)")
-            mill_col1, mill_col2, mill_col3 = st.columns(3)
-            mill_idx = 0
-            for m_id, m_name in MACHINES.items():
-                if "MILLING" in m_id:
-                    with (mill_col1 if mill_idx % 3 == 0 else (mill_idx % 3 == 1 and mill_col2 or mill_col3)):
-                        render_machine_card(m_id, m_name, "MILLING")
-                    mill_idx += 1
-
-            # ---- 8. แผนก LATHE ----
-            st.write("#### 🔹 เครื่องกลึง LATHE (1 เครื่อง)")
-            lathe_col1, = st.columns(1)
-            with lathe_col1: render_machine_card("LATHE-01", MACHINES["LATHE-01"], "LATHE")
-
-            # ---- 9. แผนก CUTTING ----
-            st.write("#### 🔹 เครื่องตัด CUTTING (1 เครื่อง)")
-            cut_col1, = st.columns(1)
-            with cut_col1: render_machine_card("CUTTING-01", MACHINES["CUTTING-01"], "CUTTING")
-
-            # ---- 10. แผนก BENDING ----
-            st.write("#### 🔹 เครื่องพับ BENDING (1 เครื่อง)")
-            bend_col1, = st.columns(1)
-            with bend_col1: render_machine_card("BENDING-01", MACHINES["BENDING-01"], "BENDING")
-
-            # ---- 11. แผนก MIG CO2 ----
-            st.write("#### 🔹 เครื่องเชื่อม MIG CO2 (3 เครื่อง)")
-            mig_col1, mig_col2, mig_col3 = st.columns(3)
-            mig_idx = 0
-            for m_id, m_name in MACHINES.items():
-                if "MIG" in m_id:
-                    with (mig_col1 if mig_idx % 3 == 0 else (mig_col2 if mig_idx % 3 == 1 else mig_col3)):
-                        render_machine_card(m_id, m_name, "MIG CO2")
-                    mig_idx += 1
-
-            # ---- 12. แผนก ARGON ----
-            st.write("#### 🔹 เครื่องเชื่อม ARGON (2 เครื่อง)")
-            argon_col1, argon_col2 = st.columns(2)
-            argon_idx = 0
-            for m_id, m_name in MACHINES.items():
-                if "ARGON" in m_id:
-                    with (argon_col1 if argon_idx % 2 == 0 else argon_col2):
-                        render_machine_card(m_id, m_name, "ARGON")
-                    argon_idx += 1
-
-            # ---- 13. แผนก WELDING ALUMINUM ----
-            st.write("#### 🔹 เครื่องเชื่อมอลูมิเนียม WELDING ALUMINUM (1 เครื่อง)")
-            wel_al_col1, = st.columns(1)
-            with wel_al_col1: render_machine_card("WELDING_ALUMINUM-01", MACHINES["WELDING_ALUMINUM-01"], "WELDING_ALUMINUM")
-
-            # ---- 14. แผนก BAND SAW ----
-            st.write("#### 🔹 เครื่องเลื่อยสายพาน BAND SAW (3 เครื่อง)")
-            saw_col1, saw_col2, saw_col3 = st.columns(3)
-            saw_idx = 0
-            for m_id, m_name in MACHINES.items():
-                if "BAND" in m_id.upper():
-                    with (saw_col1 if saw_idx % 3 == 0 else (saw_idx % 3 == 1 and saw_col2 or saw_col3)):
-                        render_machine_card(m_id, m_name, "BAND SAW")
-                    saw_idx += 1
-
-            # ---- 15. แผนก FORKLIFT ----
-            st.write("#### 🔹 รถโฟคลิฟ FORKLIFT (1 เครื่อง)")
-            fork_col1, = st.columns(1)
-            with fork_col1: render_machine_card("FORKLIFT-01", MACHINES["FORKLIFT-01"], "FORKLIFT")
-
-            # 👑 [โซนผู้บริหารสูงสุด]: จะแสดงผลอัตโนมัติเฉพาะเมื่อกรอกรหัส `bigboss9999` ในหน้านี้!
-            if is_bigboss:
-                st.markdown("---")
-                st.write("### 👑 พื้นที่ควบคุมระดับความปลอดภัยสูงสุด (สำหรับผู้บริหารสูงสุด)")
-                
-                with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดไฟล์ดิบฐานข้อมูลหลัก (DATABASE BACKUP DISK)"):
-                    st.info("📂 ปุ่มนี้ทำหน้าที่ดึงไฟล์ประวัติการติ๊กและหมายเหตุสะสมทั้งหมดของเครื่องจักรทุกแผนกบนระบบคลาวด์กระจกเงาออกเป็นไฟล์ .csv เพื่อเก็บเป็นประวัติถาวร")
-                    local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
-                    if os.path.exists(local_cloud_backup):
-                        with open(local_cloud_backup, "rb") as f_data:
-                            st.download_button(
-                                label="📥 ดาวน์โหลดไฟล์ฐานข้อมูลดิบกลาง (gsheet_cloud_mirror.csv)",
-                                data=f_data,
-                                file_name=f"Backup_Master_Database_{datetime.datetime.now().strftime('%Y_%m_%d')}.csv",
-                                mime="text/csv",
-                                type="primary"
-                            )
-                    else:
-                        st.caption("ℹ️ ระบบพร้อมจัดเก็บ (จะปรากฏปุ่มให้ดาวน์โหลดเมื่อช่างมีการคีย์งานส่งเข้ามาคนแรกครับ)")
-
-                with st.expander("📸 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดรูปภาพ PM รวมหมดทั้งโรงงาน (.zip)"):
-                    st.info("📦 ปุ่มนี้จะทำหน้าที่เดินสแกนกวาดรูปถ่าย PM ของทุกแผนก ทุกเครื่องจักร มารวมเป็นไฟล์ .zip ก้อนเดียวเพื่อใช้ส่งผลตรวจมาตรฐานโรงงาน")
+                    st.button(f"❌ ไม่มีไฟล์ Excel", disabled=True, key=f"dl_disabled_{m_id}")
                     
-                    dept_target = st.selectbox("เลือกแผนกที่บอสต้องการดาวน์โหลดรูปภาพ:", [
-                        "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC", "MILLING", "MIG CO2", "ARGON", "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
-                    ])
-                    current_boss_month = selected_date.strftime("%Y_%B")
+            with zip_day_col:
+                zip_day_data = zip_single_machine_photos(m_id, target_date_obj=photo_date_input, target_day=chosen_day)
+                if zip_day_data:
+                    st.download_button(label=f"📸 โหลดรูปวันที่ {chosen_day}", data=zip_day_data, file_name=f"Photos_{m_id}_Day_{chosen_day}.zip", mime="application/zip", key=f"zip_day_btn_{m_id}")
+                else:
+                    st.button(f"📷 วันที่ {chosen_day} ไม่มีรูป", disabled=True, key=f"zip_day_dis_{m_id}")
                     
-                    filtered_zip_data = zip_all_factory_photos_by_filter(filter_type=dept_target, target_date_obj=selected_date)
-                    if filtered_zip_data:
+            with zip_month_col:
+                zip_month_data = zip_single_machine_photos(m_id, target_date_obj=photo_date_input, target_day=None)
+                if zip_month_data:
+                    st.download_button(label="📦 โหลดรูปทั้งเดือน", data=zip_month_data, file_name=f"Photos_{m_id}_Full_{photo_date_input.strftime('%Y_%B')}.zip", mime="application/zip", key=f"zip_month_btn_{m_id}")
+                else:
+                    st.button("📷 เดือนนี้ยังไม่มีรูป", disabled=True, key=f"zip_month_dis_{m_id}")
+            st.divider()
+
+        # ---- 1. แผนก CNC ----
+        st.write("#### 🔹 เครื่อง CNC (9 เครื่อง)")
+        cnc_col1, cnc_col2, cnc_col3 = st.columns(3)
+        cnc_idx = 0
+        for m_id, m_name in MACHINES.items():
+            if "CNC" in m_id and "CRANE" not in m_id.upper() and "QC-" not in m_id.upper():
+                with (cnc_col1 if cnc_idx % 3 == 0 else (cnc_col2 if cnc_idx % 3 == 1 else cnc_col3)):
+                    render_machine_card(m_id, m_name, "CNC")
+                cnc_idx += 1
+
+        # ---- 2. แผนก GRINDING ----
+        st.write("#### 🔹 เครื่องเจียรผิว GRINDING (2 เครื่อง)")
+        grind_col1, grind_col2 = st.columns(2)
+        grind_idx = 0
+        for m_id, m_name in MACHINES.items():
+            if "GRINDING" in m_id and "CUTTER" not in m_id:
+                with (grind_col1 if grind_idx % 2 == 0 else grind_col2):
+                    render_machine_card(m_id, m_name, "GRINDING")
+                grind_idx += 1
+
+        # ---- 3. แผนก CUTTER GRINDING ----
+        st.write("#### 🔹 เครื่องลับคม CUTTER GRINDING (1 เครื่อง)")
+        cutter_grind_col1, = st.columns(1)
+        with cutter_grind_col1: render_machine_card("CUTTER GRINDING-01", MACHINES["CUTTER GRINDING-01"], "CUTTER GRINDING-01")
+
+        # ---- 4. แผนกปั๊มลม COMPRESSOR ----
+        st.write("#### 🔹 เครื่องปั๊มลม AIR COMPRESSOR (2 เครื่อง)")
+        comp_col1, comp_col2, comp_col3 = st.columns(3)
+        comp_idx = 0
+        for m_id, m_name in MACHINES.items():
+            if "COMP-" in m_id.upper():
+                with (comp_col1 if comp_idx % 3 == 0 else (comp_col2 if comp_idx % 3 == 1 else comp_col3)):
+                    render_machine_card(m_id, m_name, m_id) 
+                comp_idx += 1
+
+        # ---- 5. แผนก CRANE ----
+        st.write("#### 🔹 เครน CRANE (2 แผนก)")
+        crane_col1, crane_col2 = st.columns(2)
+        crane_idx = 0
+        for m_id, m_name in MACHINES.items():
+            if "CRANE" in m_id.upper() or "Crane" in m_id:
+                with (crane_col1 if crane_idx % 2 == 0 else crane_col2):
+                    render_machine_card(m_id, m_name, "Crane no.1" if "no.1" in m_id else "Crane no.2") 
+                crane_idx += 1
+
+        # ---- 6. แผนก QC ----
+        st.write("#### 🔹 เครื่องมือวัดคุณภาพ QC (19 เครื่องมือวัด, 2 เครื่องจักรทำงาน)")
+        qc_col1, qc_col2, qc_col3 = st.columns(3)
+        qc_idx = 0
+        for m_id, m_name in MACHINES.items():
+            if "QC-" in m_id.upper():
+                with (qc_col1 if qc_idx % 3 == 0 else (qc_col2 if qc_idx % 3 == 1 else qc_col3)):
+                    render_machine_card(m_id, m_name, m_id) 
+                qc_idx += 1
+
+        # ---- 7. แผนก MILLING ----
+        st.write("#### 🔹 เครื่องมิลลิ่ง MILLING (4 เครื่อง)")
+        mill_col1, mill_col2, mill_col3 = st.columns(3)
+        mill_idx = 0
+        for m_id, m_name in MACHINES.items():
+            if "MILLING" in m_id:
+                with (mill_col1 if mill_idx % 3 == 0 else (mill_col2 if mill_idx % 3 == 1 else mill_col3)):
+                    render_machine_card(m_id, m_name, "MILLING")
+                mill_idx += 1
+
+        # ---- 8. แผนก LATHE ----
+        st.write("#### 🔹 เครื่องกลึง LATHE (1 เครื่อง)")
+        lathe_col1, = st.columns(1)
+        with lathe_col1: render_machine_card("LATHE-01", MACHINES["LATHE-01"], "LATHE")
+
+        # ---- 9. แผนก CUTTING ----
+        st.write("#### 🔹 เครื่องตัด CUTTING (1 เครื่อง)")
+        cut_col1, = st.columns(1)
+        with cut_col1: render_machine_card("CUTTING-01", MACHINES["CUTTING-01"], "CUTTING")
+
+        # ---- 10. แผนก BENDING ----
+        st.write("#### 🔹 เครื่องพับ BENDING (1 เครื่อง)")
+        bend_col1, = st.columns(1)
+        with bend_col1: render_machine_card("BENDING-01", MACHINES["BENDING-01"], "BENDING")
+
+        # ---- 11. แผนก MIG CO2 ----
+        st.write("#### 🔹 เครื่องเชื่อม MIG CO2 (3 เครื่อง)")
+        mig_col1, mig_col2, mig_col3 = st.columns(3)
+        mig_idx = 0
+        for m_id, m_name in MACHINES.items():
+            if "MIG" in m_id:
+                with (mig_col1 if mig_idx % 3 == 0 else (mig_col2 if mig_idx % 3 == 1 else mig_col3)):
+                    render_machine_card(m_id, m_name, "MIG CO2")
+                mig_idx += 1
+
+        # ---- 12. แผนก ARGON ----
+        st.write("#### 🔹 เครื่องเชื่อม ARGON (2 เครื่อง)")
+        argon_col1, argon_col2 = st.columns(2)
+        argon_idx = 0
+        for m_id, m_name in MACHINES.items():
+            if "ARGON" in m_id:
+                with (argon_col1 if argon_idx % 2 == 0 else argon_col2):
+                    render_machine_card(m_id, m_name, "ARGON")
+                argon_idx += 1
+
+        # ---- 13. แผนก WELDING ALUMINUM ----
+        st.write("#### 🔹 เครื่องเชื่อมอลูมิเนียม WELDING ALUMINUM (1 เครื่อง)")
+        wel_al_col1, = st.columns(1)
+        with wel_al_col1: render_machine_card("WELDING_ALUMINUM-01", MACHINES["WELDING_ALUMINUM-01"], "WELDING_ALUMINUM")
+
+        # ---- 14. แผนก BAND SAW ----
+        st.write("#### 🔹 เครื่องเลื่อยสายพาน BAND SAW (3 เครื่อง)")
+        saw_col1, saw_col2, saw_col3 = st.columns(3)
+        saw_idx = 0
+        for m_id, m_name in MACHINES.items():
+            if "BAND" in m_id.upper():
+                with (saw_col1 if saw_idx % 3 == 0 else (saw_col2 if saw_idx % 3 == 1 else saw_col3)):
+                    render_machine_card(m_id, m_name, "BAND SAW")
+                saw_idx += 1
+
+        # ---- 15. แผนก FORKLIFT ----
+        st.write("#### 🔹 รถโฟคลิฟ FORKLIFT (1 เครื่อง)")
+        fork_col1, = st.columns(1)
+        with fork_col1: render_machine_card("FORKLIFT-01", MACHINES["FORKLIFT-01"], "FORKLIFT")
+
+        st.markdown("---")
+        st.write("### 👑 พื้นที่ควบคุมระดับความปลอดภัยสูงสุด (สำหรับผู้บริหาร)")
+        bigboss_code_input = st.text_input("🔐 กรุณากรอกรหัสผ่านผู้บริหาร เพื่อเปิดตู้นิรภัย พิมพ์คิวอาร์โค้ด และระบบล้างประวัติหลังบ้าน:", type="password", key="bigboss_secret_key_field")
+        
+        if bigboss_code_input == BIGBOSS_PASSWORD:
+            st.success("🎯 ยืนยันสิทธิ์ สำเร็จ ปลดล็อกเรียบร้อยแล้วครับ!")
+            
+            with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดไฟล์ดิบฐานข้อมูลหลัก (DATABASE BACKUP DISK)"):
+                st.info("📂 ปุ่มนี้ทำหน้าที่ดึงไฟล์ประวัติการติ๊กและหมายเหตุสะสมทั้งหมดของเครื่องจักรทุกแผนกบนระบบคลาวด์กระจกเงาออกเป็นไฟล์ .csv เพื่อเก็บเป็นประวัติถาวร")
+                local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
+                if os.path.exists(local_cloud_backup):
+                    with open(local_cloud_backup, "rb") as f_data:
                         st.download_button(
-                            label=f"📥 ดาวน์โหลดรูปภาพแผนก [{dept_target}]", 
-                            data=filtered_zip_data, 
-                            file_name=f"Photos_Filter_{dept_target}_{current_boss_month}.zip", 
-                            mime="application/zip", 
+                            label="📥 ดาวน์โหลดไฟล์ฐานข้อมูลดิบกลาง (gsheet_cloud_mirror.csv)",
+                            data=f_data,
+                            file_name=f"Backup_Master_Database_{datetime.datetime.now().strftime('%Y_%m_%d')}.csv",
+                            mime="text/csv",
                             type="primary"
                         )
+                else:
+                    st.caption("ℹ️ ระบบพร้อมจัดเก็บ (จะปรากฏปุ่มให้ดาวน์โหลดเมื่อช่างมีการคีย์งานส่งเข้ามาคนแรกครับ)")
+
+            with st.expander("📸 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดรูปภาพ PM รวมหมดทั้งโรงงาน (.zip)"):
+                st.info("📦 ปุ่มนี้จะทำหน้าที่เดินสแกนกวาดรูปถ่าย PM ของทุกแผนก ทุกเครื่องจักร มารวมเป็นไฟล์ .zip ก้อนเดียวเพื่อใช้ส่งผลตรวจมาตรฐานโรงงาน")
+                
+                dept_target = st.selectbox("เลือกแผนกที่บอสต้องการดาวน์โหลดรูปภาพ:", [
+                    "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC", "MILLING", "MIG CO2", "ARGON", "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
+                ])
+                current_boss_month = selected_date.strftime("%Y_%B")
+                
+                filtered_zip_data = zip_all_factory_photos_by_filter(filter_type=dept_target, target_date_obj=selected_date)
+                if filtered_zip_data:
+                    st.download_button(
+                        label=f"📥 ดาวน์โหลดรูปภาพแผนก [{dept_target}]", 
+                        data=filtered_zip_data, 
+                        file_name=f"Photos_Filter_{dept_target}_{current_boss_month}.zip", 
+                        mime="application/zip", 
+                        type="primary"
+                    )
+                else:
+                    st.warning(f"⚠️ ในระบบคลาวด์ตามช่วงปฏิทินที่เลือก ยังไม่มีรูปภาพบันทึกอยู่ในกลุ่มแผนก [{dept_target}] เลยครับบอส")
+
+            with st.expander("🖨️ [เฉพาะผู้บริหารสูงสุด] เครื่องมือพิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
+                sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()), key="bigboss_qr_select_box")
+                qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" 
+                qr = qrcode.make(qr_url)
+                buf = BytesIO()
+                qr.save(buf)
+                st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
+
+            with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
+                st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ สิ้นเดือน")
+                backup_folder_path = os.path.join(BASE_FOLDER, "maintenance_backups")
+                if os.path.exists(backup_folder_path):
+                    all_backups = [f for f in os.listdir(backup_folder_path) if f.lower().endswith('.xlsx')]
+                    if all_backups:
+                        for b_file in sorted(all_backups):
+                            b_file_path = os.path.join(backup_folder_path, b_file)
+                            with open(b_file_path, "rb") as f_data:
+                                st.download_button(
+                                    label=f"📥 ดาวน์โหลดไฟล์สำรอง: {b_file}",
+                                    data=f_data,
+                                    file_name=b_file,
+                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                    key=f"dl_backup_{b_file}"
+                                )
                     else:
-                        st.warning(f"⚠️ ในระบบคลาวด์ตามช่วงปฏิทินที่เลือก ยังไม่มีรูปภาพบันทึกอยู่ในกลุ่มแผนก [{dept_target}] เลยครับบอส")
+                        st.caption("ℹ️ ยังไม่มีไฟล์สำรองประวัติเดือนเก่าจัดเก็บในตูี้")
+                else:
+                    st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
 
-                with st.expander("🖨️ [เฉพาะผู้บริหารสูงสุด] เครื่องมือพิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
-                    sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()), key="bigboss_qr_select_box_inside")
-                    qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" 
-                    qr = qrcode.make(qr_url)
-                    buf = BytesIO()
-                    qr.save(buf)
-                    st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
+            with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและฐานข้อมูลกระจกเงา (RESET SYSTEM)"):
+                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานที่ส่งทดสอบและประวัติประจักษ์กระจกเงาทั้งหมดออกไปอย่างถาวร เพื่อให้ระบบสะอาดพร้อมเปิดใช้งานจริง")
+                if st.button("🚨 สั่งลบรูปภาพและฐานข้อมูลกระจกเงาทั้งหมดกริบ 100%", type="primary", key="reset_all_photos_primary_btn"):
+                    target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
+                    local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
+                    if os.path.exists(target_photo_folder): shutil.rmtree(target_photo_folder) 
+                    if os.path.exists(local_cloud_backup): os.remove(local_cloud_backup)
+                    st.success("🧹 ลบโฟลเดอร์รูปภาพและกระจกเงาออกไปจากระบบคลาวด์สะอาดบริสุทธิ์เรียบร้อยแล้วครับ!")
+                    st.balloons()
+        elif bigboss_code_input != "":
+            st.error("❌ รหัสผ่าน Big Boss ไม่ถูกต้อง! ปฏิเสธสิทธิ์การพิมพ์คิวอาร์ เข้าถึงไฟล์ประวัติย้อนหลัง และปุ่มล้างระบบ")
 
-                with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ตู้เซฟเก็บประวัติเอกสารย้อนหลังอัตโนมัติ (BACKUP HISTORY ARCHIVES)"):
-                    st.info("📂 ส่วนนี้เป็นที่รวบรวมไฟล์ Excel ประจำเดือนเก่าที่ระบบทำการคัดลอกสำรอง (Auto-Backup) เก็บไว้ให้โดยอัตโนมัติทุก ๆ สิ้นเดือน")
-                    backup_folder_path = os.path.join(BASE_FOLDER, "maintenance_backups")
-                    if os.path.exists(backup_folder_path):
-                        all_backups = [f for f in os.listdir(backup_folder_path) if f.lower().endswith('.xlsx')]
-                        if all_backups:
-                            for b_file in sorted(all_backups):
-                                b_file_path = os.path.join(backup_folder_path, b_file)
-                                with open(b_file_path, "rb") as f_data:
-                                    st.download_button(
-                                        label=f"📥 ดาวน์โหลดไฟล์สำรอง: {b_file}",
-                                        data=f_data,
-                                        file_name=b_file,
-                                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                        key=f"dl_backup_{b_file}"
-                                    )
-                        else:
-                            st.caption("ℹ️ ยังไม่มีไฟล์สำรองประวัติเดือนเก่าจัดเก็บในตู้นี้")
-                    else:
-                        st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
-
-                with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและฐานข้อมูลกระจกเงา (RESET SYSTEM)"):
-                    st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานที่ส่งทดสอบและประวัติประจักษ์กระจกเงาทั้งหมดออกไปอย่างถาวร เพื่อให้ระบบสะอาดพร้อมเปิดใช้งานจริง")
-                    if st.button("🚨 สั่งลบรูปภาพและฐานข้อมูลกระจกเงาทั้งหมดกริบ 100%", type="primary", key="reset_all_photos_primary_btn_inside"):
-                        target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
-                        local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
-                        if os.path.exists(target_photo_folder): shutil.rmtree(target_photo_folder) 
-                        if os.path.exists(local_cloud_backup): os.remove(local_cloud_backup)
-                        st.success("🧹 ลบโฟลเดอร์รูปภาพและกระจกเงาออกไปจากระบบคลาวด์สะอาดบริสุทธิ์เรียบร้อยแล้วครับ!")
-                        st.balloons()
-        else:
-            st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับ")
+    elif password_input != "": 
+        st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับ")
