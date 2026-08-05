@@ -465,6 +465,7 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
     except:
         return None
 
+# 🎯 [ปรับปรุงระบบล้างตารางขึ้นเดือนใหม่อัตโนมัติ (ทะลวง Merged Cells 100%)]:
 def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_type):
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
@@ -498,7 +499,7 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             for d in range(1, 32):
                 c_letter = get_column_letter(2 + d)
                 for row_idx in range(6, 6 + len(checklist_items)):
-                    ws.cell(row=row_idx, column=2 + d, value="")
+                    get_unmerged_cell(ws, f"{c_letter}{row_idx}").value = ""
                 get_unmerged_cell(ws, f"{c_letter}{t_row}").value = ""
                 get_unmerged_cell(ws, f"{c_letter}{boss_row}").value = ""
             
@@ -647,14 +648,11 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
         elif any((uploaded_photos[idx]["files"] is None or len(uploaded_photos[idx]["files"]) == 0) for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
         else:
-            # 1. บันทึกรูปภาพ
             for idx in required_photo_indexes:
                 save_uploaded_photos_list(machine_id, current_day, idx, uploaded_photos[idx]["files"], current_date_obj=report_date)
             
-            # 2. 🔥 เขียนรอยติ๊กลง Excel โดยตรงทันที!
             write_tech_marks_direct_to_excel(machine_id, current_day, results, tech_name, m_type_selected)
 
-            # 3. บันทึกลง CSV กลาง
             logs_to_save = []
             ts_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             for i, item in enumerate(current_checklist, 1):
@@ -672,7 +670,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 })
             save_log_to_mirror_db_bulk(logs_to_save)
 
-            # 4. ส่งไลน์แจ้งเตือน
             fails, fixed_items = [], []
             for i, item in enumerate(current_checklist, 1):
                 status_val = str(results[item]["status"]).strip()
@@ -1003,17 +1000,15 @@ else:
                 else:
                     st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
 
-            # 🔥 [ปรับอัปเกรดปุ่ม RESET]: ล้างตาราง Excel ทุกเครื่อง + ลบรูปภาพ + ลบ CSV
+            # 🔥 [อัปเกรดปุ่ม RESET ทะลวง Merged Cells 100% Clean]:
             with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและตารางข้อมูล (FULL RESET SYSTEM)"):
                 st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการกวาดล้างรูปภาพหลักฐาน ประวัติ CSV และเคลียร์ตารางรอยติ๊กในไฟล์ Excel ทุกเครื่องเป็นค่าว่าง 100% เพื่อเปิดระบบจริงสดใหม่")
                 if st.button("🚨 สั่งลบรูปภาพ ประวัติ และกวาดล้างตาราง Excel ทุกเครื่องสะอาดกริบ 100%", type="primary", key="reset_all_photos_primary_btn_outside"):
-                    # 1. ลบโฟลเดอร์รูปภาพและ CSV
                     target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
                     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
                     if os.path.exists(target_photo_folder): shutil.rmtree(target_photo_folder) 
                     if os.path.exists(local_cloud_backup): os.remove(local_cloud_backup)
                     
-                    # 2. กวาดล้างรอยติ๊กในไฟล์ Excel ทุกเครื่องทุกแผนก
                     for m_code, m_title in MACHINES.items():
                         m_excel_file = f"FM-MN-07_{m_code}.xlsx"
                         m_excel_path = os.path.join(BASE_FOLDER, m_excel_file)
@@ -1041,10 +1036,11 @@ else:
                                 t_row, boss_row, n_cell = get_coordinates_by_machine(m_code, m_type_flag)
                                 checklist_items = CHECKLISTS[m_type_flag]
                                 
+                                # ทะลวงล้างตารางแบบเจาะ Merged Cell
                                 for d in range(1, 32):
                                     c_letter = get_column_letter(2 + d)
                                     for row_idx in range(6, 6 + len(checklist_items)):
-                                        ws_clean.cell(row=row_idx, column=2 + d, value="")
+                                        get_unmerged_cell(ws_clean, f"{c_letter}{row_idx}").value = ""
                                     get_unmerged_cell(ws_clean, f"{c_letter}{t_row}").value = ""
                                     get_unmerged_cell(ws_clean, f"{c_letter}{boss_row}").value = ""
                                 
