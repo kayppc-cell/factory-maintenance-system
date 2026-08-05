@@ -20,8 +20,8 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 
-BOSS_PASSWORD = "pes1234"
-BIGBOSS_PASSWORD = "pes9999"
+BOSS_PASSWORD = "boss1234"
+BIGBOSS_PASSWORD = "bigboss9999"
 
 now = datetime.datetime.now()
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -198,7 +198,7 @@ def get_unmerged_cell(ws, coordinate_str):
             return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
     return cell
 
-# --- 🎯 🌟 ฟังก์ชัน AUTO-PUSH ขึ้น GITHUB (อัปเกรดวนลูปซ้ำ 3 รอบ รองรับการส่งพร้อมกัน) ---
+# --- 🎯 🌟 ฟังก์ชัน AUTO-PUSH ขึ้น GITHUB (ระบบ Retry) ---
 def push_file_to_github(file_path_relative, commit_message="Auto-update maintenance data"):
     token = st.secrets.get("GITHUB_TOKEN")
     repo = st.secrets.get("GITHUB_REPO")
@@ -215,7 +215,6 @@ def push_file_to_github(file_path_relative, commit_message="Auto-update maintena
         "Accept": "application/vnd.github.v3+json"
     }
     
-    # ลองยิงขึ้น GitHub สูงสุด 3 รอบกรณีติด Lock Conflict
     for attempt in range(3):
         try:
             with open(full_file_path, "rb") as f:
@@ -237,38 +236,24 @@ def push_file_to_github(file_path_relative, commit_message="Auto-update maintena
             if put_res.status_code in [200, 201]:
                 return True
             else:
-                time.sleep(0.5) # พัก 0.5 วินาทีแล้วลองใหม่
+                time.sleep(0.5)
         except Exception as e:
             print(f"GitHub Push Retry Attempt {attempt+1} Error: {e}")
             time.sleep(0.5)
     return False
 
-# --- 2. 🛡️ ฐานข้อมูลกระจกเงาคู่ขนานรักษาประวัติถาวร (เพิ่ม File Lock ต่อคิวเขียน) ---
-def save_log_to_mirror_db(machine_id, day_num, year_month, tech_name, checklist_item, item_no, status, note, role="tech"):
+# --- 2. 🛡️ ฐานข้อมูลกระจกเงาคู่ขนานรักษาประวัติถาวร (แก้จุดพังรอยติ๊กหาย) ---
+def save_log_to_mirror_db_bulk(list_of_logs):
+    """บันทึกข้อมูลทุกข้อรวดเดียวลง CSV และ Push ครั้งเดียว"""
     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
-    new_data = {
-        "Timestamp": [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
-        "Machine_ID": [machine_id],
-        "Day_Num": [int(day_num)],
-        "Year_Month": [year_month],
-        "Tech_Name": [tech_name],
-        "Item_No": [int(item_no)],
-        "Checklist_Item": [checklist_item],
-        "Status": [status],
-        "Note": [note],
-        "Role": [role]
-    }
-    df_new = pd.DataFrame(new_data)
-    
-    # หน่วงเวลาสุ่มไมโครวินาทีสั้นๆ ป้องกันการแย่งเปิดไฟล์พร้อมกัน
-    time.sleep(0.05)
+    df_new = pd.DataFrame(list_of_logs)
     
     if not os.path.exists(local_cloud_backup):
         df_new.to_csv(local_cloud_backup, index=False, encoding="utf-8-sig")
     else:
         df_new.to_csv(local_cloud_backup, mode='a', header=False, index=False, encoding="utf-8-sig")
         
-    push_file_to_github("gsheet_cloud_mirror.csv", f"Auto-Sync CSV for {machine_id} Day {day_num}")
+    push_file_to_github("gsheet_cloud_mirror.csv", "Auto-Sync Bulk CSV Records")
 
 def fetch_logs_from_mirror_db(machine_id, year_month):
     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
@@ -305,11 +290,12 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
             col_letter = get_column_letter(2 + day_val)
             
             if row["Role"] == "tech":
-                status_val = row["Status"]
+                status_val = str(row["Status"]).strip()
                 item_idx = int(row["Item_No"])
                 cell_coordinate = f"{col_letter}{5 + item_idx}"
                 current_cell = get_unmerged_cell(ws, cell_coordinate)
                 
+                # 🎯 [จุดแก้รอยติ๊กหาย]: ใช้ .strip() ตัดเว้นวรรค
                 if status_val == "ใช้งานได้ปกติ": current_cell.value = "/"
                 elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": current_cell.value = "⨂"
                 elif status_val == "ใช้งานไม่ได้ต้องแก้ไข": current_cell.value = "X"
@@ -524,7 +510,7 @@ else:
     st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
     user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", [
         "🔧 ช่างเทคนิค (ส่งฟอร์ม)",
-        "🔐 Engineer/ผู้ตรวจสอบ",
+        "🔐 หัวหน้างาน/ผู้ตรวจสอบ",
         "👑 ผู้บริหารสูงสุด (Big Boss Zone)"
     ])
 
@@ -623,13 +609,28 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if saved_paths: 
                     photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ ({len(saved_paths)} รูป)")
             
+            # 🎯 [จุดแก้ไขรอยติ๊กหาย]: รวบรวมข้อมูลทุกข้อบันทึกลง CSV รวดเดียว ป้องกัน GitHub Block
+            logs_to_save = []
+            ts_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             for i, item in enumerate(current_checklist, 1):
-                save_log_to_mirror_db(machine_id, current_day, year_month_key, tech_name, item, i, results[item]["status"], results[item]["note"], "tech")
+                logs_to_save.append({
+                    "Timestamp": ts_now,
+                    "Machine_ID": machine_id,
+                    "Day_Num": int(current_day),
+                    "Year_Month": year_month_key,
+                    "Tech_Name": tech_name,
+                    "Item_No": int(i),
+                    "Checklist_Item": item,
+                    "Status": str(results[item]["status"]).strip(),
+                    "Note": str(results[item]["note"]).strip(),
+                    "Role": "tech"
+                })
+            save_log_to_mirror_db_bulk(logs_to_save)
 
             fails, fixed_items = [], []
             for i, item in enumerate(current_checklist, 1):
-                status_val = results[item]["status"]
-                note_val = results[item]["note"]
+                status_val = str(results[item]["status"]).strip()
+                note_val = str(results[item]["note"]).strip()
                 if status_val == "ใช้งานไม่ได้ต้องแก้ไข": fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
                 elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
             
@@ -653,10 +654,10 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
 # ==========================================
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ดูบอร์ดตรวจเช็ค/กดอนุมัติ]
 # ==========================================
-elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
+elif user_role == "🔐 หัวหน้างาน/ผู้ตรวจสอบ":
     st.image("Logo_Pes.png", width=240)
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
-    st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับ Engineer)")
+    st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
     
     selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและดูรูปภาพย้อนหลัง:", value=datetime.date.today())
     target_day_check = selected_date.day
@@ -683,7 +684,18 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 if os.path.isfile(target_excel_path):
                     if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
                         if approve_excel_by_boss(m_id, target_day_check, boss_name, m_type_flag):
-                            save_log_to_mirror_db(m_id, target_day_check, year_month_key, boss_name, "BOSS APPROVAL", 0, "APPROVED", "", "boss")
+                            save_log_to_mirror_db_bulk([{
+                                "Timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "Machine_ID": m_id,
+                                "Day_Num": int(target_day_check),
+                                "Year_Month": year_month_key,
+                                "Tech_Name": boss_name,
+                                "Item_No": 0,
+                                "Checklist_Item": "BOSS APPROVAL",
+                                "Status": "APPROVED",
+                                "Note": "",
+                                "Role": "boss"
+                            }])
                             st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
                             send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                             st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
