@@ -254,7 +254,6 @@ def save_log_to_mirror_db_bulk(list_of_logs):
         else:
             df_new.to_csv(local_cloud_backup, mode='a', header=False, index=False, encoding="utf-8-sig")
         
-        # บันทึกไฟล์เสร็จ ค่อยดันขึ้น GitHub 1 ครั้งถ้วน
         push_file_to_github("gsheet_cloud_mirror.csv", "Auto-Sync Bulk CSV Records")
     except Exception as e:
         print(f"Save CSV Error: {e}")
@@ -270,6 +269,7 @@ def fetch_logs_from_mirror_db(machine_id, year_month):
     except:
         return pd.DataFrame()
 
+# 🎯 [จุดผ่าตัดใหญ่]: สั่งบันทึกรอยติ๊กลง Excel ให้ติดจริง 100%!
 def apply_mirror_history_to_excel(machine_id, year_month, m_type):
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
@@ -299,7 +299,7 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
                 cell_coordinate = f"{col_letter}{5 + item_idx}"
                 current_cell = get_unmerged_cell(ws, cell_coordinate)
                 
-                # 🎯 [ปรับแก้การเช็คข้อความให้ยืดหยุ่น ป้องกันหลุดเงื่อนไข]:
+                # เขียนรอยติ๊กลงเซลล์ Excel
                 if "ปกติ" in status_val and "แก้ไข" not in status_val: 
                     current_cell.value = "/"
                 elif "แก้ไข" in status_val and "ปกติ" in status_val: 
@@ -309,7 +309,7 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
                 elif "ไม่ได้ทำงาน" in status_val or "-" in status_val: 
                     current_cell.value = "-"
                 else:
-                    current_cell.value = "/" # ค่าดีฟอลต์ความปลอดภัย
+                    current_cell.value = "/"
                     
                 current_cell.alignment = Alignment(horizontal='center', vertical='center')
                 
@@ -337,7 +337,9 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
             note_cell.value = ",  ".join(final_notes_list)
             note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
+        # 🔥 [แก้คำสั่งสำคัญสุด]: เซฟรอยติ๊กลง Excel จริง และสั่ง Push ขึ้น GitHub!
         wb.save(target_excel_path)
+        push_file_to_github(excel_file_name, f"Auto-Sync Excel Marks for {machine_id}")
     except Exception as e:
         print(f"Apply history error: {e}")
 
@@ -473,7 +475,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
         wb.save(target_excel_path)
-        push_file_to_github(excel_file_name, f"Auto-Sync Excel {machine_id} Day {day_num}")
         return True, ""
     except Exception as e:
         return False, str(e)
@@ -620,7 +621,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if saved_paths: 
                     photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ ({len(saved_paths)} รูป)")
             
-            # 🎯 [ปรับแก้การเตรียมชุดข้อมูลลง CSV ชัดเจน 100%]:
             logs_to_save = []
             ts_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             for i, item in enumerate(current_checklist, 1):
@@ -645,6 +645,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
                 elif "ทำการแก้ไข" in status_val: fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
             
+            # 🔥 ลำดับใหม่: เคลียร์ตารางวันแรก แล้วเขียนรอยติ๊กลง Excel พร้อมเซฟทันที
             update_iso_excel_by_tech(machine_id, current_day, results, tech_name, m_type_selected)
             apply_mirror_history_to_excel(machine_id, year_month_key, m_type_selected)
             
@@ -660,7 +661,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n✅ ผลการตรวจสอบ: ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
                 if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ (ลงตาราง ⨂):\n" + "\n".join(fixed_items)
                 send_line_alert(ok_msg + audit_tag)
-            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลอัปเดตและสำรองขึ้น GitHub เรียบร้อยแล้ว")
+            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลรอยติ๊กอัปเดตและสำรองขึ้น GitHub เรียบร้อยแล้ว")
 
 # ==========================================
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ดูบอร์ดตรวจเช็ค/กดอนุมัติ]
