@@ -198,62 +198,66 @@ def get_unmerged_cell(ws, coordinate_str):
             return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
     return cell
 
-# --- 🎯 🌟 ฟังก์ชัน AUTO-PUSH ขึ้น GITHUB (ระบบ Retry) ---
 def push_file_to_github(file_path_relative, commit_message="Auto-update maintenance data"):
-    token = st.secrets.get("GITHUB_TOKEN")
-    repo = st.secrets.get("GITHUB_REPO")
-    if not token or not repo:
-        return False
+    try:
+        token = st.secrets.get("GITHUB_TOKEN")
+        repo = st.secrets.get("GITHUB_REPO")
+        if not token or not repo:
+            return False
+            
+        full_file_path = os.path.join(BASE_FOLDER, file_path_relative)
+        if not os.path.exists(full_file_path):
+            return False
+            
+        url = f"https://api.github.com/repos/{repo}/contents/{file_path_relative}"
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
         
-    full_file_path = os.path.join(BASE_FOLDER, file_path_relative)
-    if not os.path.exists(full_file_path):
-        return False
-        
-    url = f"https://api.github.com/repos/{repo}/contents/{file_path_relative}"
-    headers = {
-        "Authorization": f"token {token}",
-        "Accept": "application/vnd.github.v3+json"
-    }
-    
-    for attempt in range(3):
-        try:
-            with open(full_file_path, "rb") as f:
-                content = base64.b64encode(f.read()).decode("utf-8")
-                
-            sha = None
-            get_res = requests.get(url, headers=headers)
-            if get_res.status_code == 200:
-                sha = get_res.json().get("sha")
-                
-            payload = {
-                "message": commit_message,
-                "content": content
-            }
-            if sha:
-                payload["sha"] = sha
-                
-            put_res = requests.put(url, headers=headers, data=json.dumps(payload))
-            if put_res.status_code in [200, 201]:
-                return True
-            else:
+        for attempt in range(3):
+            try:
+                with open(full_file_path, "rb") as f:
+                    content = base64.b64encode(f.read()).decode("utf-8")
+                    
+                sha = None
+                get_res = requests.get(url, headers=headers)
+                if get_res.status_code == 200:
+                    sha = get_res.json().get("sha")
+                    
+                payload = {
+                    "message": commit_message,
+                    "content": content
+                }
+                if sha:
+                    payload["sha"] = sha
+                    
+                put_res = requests.put(url, headers=headers, data=json.dumps(payload))
+                if put_res.status_code in [200, 201]:
+                    return True
+                else:
+                    time.sleep(0.5)
+            except:
                 time.sleep(0.5)
-        except Exception as e:
-            print(f"GitHub Push Retry Attempt {attempt+1} Error: {e}")
-            time.sleep(0.5)
-    return False
+        return False
+    except:
+        return False
 
-# --- 2. 🛡️ ฐานข้อมูลกระจกเงาคู่ขนานรักษาประวัติถาวร (แก้จุดพังรอยติ๊กหาย) ---
+# --- 2. 🛡️ ฐานข้อมูลกระจกเงาคู่ขนานรักษาประวัติถาวร ---
 def save_log_to_mirror_db_bulk(list_of_logs):
-    """บันทึกข้อมูลทุกข้อรวดเดียวลง CSV และ Push ครั้งเดียว"""
     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
     df_new = pd.DataFrame(list_of_logs)
     
-    if not os.path.exists(local_cloud_backup):
-        df_new.to_csv(local_cloud_backup, index=False, encoding="utf-8-sig")
-    else:
-        df_new.to_csv(local_cloud_backup, mode='a', header=False, index=False, encoding="utf-8-sig")
+    try:
+        if not os.path.exists(local_cloud_backup):
+            df_new.to_csv(local_cloud_backup, index=False, encoding="utf-8-sig")
+        else:
+            df_new.to_csv(local_cloud_backup, mode='a', header=False, index=False, encoding="utf-8-sig")
         
-    push_file_to_github("gsheet_cloud_mirror.csv", "Auto-Sync Bulk CSV Records")
+        # บันทึกไฟล์เสร็จ ค่อยดันขึ้น GitHub 1 ครั้งถ้วน
+        push_file_to_github("gsheet_cloud_mirror.csv", "Auto-Sync Bulk CSV Records")
+    except Exception as e:
+        print(f"Save CSV Error: {e}")
 
 def fetch_logs_from_mirror_db(machine_id, year_month):
     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
@@ -289,17 +293,24 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
             day_val = int(row["Day_Num"])
             col_letter = get_column_letter(2 + day_val)
             
-            if row["Role"] == "tech":
+            if str(row["Role"]).strip() == "tech":
                 status_val = str(row["Status"]).strip()
                 item_idx = int(row["Item_No"])
                 cell_coordinate = f"{col_letter}{5 + item_idx}"
                 current_cell = get_unmerged_cell(ws, cell_coordinate)
                 
-                # 🎯 [จุดแก้รอยติ๊กหาย]: ใช้ .strip() ตัดเว้นวรรค
-                if status_val == "ใช้งานได้ปกติ": current_cell.value = "/"
-                elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": current_cell.value = "⨂"
-                elif status_val == "ใช้งานไม่ได้ต้องแก้ไข": current_cell.value = "X"
-                elif status_val == "ไม่ได้ทำงาน": current_cell.value = "-"
+                # 🎯 [ปรับแก้การเช็คข้อความให้ยืดหยุ่น ป้องกันหลุดเงื่อนไข]:
+                if "ปกติ" in status_val and "แก้ไข" not in status_val: 
+                    current_cell.value = "/"
+                elif "แก้ไข" in status_val and "ปกติ" in status_val: 
+                    current_cell.value = "⨂"
+                elif "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: 
+                    current_cell.value = "X"
+                elif "ไม่ได้ทำงาน" in status_val or "-" in status_val: 
+                    current_cell.value = "-"
+                else:
+                    current_cell.value = "/" # ค่าดีฟอลต์ความปลอดภัย
+                    
                 current_cell.alignment = Alignment(horizontal='center', vertical='center')
                 
                 tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")
@@ -312,7 +323,7 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
                     if str(row["Note"]).strip() not in notes_by_day[day_val]:
                         notes_by_day[day_val].append(str(row["Note"]).strip())
 
-            elif row["Role"] == "boss":
+            elif str(row["Role"]).strip() == "boss":
                 boss_cell = get_unmerged_cell(ws, f"{col_letter}{boss_row}")
                 boss_cell.value = row["Tech_Name"]
                 boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
@@ -327,8 +338,8 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
             note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
         wb.save(target_excel_path)
-    except:
-        pass
+    except Exception as e:
+        print(f"Apply history error: {e}")
 
 # --- PHOTO & ZIP FUNCTIONS ---
 def send_line_alert(msg_text):
@@ -609,7 +620,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if saved_paths: 
                     photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ ({len(saved_paths)} รูป)")
             
-            # 🎯 [จุดแก้ไขรอยติ๊กหาย]: รวบรวมข้อมูลทุกข้อบันทึกลง CSV รวดเดียว ป้องกัน GitHub Block
+            # 🎯 [ปรับแก้การเตรียมชุดข้อมูลลง CSV ชัดเจน 100%]:
             logs_to_save = []
             ts_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             for i, item in enumerate(current_checklist, 1):
@@ -631,8 +642,8 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             for i, item in enumerate(current_checklist, 1):
                 status_val = str(results[item]["status"]).strip()
                 note_val = str(results[item]["note"]).strip()
-                if status_val == "ใช้งานไม่ได้ต้องแก้ไข": fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
-                elif status_val == "ทำการแก้ไขใช้งานได้ปกติ": fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
+                if "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
+                elif "ทำการแก้ไข" in status_val: fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
             
             update_iso_excel_by_tech(machine_id, current_day, results, tech_name, m_type_selected)
             apply_mirror_history_to_excel(machine_id, year_month_key, m_type_selected)
