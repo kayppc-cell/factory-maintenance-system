@@ -243,7 +243,7 @@ def push_file_to_github(file_path_relative, commit_message="Auto-update maintena
     except:
         return False
 
-# --- 🔥 [ฟังก์ชันใหม่]: เขียนรอยติ๊กลง Excel โดยตรงทันที 100% ---
+# --- 🔥 เขียนรอยติ๊กลง Excel โดยตรง ---
 def write_tech_marks_direct_to_excel(machine_id, day_num, results_dict, tech_name, m_type):
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
@@ -256,7 +256,6 @@ def write_tech_marks_direct_to_excel(machine_id, day_num, results_dict, tech_nam
         t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
         col_letter = get_column_letter(2 + int(day_num))
         
-        # 1. ลูปเขียนรอยติ๊กลงแต่ละแถว (เริ่มที่แถว 6)
         checklist_items = CHECKLISTS[m_type]
         notes_for_today = []
         
@@ -284,12 +283,10 @@ def write_tech_marks_direct_to_excel(machine_id, day_num, results_dict, tech_nam
             if note_val and note_val != "nan":
                 notes_for_today.append(f"ข้อ {idx}: {note_val}")
 
-        # 2. เขียนชื่อช่างแนวตั้ง
         tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")
         tech_cell.value = tech_name
         tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
         
-        # 3. อัปเดตหมายเหตุสะสม
         if notes_for_today:
             note_cell = get_unmerged_cell(ws, n_cell)
             old_note = str(note_cell.value) if note_cell.value else ""
@@ -654,10 +651,10 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             for idx in required_photo_indexes:
                 save_uploaded_photos_list(machine_id, current_day, idx, uploaded_photos[idx]["files"], current_date_obj=report_date)
             
-            # 2. 🔥 บันทึกรอยติ๊กลง Excel โดยตรงทันที 100%!
+            # 2. 🔥 เขียนรอยติ๊กลง Excel โดยตรงทันที!
             write_tech_marks_direct_to_excel(machine_id, current_day, results, tech_name, m_type_selected)
 
-            # 3. สำรองข้อมูลลง CSV กลาง
+            # 3. บันทึกลง CSV กลาง
             logs_to_save = []
             ts_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             for i, item in enumerate(current_checklist, 1):
@@ -1006,14 +1003,59 @@ else:
                 else:
                     st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
 
-            with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและฐานข้อมูลกระจกเงา (RESET SYSTEM)"):
-                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการลบโฟลเดอร์รูปภาพหลักฐานที่ส่งทดสอบและประวัติประจักษ์กระจกเงาทั้งหมดออกไปอย่างถาวร เพื่อให้ระบบสะอาดพร้อมเปิดใช้งานจริง")
-                if st.button("🚨 สั่งลบรูปภาพและฐานข้อมูลกระจกเงาทั้งหมดกริบ 100%", type="primary", key="reset_all_photos_primary_btn_outside"):
+            # 🔥 [ปรับอัปเกรดปุ่ม RESET]: ล้างตาราง Excel ทุกเครื่อง + ลบรูปภาพ + ลบ CSV
+            with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและตารางข้อมูล (FULL RESET SYSTEM)"):
+                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการกวาดล้างรูปภาพหลักฐาน ประวัติ CSV และเคลียร์ตารางรอยติ๊กในไฟล์ Excel ทุกเครื่องเป็นค่าว่าง 100% เพื่อเปิดระบบจริงสดใหม่")
+                if st.button("🚨 สั่งลบรูปภาพ ประวัติ และกวาดล้างตาราง Excel ทุกเครื่องสะอาดกริบ 100%", type="primary", key="reset_all_photos_primary_btn_outside"):
+                    # 1. ลบโฟลเดอร์รูปภาพและ CSV
                     target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
                     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
                     if os.path.exists(target_photo_folder): shutil.rmtree(target_photo_folder) 
                     if os.path.exists(local_cloud_backup): os.remove(local_cloud_backup)
-                    st.success("🧹 ลบโฟลเดอร์รูปภาพและกระจกเงาออกไปจากระบบคลาวด์สะอาดบริสุทธิ์เรียบร้อยแล้วครับ!")
+                    
+                    # 2. กวาดล้างรอยติ๊กในไฟล์ Excel ทุกเครื่องทุกแผนก
+                    for m_code, m_title in MACHINES.items():
+                        m_excel_file = f"FM-MN-07_{m_code}.xlsx"
+                        m_excel_path = os.path.join(BASE_FOLDER, m_excel_file)
+                        if os.path.isfile(m_excel_path):
+                            try:
+                                wb_clean = openpyxl.load_workbook(m_excel_path, data_only=False)
+                                ws_clean = wb_clean.active
+                                u_mcode = str(m_code).upper()
+                                if "CUTTER" in u_mcode: m_type_flag = "CUTTER GRINDING-01"
+                                elif "CRANE" in u_mcode: m_type_flag = "Crane no.1" if "NO.1" in u_mcode else "Crane no.2"
+                                elif "QC-" in u_mcode: m_type_flag = m_code
+                                elif "COMP-" in u_mcode: m_type_flag = m_code
+                                elif "GRINDING" in u_mcode: m_type_flag = "GRINDING-01"
+                                elif "MILLING" in u_mcode: m_type_flag = "MILLING"
+                                elif "LATHE" in u_mcode: m_type_flag = "LATHE"
+                                elif "CUTTING" in u_mcode: m_type_flag = "CUTTING"
+                                elif "BENDING" in u_mcode: m_type_flag = "BENDING"
+                                elif "MIG" in u_mcode: m_type_flag = "MIG CO2"
+                                elif "ARGON" in u_mcode: m_type_flag = "ARGON"
+                                elif "WELDING_ALUMINUM" in u_mcode: m_type_flag = "WELDING_ALUMINUM"
+                                elif "BAND" in u_mcode: m_type_flag = "BAND SAW"
+                                elif "FORKLIFT" in u_mcode: m_type_flag = "FORKLIFT"
+                                else: m_type_flag = "CNC"
+
+                                t_row, boss_row, n_cell = get_coordinates_by_machine(m_code, m_type_flag)
+                                checklist_items = CHECKLISTS[m_type_flag]
+                                
+                                for d in range(1, 32):
+                                    c_letter = get_column_letter(2 + d)
+                                    for row_idx in range(6, 6 + len(checklist_items)):
+                                        ws_clean.cell(row=row_idx, column=2 + d, value="")
+                                    get_unmerged_cell(ws_clean, f"{c_letter}{t_row}").value = ""
+                                    get_unmerged_cell(ws_clean, f"{c_letter}{boss_row}").value = ""
+                                
+                                note_cell = get_unmerged_cell(ws_clean, n_cell)
+                                note_cell.value = ""
+                                wb_clean.save(m_excel_path)
+                                push_file_to_github(m_excel_file, f"Reset Excel Table for {m_code}")
+                            except Exception as e_clean:
+                                print(f"Clean excel error for {m_code}: {e_clean}")
+                    
+                    st.success("🧹 ลบโฟลเดอร์รูปภาพ ฐานข้อมูล CSV และกวาดตาราง Excel ทุกเครื่องสะอาดบริสุทธิ์ 100% เรียบร้อยแล้วครับ!")
                     st.balloons()
         else:
             st.error("❌ รหัสผ่านผู้บริหารสูงสุดไม่ถูกต้อง! ปฏิเสธสิทธิ์การเข้าถึงศูนย์ควบคุมผู้บริหาร")
