@@ -243,7 +243,70 @@ def push_file_to_github(file_path_relative, commit_message="Auto-update maintena
     except:
         return False
 
-# --- 2. 🛡️ ฐานข้อมูลกระจกเงาคู่ขนานรักษาประวัติถาวร ---
+# --- 🔥 [ฟังก์ชันใหม่]: เขียนรอยติ๊กลง Excel โดยตรงทันที 100% ---
+def write_tech_marks_direct_to_excel(machine_id, day_num, results_dict, tech_name, m_type):
+    excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
+    target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
+    if not os.path.isfile(target_excel_path):
+        return False
+        
+    try:
+        wb = openpyxl.load_workbook(target_excel_path, data_only=False)
+        ws = wb.active
+        t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
+        col_letter = get_column_letter(2 + int(day_num))
+        
+        # 1. ลูปเขียนรอยติ๊กลงแต่ละแถว (เริ่มที่แถว 6)
+        checklist_items = CHECKLISTS[m_type]
+        notes_for_today = []
+        
+        for idx, item in enumerate(checklist_items, 1):
+            cell_coordinate = f"{col_letter}{5 + idx}"
+            current_cell = get_unmerged_cell(ws, cell_coordinate)
+            
+            res_data = results_dict.get(item, {})
+            status_val = str(res_data.get("status", "")).strip()
+            note_val = str(res_data.get("note", "")).strip()
+            
+            if "ปกติ" in status_val and "แก้ไข" not in status_val:
+                current_cell.value = "/"
+            elif "แก้ไข" in status_val and "ปกติ" in status_val:
+                current_cell.value = "⨂"
+            elif "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val:
+                current_cell.value = "X"
+            elif "ไม่ได้ทำงาน" in status_val or "-" in status_val:
+                current_cell.value = "-"
+            else:
+                current_cell.value = "/"
+                
+            current_cell.alignment = Alignment(horizontal='center', vertical='center')
+            
+            if note_val and note_val != "nan":
+                notes_for_today.append(f"ข้อ {idx}: {note_val}")
+
+        # 2. เขียนชื่อช่างแนวตั้ง
+        tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")
+        tech_cell.value = tech_name
+        tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
+        
+        # 3. อัปเดตหมายเหตุสะสม
+        if notes_for_today:
+            note_cell = get_unmerged_cell(ws, n_cell)
+            old_note = str(note_cell.value) if note_cell.value else ""
+            new_note_text = f"[วันที่ {day_num}]: " + ", ".join(notes_for_today)
+            if old_note:
+                note_cell.value = old_note + ",  " + new_note_text
+            else:
+                note_cell.value = new_note_text
+            note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+
+        wb.save(target_excel_path)
+        push_file_to_github(excel_file_name, f"Direct Write Excel for {machine_id} Day {day_num}")
+        return True
+    except Exception as e:
+        print(f"Direct Excel Write Error: {e}")
+        return False
+
 def save_log_to_mirror_db_bulk(list_of_logs):
     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
     df_new = pd.DataFrame(list_of_logs)
@@ -269,7 +332,6 @@ def fetch_logs_from_mirror_db(machine_id, year_month):
     except:
         return pd.DataFrame()
 
-# 🎯 [จุดผ่าตัดใหญ่]: สั่งบันทึกรอยติ๊กลง Excel ให้ติดจริง 100%!
 def apply_mirror_history_to_excel(machine_id, year_month, m_type):
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
@@ -283,11 +345,7 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
         ws = wb.active
         t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
         
-        note_cell = get_unmerged_cell(ws, n_cell)
-        note_cell.value = ""
-        
         df_logs = df_logs.sort_values(by="Timestamp")
-        notes_by_day = {}
         
         for _, row in df_logs.iterrows():
             day_val = int(row["Day_Num"])
@@ -299,47 +357,24 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
                 cell_coordinate = f"{col_letter}{5 + item_idx}"
                 current_cell = get_unmerged_cell(ws, cell_coordinate)
                 
-                # เขียนรอยติ๊กลงเซลล์ Excel
-                if "ปกติ" in status_val and "แก้ไข" not in status_val: 
-                    current_cell.value = "/"
-                elif "แก้ไข" in status_val and "ปกติ" in status_val: 
-                    current_cell.value = "⨂"
-                elif "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: 
-                    current_cell.value = "X"
-                elif "ไม่ได้ทำงาน" in status_val or "-" in status_val: 
-                    current_cell.value = "-"
-                else:
-                    current_cell.value = "/"
+                if "ปกติ" in status_val and "แก้ไข" not in status_val: current_cell.value = "/"
+                elif "แก้ไข" in status_val and "ปกติ" in status_val: current_cell.value = "⨂"
+                elif "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: current_cell.value = "X"
+                elif "ไม่ได้ทำงาน" in status_val or "-" in status_val: current_cell.value = "-"
+                else: current_cell.value = "/"
                     
                 current_cell.alignment = Alignment(horizontal='center', vertical='center')
                 
                 tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")
                 tech_cell.value = row["Tech_Name"]
                 tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
-                
-                if str(row["Note"]).strip() and str(row["Note"]) != "nan":
-                    if day_val not in notes_by_day:
-                        notes_by_day[day_val] = []
-                    if str(row["Note"]).strip() not in notes_by_day[day_val]:
-                        notes_by_day[day_val].append(str(row["Note"]).strip())
 
             elif str(row["Role"]).strip() == "boss":
                 boss_cell = get_unmerged_cell(ws, f"{col_letter}{boss_row}")
                 boss_cell.value = row["Tech_Name"]
                 boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
 
-        final_notes_list = []
-        for d_key in sorted(notes_by_day.keys()):
-            day_txt = f"[วันที่ {d_key}]: " + ", ".join(notes_by_day[d_key])
-            final_notes_list.append(day_txt)
-            
-        if final_notes_list:
-            note_cell.value = ",  ".join(final_notes_list)
-            note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
-
-        # 🔥 [แก้คำสั่งสำคัญสุด]: เซฟรอยติ๊กลง Excel จริง และสั่ง Push ขึ้น GitHub!
         wb.save(target_excel_path)
-        push_file_to_github(excel_file_name, f"Auto-Sync Excel Marks for {machine_id}")
     except Exception as e:
         print(f"Apply history error: {e}")
 
@@ -615,12 +650,14 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
         elif any((uploaded_photos[idx]["files"] is None or len(uploaded_photos[idx]["files"]) == 0) for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
         else:
-            photo_logs = []
+            # 1. บันทึกรูปภาพ
             for idx in required_photo_indexes:
-                saved_paths = save_uploaded_photos_list(machine_id, current_day, idx, uploaded_photos[idx]["files"], current_date_obj=report_date)
-                if saved_paths: 
-                    photo_logs.append(f"📸 แนบรูปหลักฐานข้อ {idx} สำเร็จ ({len(saved_paths)} รูป)")
+                save_uploaded_photos_list(machine_id, current_day, idx, uploaded_photos[idx]["files"], current_date_obj=report_date)
             
+            # 2. 🔥 บันทึกรอยติ๊กลง Excel โดยตรงทันที 100%!
+            write_tech_marks_direct_to_excel(machine_id, current_day, results, tech_name, m_type_selected)
+
+            # 3. สำรองข้อมูลลง CSV กลาง
             logs_to_save = []
             ts_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             for i, item in enumerate(current_checklist, 1):
@@ -638,16 +675,13 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 })
             save_log_to_mirror_db_bulk(logs_to_save)
 
+            # 4. ส่งไลน์แจ้งเตือน
             fails, fixed_items = [], []
             for i, item in enumerate(current_checklist, 1):
                 status_val = str(results[item]["status"]).strip()
                 note_val = str(results[item]["note"]).strip()
                 if "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
                 elif "ทำการแก้ไข" in status_val: fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
-            
-            # 🔥 ลำดับใหม่: เคลียร์ตารางวันแรก แล้วเขียนรอยติ๊กลง Excel พร้อมเซฟทันที
-            update_iso_excel_by_tech(machine_id, current_day, results, tech_name, m_type_selected)
-            apply_mirror_history_to_excel(machine_id, year_month_key, m_type_selected)
             
             boss_review_url = f"https://pes-maintenance.streamlit.app/?role=boss&id={machine_id}"
             audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
@@ -661,7 +695,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n✅ ผลการตรวจสอบ: ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
                 if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ (ลงตาราง ⨂):\n" + "\n".join(fixed_items)
                 send_line_alert(ok_msg + audit_tag)
-            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลรอยติ๊กอัปเดตและสำรองขึ้น GitHub เรียบร้อยแล้ว")
+            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลรอยติ๊กอัปเดตลง Excel และ GitHub เรียบร้อยแล้ว")
 
 # ==========================================
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ดูบอร์ดตรวจเช็ค/กดอนุมัติ]
