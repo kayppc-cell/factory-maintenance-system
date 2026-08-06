@@ -191,22 +191,15 @@ def get_coordinates_by_machine(m_id, m_type):
     if m_type == "BAND SAW" or "BAND" in u_id: return 11, 13, "B16"
     return 11, 13, "B16"
 
-# 🎯 Safe Cell Value Assignment (ป้องกันไฟล์พังจาก Merged Cells)
+# 🎯 เซฟค่าแบบไม่ทำลายโครงสร้าง Merged Cells
 def set_cell_value_safe(ws, coordinate_str, value, alignment=None):
     try:
-        target_cell = ws[coordinate_str]
-        for merged_range in ws.merged_cells.ranges:
-            if target_cell.coordinate in merged_range:
-                top_left = ws.cell(row=merged_range.min_row, column=merged_range.min_col)
-                top_left.value = value
-                if alignment:
-                    top_left.alignment = alignment
-                return
-        target_cell.value = value
+        cell = ws[coordinate_str]
+        cell.value = value
         if alignment:
-            target_cell.alignment = alignment
+            cell.alignment = alignment
     except Exception as e:
-        print(f"Safe set cell error: {e}")
+        print(f"Cell write error at {coordinate_str}: {e}")
 
 def get_unmerged_cell(ws, coordinate_str):
     try:
@@ -263,7 +256,7 @@ def push_file_to_github(file_path_relative, commit_message="Auto-update maintena
     except:
         return False
 
-# --- 🔥 เขียนรอยติ๊กลง Excel แบบปลอดภัย ไม่ทำไฟล์พัง ---
+# --- 🔥 เขียนรอยติ๊กลง Excel ปลอดภัย ไม่ทำ XML พัง ---
 def write_tech_marks_direct_to_excel(machine_id, day_num, results_dict, tech_name, m_type):
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
@@ -304,7 +297,8 @@ def write_tech_marks_direct_to_excel(machine_id, day_num, results_dict, tech_nam
             old_note = str(note_cell.value) if note_cell.value else ""
             new_note_text = f"[วันที่ {day_num}]: " + ", ".join(notes_for_today)
             final_note = (old_note + ",  " + new_note_text) if old_note else new_note_text
-            set_cell_value_safe(ws, n_cell, final_note, Alignment(horizontal="left", vertical="top", wrap_text=True))
+            note_cell.value = final_note
+            note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
         wb.save(target_excel_path)
         push_file_to_github(excel_file_name, f"Safe Direct Write Excel for {machine_id} Day {day_num}")
@@ -505,8 +499,6 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
                     set_cell_value_safe(ws, f"{c_letter}{row_idx}", "")
                 set_cell_value_safe(ws, f"{c_letter}{t_row}", "")
                 set_cell_value_safe(ws, f"{c_letter}{boss_row}", "")
-            
-            set_cell_value_safe(ws, n_cell, "", Alignment(horizontal="left", vertical="top", wrap_text=True))
 
         wb.save(target_excel_path)
         return True, ""
@@ -549,12 +541,12 @@ raw_role = query_params.get("role", "tech")
 is_boss_link = str(raw_role).strip().lower() == "boss"
 
 if is_boss_link:
-    user_role = "🔐 หัวหน้างาน/ผู้ตรวจสอบ"
+    user_role = "🔐 Engineer/ผู้ตรวจสอบ"
 else:
     st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
     user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", [
         "🔧 ช่างเทคนิค (ส่งฟอร์ม)",
-        "🔐 หัวหน้างาน/ผู้ตรวจสอบ",
+        "🔐 Engineer/ผู้ตรวจสอบ",
         "👑 ผู้บริหารสูงสุด (Big Boss Zone)"
     ])
 
@@ -693,10 +685,10 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
 # ==========================================
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ดูบอร์ดตรวจเช็ค/กดอนุมัติ]
 # ==========================================
-elif user_role == "🔐 หัวหน้างาน/ผู้ตรวจสอบ":
+elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
     st.image("Logo_Pes.png", width=240)
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
-    st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
+    st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับ Engineer)")
     
     selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและดูรูปภาพย้อนหลัง:", value=datetime.date.today())
     target_day_check = selected_date.day
@@ -1042,7 +1034,6 @@ else:
                                     set_cell_value_safe(ws_clean, f"{c_letter}{t_row}", "")
                                     set_cell_value_safe(ws_clean, f"{c_letter}{boss_row}", "")
                                 
-                                set_cell_value_safe(ws_clean, n_cell, "")
                                 wb_clean.save(m_excel_path)
                                 push_file_to_github(m_excel_file, f"Safe Reset Excel Table for {m_code}")
                             except Exception as e_clean:
