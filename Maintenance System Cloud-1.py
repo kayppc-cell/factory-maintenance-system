@@ -20,8 +20,8 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 
-BOSS_PASSWORD = "pes1234"
-BIGBOSS_PASSWORD = "pes9999"
+BOSS_PASSWORD = "boss1234"
+BIGBOSS_PASSWORD = "bigboss9999"
 
 now = datetime.datetime.now()
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -191,12 +191,32 @@ def get_coordinates_by_machine(m_id, m_type):
     if m_type == "BAND SAW" or "BAND" in u_id: return 11, 13, "B16"
     return 11, 13, "B16"
 
+# 🎯 Safe Cell Value Assignment (ป้องกันไฟล์พังจาก Merged Cells)
+def set_cell_value_safe(ws, coordinate_str, value, alignment=None):
+    try:
+        target_cell = ws[coordinate_str]
+        for merged_range in ws.merged_cells.ranges:
+            if target_cell.coordinate in merged_range:
+                top_left = ws.cell(row=merged_range.min_row, column=merged_range.min_col)
+                top_left.value = value
+                if alignment:
+                    top_left.alignment = alignment
+                return
+        target_cell.value = value
+        if alignment:
+            target_cell.alignment = alignment
+    except Exception as e:
+        print(f"Safe set cell error: {e}")
+
 def get_unmerged_cell(ws, coordinate_str):
-    cell = ws[coordinate_str]
-    for merged_range in ws.merged_cells.ranges:
-        if cell.coordinate in merged_range:
-            return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
-    return cell
+    try:
+        cell = ws[coordinate_str]
+        for merged_range in ws.merged_cells.ranges:
+            if cell.coordinate in merged_range:
+                return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
+        return cell
+    except:
+        return ws[coordinate_str]
 
 def push_file_to_github(file_path_relative, commit_message="Auto-update maintenance data"):
     try:
@@ -243,7 +263,7 @@ def push_file_to_github(file_path_relative, commit_message="Auto-update maintena
     except:
         return False
 
-# --- 🔥 เขียนรอยติ๊กลง Excel โดยตรง ---
+# --- 🔥 เขียนรอยติ๊กลง Excel แบบปลอดภัย ไม่ทำไฟล์พัง ---
 def write_tech_marks_direct_to_excel(machine_id, day_num, results_dict, tech_name, m_type):
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
@@ -258,47 +278,36 @@ def write_tech_marks_direct_to_excel(machine_id, day_num, results_dict, tech_nam
         
         checklist_items = CHECKLISTS[m_type]
         notes_for_today = []
+        center_align = Alignment(horizontal='center', vertical='center')
         
         for idx, item in enumerate(checklist_items, 1):
-            cell_coordinate = f"{col_letter}{5 + idx}"
-            current_cell = get_unmerged_cell(ws, cell_coordinate)
-            
+            cell_coord = f"{col_letter}{5 + idx}"
             res_data = results_dict.get(item, {})
             status_val = str(res_data.get("status", "")).strip()
             note_val = str(res_data.get("note", "")).strip()
             
-            if "ปกติ" in status_val and "แก้ไข" not in status_val:
-                current_cell.value = "/"
-            elif "แก้ไข" in status_val and "ปกติ" in status_val:
-                current_cell.value = "⨂"
-            elif "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val:
-                current_cell.value = "X"
-            elif "ไม่ได้ทำงาน" in status_val or "-" in status_val:
-                current_cell.value = "-"
-            else:
-                current_cell.value = "/"
-                
-            current_cell.alignment = Alignment(horizontal='center', vertical='center')
+            mark = "/"
+            if "ปกติ" in status_val and "แก้ไข" not in status_val: mark = "/"
+            elif "แก้ไข" in status_val and "ปกติ" in status_val: mark = "⨂"
+            elif "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: mark = "X"
+            elif "ไม่ได้ทำงาน" in status_val or "-" in status_val: mark = "-"
+            
+            set_cell_value_safe(ws, cell_coord, mark, center_align)
             
             if note_val and note_val != "nan":
                 notes_for_today.append(f"ข้อ {idx}: {note_val}")
 
-        tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")
-        tech_cell.value = tech_name
-        tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
+        set_cell_value_safe(ws, f"{col_letter}{t_row}", tech_name, Alignment(text_rotation=90, horizontal='center', vertical='center'))
         
         if notes_for_today:
             note_cell = get_unmerged_cell(ws, n_cell)
             old_note = str(note_cell.value) if note_cell.value else ""
             new_note_text = f"[วันที่ {day_num}]: " + ", ".join(notes_for_today)
-            if old_note:
-                note_cell.value = old_note + ",  " + new_note_text
-            else:
-                note_cell.value = new_note_text
-            note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+            final_note = (old_note + ",  " + new_note_text) if old_note else new_note_text
+            set_cell_value_safe(ws, n_cell, final_note, Alignment(horizontal="left", vertical="top", wrap_text=True))
 
         wb.save(target_excel_path)
-        push_file_to_github(excel_file_name, f"Direct Write Excel for {machine_id} Day {day_num}")
+        push_file_to_github(excel_file_name, f"Safe Direct Write Excel for {machine_id} Day {day_num}")
         return True
     except Exception as e:
         print(f"Direct Excel Write Error: {e}")
@@ -341,6 +350,7 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
         t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
+        center_align = Alignment(horizontal='center', vertical='center')
         
         df_logs = df_logs.sort_values(by="Timestamp")
         
@@ -351,25 +361,19 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
             if str(row["Role"]).strip() == "tech":
                 status_val = str(row["Status"]).strip()
                 item_idx = int(row["Item_No"])
-                cell_coordinate = f"{col_letter}{5 + item_idx}"
-                current_cell = get_unmerged_cell(ws, cell_coordinate)
+                cell_coord = f"{col_letter}{5 + item_idx}"
                 
-                if "ปกติ" in status_val and "แก้ไข" not in status_val: current_cell.value = "/"
-                elif "แก้ไข" in status_val and "ปกติ" in status_val: current_cell.value = "⨂"
-                elif "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: current_cell.value = "X"
-                elif "ไม่ได้ทำงาน" in status_val or "-" in status_val: current_cell.value = "-"
-                else: current_cell.value = "/"
-                    
-                current_cell.alignment = Alignment(horizontal='center', vertical='center')
+                mark = "/"
+                if "ปกติ" in status_val and "แก้ไข" not in status_val: mark = "/"
+                elif "แก้ไข" in status_val and "ปกติ" in status_val: mark = "⨂"
+                elif "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: mark = "X"
+                elif "ไม่ได้ทำงาน" in status_val or "-" in status_val: mark = "-"
                 
-                tech_cell = get_unmerged_cell(ws, f"{col_letter}{t_row}")
-                tech_cell.value = row["Tech_Name"]
-                tech_cell.alignment = Alignment(text_rotation=90, horizontal='center', vertical='center')
+                set_cell_value_safe(ws, cell_coord, mark, center_align)
+                set_cell_value_safe(ws, f"{col_letter}{t_row}", row["Tech_Name"], Alignment(text_rotation=90, horizontal='center', vertical='center'))
 
             elif str(row["Role"]).strip() == "boss":
-                boss_cell = get_unmerged_cell(ws, f"{col_letter}{boss_row}")
-                boss_cell.value = row["Tech_Name"]
-                boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
+                set_cell_value_safe(ws, f"{col_letter}{boss_row}", row["Tech_Name"], Alignment(text_rotation=90, horizontal="center", vertical="center"))
 
         wb.save(target_excel_path)
     except Exception as e:
@@ -465,7 +469,6 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
     except:
         return None
 
-# 🎯 [ปรับปรุงระบบล้างตารางขึ้นเดือนใหม่อัตโนมัติ (ทะลวง Merged Cells 100%)]:
 def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_type):
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
@@ -499,13 +502,11 @@ def update_iso_excel_by_tech(machine_id, day_num, results_dict, tech_name, m_typ
             for d in range(1, 32):
                 c_letter = get_column_letter(2 + d)
                 for row_idx in range(6, 6 + len(checklist_items)):
-                    get_unmerged_cell(ws, f"{c_letter}{row_idx}").value = ""
-                get_unmerged_cell(ws, f"{c_letter}{t_row}").value = ""
-                get_unmerged_cell(ws, f"{c_letter}{boss_row}").value = ""
+                    set_cell_value_safe(ws, f"{c_letter}{row_idx}", "")
+                set_cell_value_safe(ws, f"{c_letter}{t_row}", "")
+                set_cell_value_safe(ws, f"{c_letter}{boss_row}", "")
             
-            note_cell = get_unmerged_cell(ws, n_cell)
-            note_cell.value = ""
-            note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+            set_cell_value_safe(ws, n_cell, "", Alignment(horizontal="left", vertical="top", wrap_text=True))
 
         wb.save(target_excel_path)
         return True, ""
@@ -522,9 +523,7 @@ def approve_excel_by_boss(machine_id, day_num, boss_name, m_type):
         col_letter = get_column_letter(2 + day_num)
         _, boss_row, _ = get_coordinates_by_machine(machine_id, m_type)
         
-        boss_cell = get_unmerged_cell(ws, f"{col_letter}{boss_row}")
-        boss_cell.value = boss_name
-        boss_cell.alignment = Alignment(text_rotation=90, horizontal="center", vertical="center")
+        set_cell_value_safe(ws, f"{col_letter}{boss_row}", boss_name, Alignment(text_rotation=90, horizontal="center", vertical="center"))
         wb.save(target_excel_path)
         push_file_to_github(excel_file_name, f"Auto-Sync Boss Approval {machine_id} Day {day_num}")
         return True
@@ -555,7 +554,7 @@ else:
     st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
     user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", [
         "🔧 ช่างเทคนิค (ส่งฟอร์ม)",
-        "🔐 Engineer/ผู้ตรวจสอบ",
+        "🔐 หัวหน้างาน/ผู้ตรวจสอบ",
         "👑 ผู้บริหารสูงสุด (Big Boss Zone)"
     ])
 
@@ -694,10 +693,10 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
 # ==========================================
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ดูบอร์ดตรวจเช็ค/กดอนุมัติ]
 # ==========================================
-elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
+elif user_role == "🔐 หัวหน้างาน/ผู้ตรวจสอบ":
     st.image("Logo_Pes.png", width=240)
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
-    st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับ Engineer)")
+    st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
     
     selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและดูรูปภาพย้อนหลัง:", value=datetime.date.today())
     target_day_check = selected_date.day
@@ -1000,7 +999,7 @@ else:
                 else:
                     st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
 
-            # 🔥 [อัปเกรดปุ่ม RESET ทะลวง Merged Cells 100% Clean]:
+            # 🔥 [ปรับปุ่ม RESET เซฟความปลอดภัยสูง ไม่ทำให้ไฟล์พัง 100% Clean]:
             with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและตารางข้อมูล (FULL RESET SYSTEM)"):
                 st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการกวาดล้างรูปภาพหลักฐาน ประวัติ CSV และเคลียร์ตารางรอยติ๊กในไฟล์ Excel ทุกเครื่องเป็นค่าว่าง 100% เพื่อเปิดระบบจริงสดใหม่")
                 if st.button("🚨 สั่งลบรูปภาพ ประวัติ และกวาดล้างตาราง Excel ทุกเครื่องสะอาดกริบ 100%", type="primary", key="reset_all_photos_primary_btn_outside"):
@@ -1036,18 +1035,16 @@ else:
                                 t_row, boss_row, n_cell = get_coordinates_by_machine(m_code, m_type_flag)
                                 checklist_items = CHECKLISTS[m_type_flag]
                                 
-                                # ทะลวงล้างตารางแบบเจาะ Merged Cell
                                 for d in range(1, 32):
                                     c_letter = get_column_letter(2 + d)
                                     for row_idx in range(6, 6 + len(checklist_items)):
-                                        get_unmerged_cell(ws_clean, f"{c_letter}{row_idx}").value = ""
-                                    get_unmerged_cell(ws_clean, f"{c_letter}{t_row}").value = ""
-                                    get_unmerged_cell(ws_clean, f"{c_letter}{boss_row}").value = ""
+                                        set_cell_value_safe(ws_clean, f"{c_letter}{row_idx}", "")
+                                    set_cell_value_safe(ws_clean, f"{c_letter}{t_row}", "")
+                                    set_cell_value_safe(ws_clean, f"{c_letter}{boss_row}", "")
                                 
-                                note_cell = get_unmerged_cell(ws_clean, n_cell)
-                                note_cell.value = ""
+                                set_cell_value_safe(ws_clean, n_cell, "")
                                 wb_clean.save(m_excel_path)
-                                push_file_to_github(m_excel_file, f"Reset Excel Table for {m_code}")
+                                push_file_to_github(m_excel_file, f"Safe Reset Excel Table for {m_code}")
                             except Exception as e_clean:
                                 print(f"Clean excel error for {m_code}: {e_clean}")
                     
