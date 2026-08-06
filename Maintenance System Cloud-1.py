@@ -20,8 +20,8 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 
-BOSS_PASSWORD = "boss1234"
-BIGBOSS_PASSWORD = "bigboss9999"
+BOSS_PASSWORD = "pes1234"
+BIGBOSS_PASSWORD = "pes9999"
 
 now = datetime.datetime.now()
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
