@@ -20,8 +20,8 @@ LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 
 BASE_FOLDER = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
 
-BOSS_PASSWORD = "boss1234"
-BIGBOSS_PASSWORD = "bigboss9999"
+BOSS_PASSWORD = "pes1234"
+BIGBOSS_PASSWORD = "pes9999"
 
 now = datetime.datetime.now()
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -555,7 +555,7 @@ else:
     st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
     user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", [
         "🔧 ช่างเทคนิค (ส่งฟอร์ม)",
-        "🔐 หัวหน้างาน/ผู้ตรวจสอบ",
+        "🔐 Engineer/ผู้ตรวจสอบ",
         "👑 ผู้บริหารสูงสุด (Big Boss Zone)"
     ])
 
@@ -694,10 +694,10 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
 # ==========================================
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ดูบอร์ดตรวจเช็ค/กดอนุมัติ]
 # ==========================================
-elif user_role == "🔐 หัวหน้างาน/ผู้ตรวจสอบ":
+elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
     st.image("Logo_Pes.png", width=240)
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
-    st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับหัวหน้างาน)")
+    st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับ Engineer)")
     
     selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและดูรูปภาพย้อนหลัง:", value=datetime.date.today())
     target_day_check = selected_date.day
