@@ -708,7 +708,7 @@ elif user_role == "🔐 หัวหน้างาน/ผู้ตรวจส�
     if password_input != "":
         if password_input == BOSS_PASSWORD or password_input == BIGBOSS_PASSWORD:
             st.success("🔓 ยืนยันสิทธิ์: เข้าสู่ระบบตรวจสอบและบันทึกประจำวันได้")
-            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/Engineer:", value="พลวัฒน์")
+            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/Engineer:", value="")
             
             st.divider()
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
