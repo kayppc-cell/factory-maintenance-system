@@ -160,11 +160,12 @@ CHECKLISTS = {
     ]
 }
 
+# 🎯 [ปรับแก้PHOTO_RULES ให้ตรงกับจำนวนข้อจริง ป้องกันบั๊กส่งรูปไม่ผ่าน]:
 PHOTO_RULES = {
     "CNC": [2, 3, 4, 5, 8, 13], "Crane no.1": [3, 4], "Crane no.2": [3, 4], "QC-01": [4],
     "QC-02": [2, 4], "QC-03": [2, 4], "QC-04": [2, 4], "QC-05": [2, 4], "QC-06": [2, 4],
-    "QC-07": [2, 4], "QC-08": [2, 4], "QC-09": [2, 4], "QC-10": [2], "QC-11": [2], "QC-12": [2],
-    "QC-13": [2], "QC-14": [2], "QC-15": [6], "QC-16": [3], "QC-17": [2], "QC-18": [3], "QC-19": [3],
+    "QC-07": [2, 4], "QC-08": [2, 4], "QC-09": [2, 4], "QC-10": [2, 3], "QC-11": [2, 3], "QC-12": [2, 3],
+    "QC-13": [2, 3], "QC-14": [2, 3], "QC-15": [6], "QC-16": [3], "QC-17": [2], "QC-18": [3], "QC-19": [3],
     "QC-20": [3], "QC-21": [3], "COMP-01": [1, 2, 3], "COMP-02": [1, 2, 3], "GRINDING-01": [2, 4, 7], "GRINDING-02": [4, 7],
     "CUTTER GRINDING-01": [], "MILLING": [6, 7], "LATHE": [2, 5, 6], "CUTTING": [3, 5, 7], "BENDING": [3, 5, 6], "MIG CO2": [3, 4, 5],
     "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [2, 3, 5], "FORKLIFT": [1, 2, 5]
@@ -372,7 +373,7 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
     except Exception as e:
         print(f"Apply history error: {e}")
 
-# --- PHOTO & ZIP FUNCTIONS (เพิ่มระบบยิงรูปถ่ายขึ้น GitHub ถาวร) ---
+# --- PHOTO & ZIP FUNCTIONS (ระบบยิงรูปถ่ายขึ้น GitHub ถาวร) ---
 def send_line_alert(msg_text):
     url = 'https://api.line.me/v2/bot/message/push'
     headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
@@ -401,7 +402,7 @@ def save_uploaded_photos_list(machine_id, day_num, item_index, files_list, curre
                 f.write(uploaded_file.getbuffer())
             saved_paths.append(full_path)
             
-            # 🔥 [อัปเกรดสำคัญ]: ยิงไฟล์รูปถ่ายขึ้น GitHub ทันที เพื่อป้องกันรูปหายเวลา Reboot
+            # 🔥 ยิงไฟล์รูปถ่ายขึ้น GitHub ทันที เพื่อป้องกันรูปหายเวลา Reboot
             push_file_to_github(relative_file_path, f"Upload Photo for {machine_id} Day {day_num} Item {item_index}")
             
     return saved_paths
@@ -553,7 +554,7 @@ else:
     st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
     user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", [
         "🔧 ช่างเทคนิค (ส่งฟอร์ม)",
-        "🔐 หัวหน้างาน/ผู้ตรวจสอบ",
+        "🔐 Engineer/ผู้ตรวจสอบ",
         "👑 ผู้บริหารสูงสุด (Big Boss Zone)"
     ])
 
