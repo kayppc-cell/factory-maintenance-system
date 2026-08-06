@@ -191,7 +191,6 @@ def get_coordinates_by_machine(m_id, m_type):
     if m_type == "BAND SAW" or "BAND" in u_id: return 11, 13, "B16"
     return 11, 13, "B16"
 
-# 🎯 เซฟค่าแบบไม่ทำลายโครงสร้าง Merged Cells
 def set_cell_value_safe(ws, coordinate_str, value, alignment=None):
     try:
         cell = ws[coordinate_str]
@@ -373,7 +372,7 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
     except Exception as e:
         print(f"Apply history error: {e}")
 
-# --- PHOTO & ZIP FUNCTIONS ---
+# --- PHOTO & ZIP FUNCTIONS (เพิ่มระบบยิงรูปถ่ายขึ้น GitHub ถาวร) ---
 def send_line_alert(msg_text):
     url = 'https://api.line.me/v2/bot/message/push'
     headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
@@ -388,15 +387,23 @@ def save_uploaded_photos_list(machine_id, day_num, item_index, files_list, curre
             current_date_obj = datetime.date.today()
         current_year_month = current_date_obj.strftime("%Y_%B")
         
-        folder_path = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), current_year_month, f"Day_{day_num}")
+        folder_relative = os.path.join("maintenance_photos", str(machine_id), current_year_month, f"Day_{day_num}")
+        folder_path = os.path.join(BASE_FOLDER, folder_relative)
         if not os.path.exists(folder_path): os.makedirs(folder_path, exist_ok=True)
         
         for idx, uploaded_file in enumerate(files_list, 1):
             file_extension = os.path.splitext(uploaded_file.name)[1]
             file_name = f"photo_item_{item_index}_{idx}{file_extension}"
             full_path = os.path.join(folder_path, file_name)
-            with open(full_path, "wb") as f: f.write(uploaded_file.getbuffer())
+            relative_file_path = os.path.join(folder_relative, file_name)
+            
+            with open(full_path, "wb") as f: 
+                f.write(uploaded_file.getbuffer())
             saved_paths.append(full_path)
+            
+            # 🔥 [อัปเกรดสำคัญ]: ยิงไฟล์รูปถ่ายขึ้น GitHub ทันที เพื่อป้องกันรูปหายเวลา Reboot
+            push_file_to_github(relative_file_path, f"Upload Photo for {machine_id} Day {day_num} Item {item_index}")
+            
     return saved_paths
 
 def zip_single_machine_photos(machine_id, target_date_obj, target_day=None):
@@ -541,12 +548,12 @@ raw_role = query_params.get("role", "tech")
 is_boss_link = str(raw_role).strip().lower() == "boss"
 
 if is_boss_link:
-    user_role = "🔐 Engineer/ผู้ตรวจสอบ"
+    user_role = "🔐 หัวหน้างาน/ผู้ตรวจสอบ"
 else:
     st.sidebar.title("🏢 เมนูควบคุมโรงงานรวม")
     user_role = st.sidebar.radio("เลือกสิทธิ์การเข้าใช้งานด้านล่าง:", [
         "🔧 ช่างเทคนิค (ส่งฟอร์ม)",
-        "🔐 Engineer/ผู้ตรวจสอบ",
+        "🔐 หัวหน้างาน/ผู้ตรวจสอบ",
         "👑 ผู้บริหารสูงสุด (Big Boss Zone)"
     ])
 
@@ -680,7 +687,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n✅ ผลการตรวจสอบ: ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
                 if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ (ลงตาราง ⨂):\n" + "\n".join(fixed_items)
                 send_line_alert(ok_msg + audit_tag)
-            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลรอยติ๊กอัปเดตลง Excel และ GitHub เรียบร้อยแล้ว")
+            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลรอยติ๊กและรูปภาพอัปเดตลง Excel & GitHub เรียบร้อยแล้ว")
 
 # ==========================================
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ดูบอร์ดตรวจเช็ค/กดอนุมัติ]
@@ -701,7 +708,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
     if password_input != "":
         if password_input == BOSS_PASSWORD or password_input == BIGBOSS_PASSWORD:
             st.success("🔓 ยืนยันสิทธิ์: เข้าสู่ระบบตรวจสอบและบันทึกประจำวันได้")
-            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/หัวหน้างาน:", value="พลวัฒน์")
+            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/Engineer:", value="")
             
             st.divider()
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
