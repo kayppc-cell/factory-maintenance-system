@@ -171,6 +171,7 @@ PHOTO_RULES = {
     "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [2, 3, 5], "FORKLIFT": [1, 2, 5]
 }
 
+# 🎯 [ฟังก์ชันคืนค่าพิกัด ล็อค CNC และ BENDING กลับเป็นค่าเดิมที่ถูกต้อง]:
 def get_coordinates_by_machine(m_id, m_type):
     u_id = str(m_id).upper()
     if "CUTTER" in u_id or m_type == "CUTTER GRINDING-01": return 13, 15, "B18"
@@ -180,15 +181,24 @@ def get_coordinates_by_machine(m_id, m_type):
     if "QC-15" in u_id: return 12, 14, "B17"
     if "ARGON-02" in u_id or "ARGON-01" in u_id: return 14, 16, "B19"
     if m_type == "FORKLIFT" or "FORKLIFT" in u_id: return 13, 15, "B18"
+    
+    # 🔒 CNC: ช่างลงแถว 22, หัวหน้าลงแถว 24, คอมเม้น B28 (พิกัดเดิมถูกต้องแล้ว)
     if m_type == "CNC" or "CNC" in u_id: return 22, 24, "B28"
+    
     if "CRANE" in u_id: return 14, 16, "B19"
     if "GRINDING" in m_type or "GRINDING" in u_id: return 16, 18, "B21"
     
+    # 🔒 MILLING: ช่างลงช่อง 20 (ผสาน 20-21), หัวหน้าลงช่อง 22 (ผสาน 22-23), คอมเม้น B25
     if m_type == "MILLING" or "MILLING" in u_id: return 20, 22, "B25" 
-    if m_type == "LATHE" or "LATHE" in u_id: return 20, 22, "B25"
+    
+    # 🔒 LATHE-01: ช่างลงช่อง 17 (ผสาน 17-18), หัวหน้าลงช่อง 19 (ผสาน 19-20), คอมเม้น B22
+    if m_type == "LATHE" or "LATHE" in u_id: return 17, 19, "B22"
     
     if m_type == "CUTTING" or "CUTTING" in u_id: return 13, 15, "B18"
+    
+    # 🔒 BENDING-01: ช่างลงช่อง 15, หัวหน้าลงช่อง 17, คอมเม้น B20 (พิกัดเดิมถูกต้องแล้ว)
     if m_type == "BENDING" or "BENDING" in u_id: return 15, 17, "B20" 
+    
     if m_type == "WELDING_ALUMINUM" or "WELDING_ALUMINUM" in u_id: return 13, 15, "B18"
     if m_type == "MIG CO2" or "MIG" in u_id: return 13, 15, "B18"
     if m_type == "BAND SAW" or "BAND" in u_id: return 11, 13, "B16"
@@ -721,7 +731,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 st.info(f"⚙️ **{m_id}**\n{m_name}")
                 
                 if os.path.isfile(target_excel_path):
-                    # 🔥 [เพิ่มด่านตรวจป้องกันการลืมกรอกชื่ออนุมัติ]:
                     if not boss_name.strip():
                         st.button(f"⚠️ กรุณาระบุชื่อผู้ตรวจสอบก่อนกดอนุมัติ ({m_id})", key=f"btn_disabled_{m_id}", disabled=True)
                     else:
@@ -769,7 +778,8 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 elif "QC-01" in u_id or "QC-10" in u_id or "QC-11" in u_id or "QC-12" in u_id: note_label = "ช่อง B15"
                 elif "QC-15" in u_id: note_label = "ช่อง B17"
                 elif "GRINDING" in u_id or "GRINDING" in m_type_flag: note_label = "ช่อง B21"
-                elif "MILLING" in u_id or "LATHE" in u_id: note_label = "ช่อง B25"
+                elif "MILLING" in u_id: note_label = "ช่อง B25"
+                elif "LATHE" in u_id: note_label = "ช่อง B22"
                 elif "BENDING" in u_id: note_label = "ช่อง B20"
                 else: note_label = "ช่อง B16"
                 
@@ -1009,7 +1019,7 @@ else:
                     st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
 
             with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและตารางข้อมูล (FULL RESET SYSTEM)"):
-                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการกวาดล้างรูปภาพหลักฐาน ประวัติ CSV และเคลียร์ตารางรอยติ๊กในไฟล์ Excel ทุกเครื่องเป็นค่าว่าง 100% เพื่อ Reset ระบบใหม่")
+                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการกวาดล้างรูปภาพหลักฐาน ประวัติ CSV และเคลียร์ตารางรอยติ๊กในไฟล์ Excel ทุกเครื่องเป็นค่าว่าง 100% เพื่อเปิดระบบจริงสดใหม่")
                 if st.button("🚨 สั่งลบรูปภาพ ประวัติ และกวาดล้างตาราง Excel ทุกเครื่องสะอาดกริบ 100%", type="primary", key="reset_all_photos_primary_btn_outside"):
                     target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
                     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
@@ -1059,4 +1069,4 @@ else:
                     st.success("🧹 ลบโฟลเดอร์รูปภาพ ฐานข้อมูล CSV และกวาดตาราง Excel ทุกเครื่องสะอาดบริสุทธิ์ 100% เรียบร้อยแล้วครับ!")
                     st.balloons()
         else:
-            st.error("❌ รหัสผ่านผู้บริหารสูงสุดไม่ถูกต้อง! ปฏิเสธสิทธิ์การเข้าถึงศูนย์ควบคุมผู้บริหาร")
+            st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับ")
