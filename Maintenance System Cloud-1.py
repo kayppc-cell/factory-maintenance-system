@@ -171,7 +171,7 @@ PHOTO_RULES = {
     "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [2, 3, 5], "FORKLIFT": [1, 2, 5]
 }
 
-# 🎯 [แก้ไขฟังก์ชันคืนพิกัดแม่นยำ 100% ทุกแผนก]:
+# 🎯 [ปรับพิกัด MILLING และ LATHE ช่างลงช่อง 20, หัวหน้าลงช่อง 22, คอมเม้นต์ลง B25 ตรงตามที่บอสระบุ]:
 def get_coordinates_by_machine(m_id, m_type):
     u_id = str(m_id).upper()
     if "CUTTER" in u_id or m_type == "CUTTER GRINDING-01": return 13, 15, "B18"
@@ -185,9 +185,9 @@ def get_coordinates_by_machine(m_id, m_type):
     if "CRANE" in u_id: return 14, 16, "B19"
     if "GRINDING" in m_type or "GRINDING" in u_id: return 16, 18, "B21"
     
-    # 🔥 [แก้ไขจุดพัง]: MILLING และ LATHE ปรับคืนพิกัดลงแถว 21 (ช่าง) และ 22 (หัวหน้า) ช่อง B23
-    if m_type == "MILLING" or "MILLING" in u_id: return 21, 22, "B23" 
-    if m_type == "LATHE" or "LATHE" in u_id: return 21, 22, "B23"
+    # 🔥 [พิกัดตรงตามบอสทวน]: ช่างลงช่อง 20 (ผสาน 20-21), หัวหน้าลงช่อง 22 (ผสาน 22-23), คอมเม้น B25
+    if m_type == "MILLING" or "MILLING" in u_id: return 20, 22, "B25" 
+    if m_type == "LATHE" or "LATHE" in u_id: return 20, 22, "B25"
     
     if m_type == "CUTTING" or "CUTTING" in u_id: return 13, 15, "B18"
     if m_type == "BENDING" or "BENDING" in u_id: return 15, 17, "B20" 
@@ -767,7 +767,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 elif "QC-01" in u_id or "QC-10" in u_id or "QC-11" in u_id or "QC-12" in u_id: note_label = "ช่อง B15"
                 elif "QC-15" in u_id: note_label = "ช่อง B17"
                 elif "GRINDING" in u_id or "GRINDING" in m_type_flag: note_label = "ช่อง B21"
-                elif "MILLING" in u_id or "LATHE" in u_id: note_label = "ช่อง B23"
+                elif "MILLING" in u_id or "LATHE" in u_id: note_label = "ช่อง B25"
                 elif "BENDING" in u_id: note_label = "ช่อง B20"
                 else: note_label = "ช่อง B16"
                 
@@ -1007,7 +1007,7 @@ else:
                     st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
 
             with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและตารางข้อมูล (FULL RESET SYSTEM)"):
-                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการกวาดล้างรูปภาพหลักฐาน ประวัติ CSV และเคลียร์ตารางรอยติ๊กในไฟล์ Excel ทุกเครื่องเป็นค่าว่าง 100% เพื่อ Reset ระบบใหม่")
+                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการกวาดล้างรูปภาพหลักฐาน ประวัติ CSV และเคลียร์ตารางรอยติ๊กในไฟล์ Excel ทุกเครื่องเป็นค่าว่าง 100% เพื่อเปิดระบบจริงสดใหม่")
                 if st.button("🚨 สั่งลบรูปภาพ ประวัติ และกวาดล้างตาราง Excel ทุกเครื่องสะอาดกริบ 100%", type="primary", key="reset_all_photos_primary_btn_outside"):
                     target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
                     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
