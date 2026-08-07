@@ -13,6 +13,7 @@ import zipfile
 import pandas as pd
 import base64
 import time
+from PIL import Image
 
 # --- 1. CONFIGURATION ---
 LINE_ACCESS_TOKEN = "SOs7DeGwVsFpuK/JN8zm58Wn3EOiB75Ww0q57z1/yht4H1imzYonre4QuPfQ3cxbJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lYwCp4biq7N20ffJqzGm+ZYNgtEzt2rYZ/GYVRV725EiAdB04t89/1O/w1cDnyilFU="
@@ -160,7 +161,6 @@ CHECKLISTS = {
     ]
 }
 
-# 🎯 [ปรับแก้PHOTO_RULES ให้ตรงกับจำนวนข้อจริง ป้องกันบั๊กส่งรูปไม่ผ่าน]:
 PHOTO_RULES = {
     "CNC": [2, 3, 4, 5, 8, 13], "Crane no.1": [3, 4], "Crane no.2": [3, 4], "QC-01": [4],
     "QC-02": [2, 4], "QC-03": [2, 4], "QC-04": [2, 4], "QC-05": [2, 4], "QC-06": [2, 4],
@@ -256,7 +256,7 @@ def push_file_to_github(file_path_relative, commit_message="Auto-update maintena
     except:
         return False
 
-# --- 🔥 เขียนรอยติ๊กลง Excel ปลอดภัย ไม่ทำ XML พัง ---
+# --- 🔥 เขียนรอยติ๊กลง Excel แบบปลอดภัย ---
 def write_tech_marks_direct_to_excel(machine_id, day_num, results_dict, tech_name, m_type):
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
@@ -297,8 +297,7 @@ def write_tech_marks_direct_to_excel(machine_id, day_num, results_dict, tech_nam
             old_note = str(note_cell.value) if note_cell.value else ""
             new_note_text = f"[วันที่ {day_num}]: " + ", ".join(notes_for_today)
             final_note = (old_note + ",  " + new_note_text) if old_note else new_note_text
-            note_cell.value = final_note
-            note_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+            set_cell_value_safe(ws, n_cell, final_note, Alignment(horizontal="left", vertical="top", wrap_text=True))
 
         wb.save(target_excel_path)
         push_file_to_github(excel_file_name, f"Safe Direct Write Excel for {machine_id} Day {day_num}")
@@ -373,7 +372,7 @@ def apply_mirror_history_to_excel(machine_id, year_month, m_type):
     except Exception as e:
         print(f"Apply history error: {e}")
 
-# --- PHOTO & ZIP FUNCTIONS (ระบบยิงรูปถ่ายขึ้น GitHub ถาวร) ---
+# --- PHOTO & ZIP FUNCTIONS ---
 def send_line_alert(msg_text):
     url = 'https://api.line.me/v2/bot/message/push'
     headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
@@ -402,7 +401,6 @@ def save_uploaded_photos_list(machine_id, day_num, item_index, files_list, curre
                 f.write(uploaded_file.getbuffer())
             saved_paths.append(full_path)
             
-            # 🔥 ยิงไฟล์รูปถ่ายขึ้น GitHub ทันที เพื่อป้องกันรูปหายเวลา Reboot
             push_file_to_github(relative_file_path, f"Upload Photo for {machine_id} Day {day_num} Item {item_index}")
             
     return saved_paths
@@ -742,12 +740,18 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 target_year_month_folder = selected_date.strftime("%Y_%B")
                 img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), target_year_month_folder, f"Day_{target_day_check}")
                 
+                # 🎯 [แก้ไขจุดพังการโหลดรูปภาพเสีย]: ป้องกัน OSError ล้มหน้าเว็บ
                 if os.path.exists(img_dir):
                     valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
                     if valid_photos:
                         with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check} ({len(valid_photos)} รูป)"):
                             for p_path in sorted(valid_photos):
-                                st.image(p_path, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
+                                try:
+                                    img_obj = Image.open(p_path)
+                                    img_obj.verify() # ตรวจความถูกต้องของไฟล์รูปภาพ
+                                    st.image(p_path, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
+                                except Exception as e_img:
+                                    st.warning(f"⚠️ รูปภาพเสีย/อ่านไม่ได้: {os.path.basename(p_path)}")
                 else:
                     st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
@@ -999,7 +1003,6 @@ else:
                 else:
                     st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
 
-            # 🔥 [ปรับปุ่ม RESET เซฟความปลอดภัยสูง ไม่ทำให้ไฟล์พัง 100% Clean]:
             with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและตารางข้อมูล (FULL RESET SYSTEM)"):
                 st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการกวาดล้างรูปภาพหลักฐาน ประวัติ CSV และเคลียร์ตารางรอยติ๊กในไฟล์ Excel ทุกเครื่องเป็นค่าว่าง 100% เพื่อเปิดระบบจริงสดใหม่")
                 if st.button("🚨 สั่งลบรูปภาพ ประวัติ และกวาดล้างตาราง Excel ทุกเครื่องสะอาดกริบ 100%", type="primary", key="reset_all_photos_primary_btn_outside"):
@@ -1042,6 +1045,7 @@ else:
                                     set_cell_value_safe(ws_clean, f"{c_letter}{t_row}", "")
                                     set_cell_value_safe(ws_clean, f"{c_letter}{boss_row}", "")
                                 
+                                set_cell_value_safe(ws_clean, n_cell, "")
                                 wb_clean.save(m_excel_path)
                                 push_file_to_github(m_excel_file, f"Safe Reset Excel Table for {m_code}")
                             except Exception as e_clean:
