@@ -1004,7 +1004,7 @@ else:
                     st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
 
             with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและตารางข้อมูล (FULL RESET SYSTEM)"):
-                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการกวาดล้างรูปภาพหลักฐาน ประวัติ CSV และเคลียร์ตารางรอยติ๊กในไฟล์ Excel ทุกเครื่องเป็นค่าว่าง 100% เพื่อเปิดระบบจริงสดใหม่")
+                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการกวาดล้างรูปภาพหลักฐาน ประวัติ CSV และเคลียร์ตารางรอยติ๊กในไฟล์ Excel ทุกเครื่องเป็นค่าว่าง 100% เพื่อ Reset ระบบใหม่")
                 if st.button("🚨 สั่งลบรูปภาพ ประวัติ และกวาดล้างตาราง Excel ทุกเครื่องสะอาดกริบ 100%", type="primary", key="reset_all_photos_primary_btn_outside"):
                     target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
                     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
