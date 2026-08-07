@@ -171,6 +171,7 @@ PHOTO_RULES = {
     "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [2, 3, 5], "FORKLIFT": [1, 2, 5]
 }
 
+# 🎯 [แก้ไขฟังก์ชันคืนพิกัดแม่นยำ 100% ทุกแผนก]:
 def get_coordinates_by_machine(m_id, m_type):
     u_id = str(m_id).upper()
     if "CUTTER" in u_id or m_type == "CUTTER GRINDING-01": return 13, 15, "B18"
@@ -183,8 +184,11 @@ def get_coordinates_by_machine(m_id, m_type):
     if m_type == "CNC" or "CNC" in u_id: return 22, 24, "B28"
     if "CRANE" in u_id: return 14, 16, "B19"
     if "GRINDING" in m_type or "GRINDING" in u_id: return 16, 18, "B21"
-    if m_type == "MILLING" or "MILLING" in u_id: return 17, 19, "B22" 
-    if m_type == "LATHE" or "LATHE" in u_id: return 17, 19, "B22"
+    
+    # 🔥 [แก้ไขจุดพัง]: MILLING และ LATHE ปรับคืนพิกัดลงแถว 21 (ช่าง) และ 22 (หัวหน้า) ช่อง B23
+    if m_type == "MILLING" or "MILLING" in u_id: return 21, 22, "B23" 
+    if m_type == "LATHE" or "LATHE" in u_id: return 21, 22, "B23"
+    
     if m_type == "CUTTING" or "CUTTING" in u_id: return 13, 15, "B18"
     if m_type == "BENDING" or "BENDING" in u_id: return 15, 17, "B20" 
     if m_type == "WELDING_ALUMINUM" or "WELDING_ALUMINUM" in u_id: return 13, 15, "B18"
@@ -740,7 +744,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 target_year_month_folder = selected_date.strftime("%Y_%B")
                 img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), target_year_month_folder, f"Day_{target_day_check}")
                 
-                # 🎯 [แก้ไขจุดพังการโหลดรูปภาพเสีย]: ป้องกัน OSError ล้มหน้าเว็บ
                 if os.path.exists(img_dir):
                     valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
                     if valid_photos:
@@ -748,7 +751,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                             for p_path in sorted(valid_photos):
                                 try:
                                     img_obj = Image.open(p_path)
-                                    img_obj.verify() # ตรวจความถูกต้องของไฟล์รูปภาพ
+                                    img_obj.verify()
                                     st.image(p_path, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
                                 except Exception as e_img:
                                     st.warning(f"⚠️ รูปภาพเสีย/อ่านไม่ได้: {os.path.basename(p_path)}")
@@ -764,7 +767,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 elif "QC-01" in u_id or "QC-10" in u_id or "QC-11" in u_id or "QC-12" in u_id: note_label = "ช่อง B15"
                 elif "QC-15" in u_id: note_label = "ช่อง B17"
                 elif "GRINDING" in u_id or "GRINDING" in m_type_flag: note_label = "ช่อง B21"
-                elif "MILLING" in u_id or "LATHE" in u_id: note_label = "ช่อง B22"
+                elif "MILLING" in u_id or "LATHE" in u_id: note_label = "ช่อง B23"
                 elif "BENDING" in u_id: note_label = "ช่อง B20"
                 else: note_label = "ช่อง B16"
                 
