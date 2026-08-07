@@ -171,7 +171,6 @@ PHOTO_RULES = {
     "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [2, 3, 5], "FORKLIFT": [1, 2, 5]
 }
 
-# 🎯 [ปรับพิกัด MILLING และ LATHE ช่างลงช่อง 20, หัวหน้าลงช่อง 22, คอมเม้นต์ลง B25 ตรงตามที่บอสระบุ]:
 def get_coordinates_by_machine(m_id, m_type):
     u_id = str(m_id).upper()
     if "CUTTER" in u_id or m_type == "CUTTER GRINDING-01": return 13, 15, "B18"
@@ -185,7 +184,6 @@ def get_coordinates_by_machine(m_id, m_type):
     if "CRANE" in u_id: return 14, 16, "B19"
     if "GRINDING" in m_type or "GRINDING" in u_id: return 16, 18, "B21"
     
-    # 🔥 [พิกัดตรงตามบอสทวน]: ช่างลงช่อง 20 (ผสาน 20-21), หัวหน้าลงช่อง 22 (ผสาน 22-23), คอมเม้น B25
     if m_type == "MILLING" or "MILLING" in u_id: return 20, 22, "B25" 
     if m_type == "LATHE" or "LATHE" in u_id: return 20, 22, "B25"
     
@@ -711,7 +709,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
     if password_input != "":
         if password_input == BOSS_PASSWORD or password_input == BIGBOSS_PASSWORD:
             st.success("🔓 ยืนยันสิทธิ์: เข้าสู่ระบบตรวจสอบและบันทึกประจำวันได้")
-            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/Engineer:", value="")
+            boss_name = st.text_input("👤 ชื่อผู้ตรวจสอบ/Engineer (บังคับระบุชื่อเพื่อกดอนุมัติ):", value="", placeholder="ระบุชื่อ-นามสกุลของคุณเพื่อลงนามอนุมัติ")
             
             st.divider()
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
@@ -723,23 +721,27 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 st.info(f"⚙️ **{m_id}**\n{m_name}")
                 
                 if os.path.isfile(target_excel_path):
-                    if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
-                        if approve_excel_by_boss(m_id, target_day_check, boss_name, m_type_flag):
-                            save_log_to_mirror_db_bulk([{
-                                "Timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                "Machine_ID": m_id,
-                                "Day_Num": int(target_day_check),
-                                "Year_Month": year_month_key,
-                                "Tech_Name": boss_name,
-                                "Item_No": 0,
-                                "Checklist_Item": "BOSS APPROVAL",
-                                "Status": "APPROVED",
-                                "Note": "",
-                                "Role": "boss"
-                            }])
-                            st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
-                            send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
-                            st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
+                    # 🔥 [เพิ่มด่านตรวจป้องกันการลืมกรอกชื่ออนุมัติ]:
+                    if not boss_name.strip():
+                        st.button(f"⚠️ กรุณาระบุชื่อผู้ตรวจสอบก่อนกดอนุมัติ ({m_id})", key=f"btn_disabled_{m_id}", disabled=True)
+                    else:
+                        if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
+                            if approve_excel_by_boss(m_id, target_day_check, boss_name, m_type_flag):
+                                save_log_to_mirror_db_bulk([{
+                                    "Timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                    "Machine_ID": m_id,
+                                    "Day_Num": int(target_day_check),
+                                    "Year_Month": year_month_key,
+                                    "Tech_Name": boss_name,
+                                    "Item_No": 0,
+                                    "Checklist_Item": "BOSS APPROVAL",
+                                    "Status": "APPROVED",
+                                    "Note": "",
+                                    "Role": "boss"
+                                }])
+                                st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
+                                send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
+                                st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
                 
                 target_year_month_folder = selected_date.strftime("%Y_%B")
                 img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), target_year_month_folder, f"Day_{target_day_check}")
@@ -1007,7 +1009,7 @@ else:
                     st.caption("ℹ️ ระบบกำลังเตรียมตู้เซฟ")
 
             with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและตารางข้อมูล (FULL RESET SYSTEM)"):
-                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการกวาดล้างรูปภาพหลักฐาน ประวัติ CSV และเคลียร์ตารางรอยติ๊กในไฟล์ Excel ทุกเครื่องเป็นค่าว่าง 100% เพื่อเปิดระบบจริงสดใหม่")
+                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการกวาดล้างรูปภาพหลักฐาน ประวัติ CSV และเคลียร์ตารางรอยติ๊กในไฟล์ Excel ทุกเครื่องเป็นค่าว่าง 100% เพื่อ Reset ระบบใหม่")
                 if st.button("🚨 สั่งลบรูปภาพ ประวัติ และกวาดล้างตาราง Excel ทุกเครื่องสะอาดกริบ 100%", type="primary", key="reset_all_photos_primary_btn_outside"):
                     target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
                     local_cloud_backup = os.path.join(BASE_FOLDER, "gsheet_cloud_mirror.csv")
