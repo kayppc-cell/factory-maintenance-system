@@ -225,6 +225,7 @@ def save_log_to_supabase_bulk(list_of_logs):
     if not supabase: return
     try:
         supabase.table("maintenance_logs").insert(list_of_logs).execute()
+        st.cache_data.clear()
     except Exception as e:
         print(f"Supabase Bulk Insert Error: {e}")
 
@@ -547,7 +548,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             st.divider()
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
        
-            # ⚡ ใช้ @st.fragment แยกประมวลผลเฉพาะการ์ดเครื่องนี้ ไม่กระทบทั้งหน้า
             @st.fragment
             def render_machine_card(m_id, m_name, m_type_flag):
                 df_logs = fetch_logs_from_supabase(m_id, year_month_key)
@@ -593,7 +593,8 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                             "note": "",
                             "role": "boss"
                         }])
-                        st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ! (ระบบจะอัปเดตสถานะอัตโนมัติ)", icon="🔥")
+                        st.cache_data.clear()
+                        st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ! กดดาวน์โหลด Excel ได้เลย", icon="🔥")
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                 
                 target_year_month_folder = selected_date.strftime("%Y_%B")
@@ -628,7 +629,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 st.write("---")
                 excel_col, zip_day_col, zip_month_col = st.columns(3)
                 
-                # ⚡ ใช้ st.popover แยกเปิดป๊อปอัพดาวน์โหลด หน้าเว็บหลักจะอยู่นิ่ง 100% ไม่รีเฟรชหมุนค้างทั้งหน้า!
                 with excel_col:
                     with st.popover("📥 ดึง Excel", use_container_width=True):
                         st.write(f"**ดาวน์โหลดแบบฟอร์ม {m_id}**")
@@ -872,6 +872,7 @@ else:
                     if supabase:
                         try: 
                             supabase.table("maintenance_logs").delete().neq("id", 0).execute()
+                            st.cache_data.clear()
                         except Exception as e_del: print(f"Delete Supabase Error: {e_del}")
                     
                     st.success("🧹 ลบรูปภาพและฐานข้อมูล Supabase เรียบร้อยแล้วครับ!")
