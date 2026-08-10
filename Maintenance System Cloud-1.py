@@ -249,6 +249,24 @@ def fetch_logs_from_supabase(machine_id, year_month):
         print(f"Supabase Fetch Error: {e}")
         return pd.DataFrame()
 
+# ⚡ ฟังก์ชันเขียนอนุมัติของหัวหน้าลง Excel จริงบนดิสก์
+def approve_excel_direct_to_disk(machine_id, day_num, boss_name, m_type):
+    excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
+    target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
+    if not os.path.isfile(target_excel_path): return False
+    try:
+        wb = openpyxl.load_workbook(target_excel_path, data_only=False)
+        ws = wb.active
+        _, boss_row, _ = get_coordinates_by_machine(machine_id, m_type)
+        col_letter = get_column_letter(2 + int(day_num))
+        
+        set_cell_value_safe(ws, f"{col_letter}{boss_row}", boss_name, Alignment(text_rotation=90, horizontal="center", vertical="center"))
+        wb.save(target_excel_path)
+        return True
+    except Exception as e:
+        print(f"Excel Boss Approve Direct Error: {e}")
+        return False
+
 @st.cache_data(ttl=300)
 def generate_excel_bytes(machine_id, year_month, m_type):
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
@@ -582,6 +600,10 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                     st.button(f"⚠️ กรุณาระบุชื่อผู้ตรวจสอบก่อนกดอนุมัติ ({m_id})", key=f"btn_disabled_{m_id}", disabled=True)
                 else:
                     if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
+                        # 1. เขียนชื่อลงดิสก์ไฟล์ Excel ทันที
+                        approve_excel_direct_to_disk(m_id, target_day_check, boss_name, m_type_flag)
+                        
+                        # 2. บันทึกลง Supabase Database
                         save_log_to_supabase_bulk([{
                             "machine_id": m_id,
                             "day_num": int(target_day_check),
@@ -593,9 +615,12 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                             "note": "",
                             "role": "boss"
                         }])
+                        
+                        # 3. ล้าง แคช และแจ้งเตือน LINE
                         st.cache_data.clear()
                         st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ! กดดาวน์โหลด Excel ได้เลย", icon="🔥")
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
+                        st.rerun(scope="fragment")
                 
                 target_year_month_folder = selected_date.strftime("%Y_%B")
                 img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), target_year_month_folder, f"Day_{target_day_check}")
