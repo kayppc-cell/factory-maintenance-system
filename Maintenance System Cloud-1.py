@@ -29,7 +29,6 @@ BASE_FOLDER = (
 BOSS_PASSWORD = "pes1234"
 BIGBOSS_PASSWORD = "pes9999"
 
-# เชื่อมต่อ Supabase
 SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
 
@@ -157,7 +156,7 @@ CHECKLISTS = {
     ],
     "WELDING_ALUMINUM": [
         "ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ",
-        "ตรวจสภาพความพร้อมของสายกราวด์ให้อยู่ในสภาพ ความพร้อมอยู่เสมอ", "ตรวจจุดต่อของสายท่อแก๊สว่ารั่วหรือไม่",
+        "ตรวจสภาพความพร้อมของสายกราวด์ให้อยู๋ในสภาพ ความพร้อมอยู่เสมอ", "ตรวจจุดต่อของสายท่อแก๊สว่ารั่วหรือไม่",
         "เช็คระดับน้ำหล่อเย็นให้อยู่ในระดับพร้อมใช้งาน", "เช็คระดับแรงดันในถังแก๊สให้พร้อมใช้งาน",
         "ทำความสะอาดชุดหัวเชื่อมก่อนใช้งานอย่างสม่ำเสมอ"
     ],
@@ -218,17 +217,17 @@ def get_unmerged_cell(ws, coordinate_str):
     except:
         return ws[coordinate_str]
 
-# --- 2. ⚡ SUPABASE DATA ENGINE ---
+# --- 2. ⚡ FAST SUPABASE ENGINE WITH CACHING ---
 def save_log_to_supabase_bulk(list_of_logs):
-    """บันทึกรอยติ๊กลง Supabase Database ทันที รวดเร็วระดับมิลลิวินาที"""
     if not supabase: return
     try:
         supabase.table("maintenance_logs").insert(list_of_logs).execute()
+        st.cache_data.clear() # เคลียร์แคชเมื่อมีข้อมูลใหม่ส่งเข้ามา
     except Exception as e:
         print(f"Supabase Bulk Insert Error: {e}")
 
+@st.cache_data(ttl=10) # แคชข้อมูล 10 วินาที เพื่อให้โหลดหน้าเว็บได้เร็วปรี๊ด
 def fetch_logs_from_supabase(machine_id, year_month):
-    """ดึงประวัติรอยติ๊กจาก Supabase Database"""
     if not supabase: return pd.DataFrame()
     try:
         res = supabase.table("maintenance_logs").select("*").eq("machine_id", machine_id).eq("year_month", year_month).execute()
@@ -247,92 +246,47 @@ def fetch_logs_from_supabase(machine_id, year_month):
         print(f"Supabase Fetch Error: {e}")
         return pd.DataFrame()
 
-def apply_mirror_history_to_excel(machine_id, year_month, m_type):
+def generate_excel_file_in_memory(machine_id, year_month, m_type):
+    """ประกอบไฟล์ Excel ใน Memory ชั่วคราวเฉพาะตอนกดดาวน์โหลด (ไม่ต้องอ่านเขียนไฟล์ลง ดิสก์ ให้ช้า)"""
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
-    if not os.path.isfile(target_excel_path): return
+    if not os.path.isfile(target_excel_path): return None
     
     df_logs = fetch_logs_from_supabase(machine_id, year_month)
-    if df_logs.empty: return
-    
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
         t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
         center_align = Alignment(horizontal='center', vertical='center')
         
-        df_logs = df_logs.sort_values(by="Timestamp")
-        
-        for _, row in df_logs.iterrows():
-            day_val = int(row["Day_Num"])
-            col_letter = get_column_letter(2 + day_val)
-            
-            if str(row["Role"]).strip() == "tech":
-                status_val = str(row["Status"]).strip()
-                item_idx = int(row["Item_No"])
-                if item_idx > 0:
-                    cell_coord = f"{col_letter}{5 + item_idx}"
-                    mark = "/"
-                    if "ปกติ" in status_val and "แก้ไข" not in status_val: mark = "/"
-                    elif "แก้ไข" in status_val and "ปกติ" in status_val: mark = "⨂"
-                    elif "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: mark = "X"
-                    elif "ไม่ได้ทำงาน" in status_val or "-" in status_val: mark = "-"
-                    
-                    set_cell_value_safe(ws, cell_coord, mark, center_align)
+        if not df_logs.empty:
+            df_logs = df_logs.sort_values(by="Timestamp")
+            for _, row in df_logs.iterrows():
+                day_val = int(row["Day_Num"])
+                col_letter = get_column_letter(2 + day_val)
                 
-                set_cell_value_safe(ws, f"{col_letter}{t_row}", row["Tech_Name"], Alignment(text_rotation=90, horizontal='center', vertical='center'))
+                if str(row["Role"]).strip() == "tech":
+                    status_val = str(row["Status"]).strip()
+                    item_idx = int(row["Item_No"])
+                    if item_idx > 0:
+                        cell_coord = f"{col_letter}{5 + item_idx}"
+                        mark = "/"
+                        if "ปกติ" in status_val and "แก้ไข" not in status_val: mark = "/"
+                        elif "แก้ไข" in status_val and "ปกติ" in status_val: mark = "⨂"
+                        elif "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: mark = "X"
+                        elif "ไม่ได้ทำงาน" in status_val or "-" in status_val: mark = "-"
+                        set_cell_value_safe(ws, cell_coord, mark, center_align)
+                    set_cell_value_safe(ws, f"{col_letter}{t_row}", row["Tech_Name"], Alignment(text_rotation=90, horizontal='center', vertical='center'))
+                elif str(row["Role"]).strip() == "boss":
+                    set_cell_value_safe(ws, f"{col_letter}{boss_row}", row["Tech_Name"], Alignment(text_rotation=90, horizontal="center", vertical="center"))
 
-            elif str(row["Role"]).strip() == "boss":
-                set_cell_value_safe(ws, f"{col_letter}{boss_row}", row["Tech_Name"], Alignment(text_rotation=90, horizontal="center", vertical="center"))
-
-        wb.save(target_excel_path)
+        output_stream = BytesIO()
+        wb.save(output_stream)
+        output_stream.seek(0)
+        return output_stream
     except Exception as e:
-        print(f"Apply history error: {e}")
-
-def write_tech_marks_direct_to_excel(machine_id, day_num, results_dict, tech_name, m_type):
-    excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
-    target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
-    if not os.path.isfile(target_excel_path): return False
-        
-    try:
-        wb = openpyxl.load_workbook(target_excel_path, data_only=False)
-        ws = wb.active
-        t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
-        col_letter = get_column_letter(2 + int(day_num))
-        
-        checklist_items = CHECKLISTS[m_type]
-        notes_for_today = []
-        center_align = Alignment(horizontal='center', vertical='center')
-        
-        for idx, item in enumerate(checklist_items, 1):
-            cell_coord = f"{col_letter}{5 + idx}"
-            res_data = results_dict.get(item, {})
-            status_val = str(res_data.get("status", "")).strip()
-            note_val = str(res_data.get("note", "")).strip()
-            
-            mark = "/"
-            if "ปกติ" in status_val and "แก้ไข" not in status_val: mark = "/"
-            elif "แก้ไข" in status_val and "ปกติ" in status_val: mark = "⨂"
-            elif "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: mark = "X"
-            elif "ไม่ได้ทำงาน" in status_val or "-" in status_val: mark = "-"
-            
-            set_cell_value_safe(ws, cell_coord, mark, center_align)
-            if note_val and note_val != "nan": notes_for_today.append(f"ข้อ {idx}: {note_val}")
-
-        set_cell_value_safe(ws, f"{col_letter}{t_row}", tech_name, Alignment(text_rotation=90, horizontal='center', vertical='center'))
-        
-        if notes_for_today:
-            note_cell = get_unmerged_cell(ws, n_cell)
-            old_note = str(note_cell.value) if note_cell.value else ""
-            new_note_text = f"[วันที่ {day_num}]: " + ", ".join(notes_for_today)
-            final_note = (old_note + ",  " + new_note_text) if old_note else new_note_text
-            set_cell_value_safe(ws, n_cell, final_note, Alignment(horizontal="left", vertical="top", wrap_text=True))
-
-        wb.save(target_excel_path)
-        return True
-    except Exception as e:
-        print(f"Direct Excel Write Error: {e}")
-        return False
+        print(f"Generate Excel Error: {e}")
+        return None
 
 # --- PHOTO & ZIP FUNCTIONS ---
 def send_line_alert(msg_text):
@@ -426,33 +380,6 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
         zip_buffer.seek(0)
         return zip_buffer
     except: return None
-
-def approve_excel_by_boss(machine_id, day_num, boss_name, m_type):
-    excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
-    target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
-    if not os.path.isfile(target_excel_path): return False
-    try:
-        wb = openpyxl.load_workbook(target_excel_path, data_only=False)
-        ws = wb.active
-        col_letter = get_column_letter(2 + day_num)
-        _, boss_row, _ = get_coordinates_by_machine(machine_id, m_type)
-        
-        set_cell_value_safe(ws, f"{col_letter}{boss_row}", boss_name, Alignment(text_rotation=90, horizontal="center", vertical="center"))
-        wb.save(target_excel_path)
-        return True
-    except Exception as e: print(f"Boss approve error: {e}"); return False
-
-def get_current_excel_note(machine_id, m_type):
-    target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{machine_id}.xlsx")
-    if not os.path.isfile(target_excel_path): return ""
-    try:
-        wb = openpyxl.load_workbook(target_excel_path, data_only=False)
-        ws = wb.active
-        _, _, n_cell = get_coordinates_by_machine(machine_id, m_type)
-        note_cell = get_unmerged_cell(ws, n_cell)
-        val = note_cell.value
-        return val if val else ""
-    except: return ""
 
 # --- 3. UI NAVIGATION SIDEBAR & QUERY PARAMETERS ---
 st.set_page_config(page_title="Smart Factory PM SYSTEM", page_icon="🔧", layout="wide")
@@ -558,7 +485,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         elif any((uploaded_photos[idx]["files"] is None or len(uploaded_photos[idx]["files"]) == 0) for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
         else:
             save_uploaded_photos_list(machine_id, current_day, required_photo_indexes[0] if required_photo_indexes else 1, [uploaded_photos[idx]["files"][0] for idx in required_photo_indexes if uploaded_photos[idx]["files"]], current_date_obj=report_date)
-            write_tech_marks_direct_to_excel(machine_id, current_day, results, tech_name, m_type_selected)
 
             logs_to_save = []
             for i, item in enumerate(current_checklist, 1):
@@ -621,31 +547,54 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
        
             def render_machine_card(m_id, m_name, m_type_flag):
-                target_excel_path = os.path.join(BASE_FOLDER, f"FM-MN-07_{m_id}.xlsx")
-                apply_mirror_history_to_excel(m_id, year_month_key, m_type_flag)
+                # ⚡ ดึงข้อมูลจาก Supabase ที่แคชไว้มาแสดงผล (เร็วปรี๊ด)
+                df_logs = fetch_logs_from_supabase(m_id, year_month_key)
                 
+                # เช็คสถานะการรายงานและการอนุมัติวันปัจจุบัน
+                is_reported = False
+                is_approved = False
+                tech_who_checked = ""
+                boss_who_approved = ""
+                
+                if not df_logs.empty:
+                    day_logs = df_logs[df_logs["Day_Num"] == int(target_day_check)]
+                    tech_rows = day_logs[day_logs["Role"] == "tech"]
+                    boss_rows = day_logs[day_logs["Role"] == "boss"]
+                    
+                    if not tech_rows.empty:
+                        is_reported = True
+                        tech_who_checked = tech_rows.iloc[0]["Tech_Name"]
+                    if not boss_rows.empty:
+                        is_approved = True
+                        boss_who_approved = boss_rows.iloc[0]["Tech_Name"]
+
                 st.info(f"⚙️ **{m_id}**\n{m_name}")
                 
-                if os.path.isfile(target_excel_path):
-                    if not boss_name.strip():
-                        st.button(f"⚠️ กรุณาระบุชื่อผู้ตรวจสอบก่อนกดอนุมัติ ({m_id})", key=f"btn_disabled_{m_id}", disabled=True)
-                    else:
-                        if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
-                            if approve_excel_by_boss(m_id, target_day_check, boss_name, m_type_flag):
-                                save_log_to_supabase_bulk([{
-                                    "machine_id": m_id,
-                                    "day_num": int(target_day_check),
-                                    "year_month": year_month_key,
-                                    "tech_name": boss_name,
-                                    "item_no": 0,
-                                    "checklist_item": "BOSS APPROVAL",
-                                    "status": "APPROVED",
-                                    "note": "",
-                                    "role": "boss"
-                                }])
-                                st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
-                                send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
-                                st.success(f"✍️ เซ็นรับรองลงช่องผู้ตรวจสอบเครื่อง {m_id} สำเร็จ!")
+                if is_approved:
+                    st.success(f"✅ อนุมัติแล้ว โดย: {boss_who_approved}")
+                elif is_reported:
+                    st.warning(f"📋 ช่างตรวจแล้ว ({tech_who_checked}) - รอหัวหน้าอนุมัติ")
+                else:
+                    st.caption("⚪ วันนี้ยังไม่มีการส่งฟอร์ม")
+
+                if not boss_name.strip():
+                    st.button(f"⚠️ กรุณาระบุชื่อผู้ตรวจสอบก่อนกดอนุมัติ ({m_id})", key=f"btn_disabled_{m_id}", disabled=True)
+                else:
+                    if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
+                        save_log_to_supabase_bulk([{
+                            "machine_id": m_id,
+                            "day_num": int(target_day_check),
+                            "year_month": year_month_key,
+                            "tech_name": boss_name,
+                            "item_no": 0,
+                            "checklist_item": "BOSS APPROVAL",
+                            "status": "APPROVED",
+                            "note": "",
+                            "role": "boss"
+                        }])
+                        st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
+                        send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
+                        st.rerun()
                 
                 target_year_month_folder = selected_date.strftime("%Y_%B")
                 img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), target_year_month_folder, f"Day_{target_day_check}")
@@ -664,49 +613,40 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 else:
                     st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
-                current_notes = get_current_excel_note(m_id, m_type_flag)
-                u_id = str(m_id).upper()
-                if "CUTTER" in u_id or m_type_flag == "CUTTER GRINDING-01": note_label = "ช่อง B18"
-                elif "ARGON-02" in u_id or "ARGON-01" in u_id or "CRANE" in u_id: note_label = "ช่อง B19"
-                elif "WELDING_ALUMINUM" in u_id or "FORKLIFT" in u_id or "CUTTING" in u_id: note_label = "ช่อง B18"
-                elif "CNC" in u_id: note_label = "ช่อง B28"
-                elif "QC-01" in u_id or "QC-10" in u_id or "QC-11" in u_id or "QC-12" in u_id: note_label = "ช่อง B15"
-                elif "QC-15" in u_id: note_label = "ช่อง B17"
-                elif "GRINDING" in u_id or "GRINDING" in m_type_flag: note_label = "ช่อง B21"
-                elif "MILLING" in u_id: note_label = "ช่อง B25"
-                elif "LATHE" in u_id: note_label = "ช่อง B22"
-                elif "BENDING" in u_id: note_label = "ช่อง B20"
-                else: note_label = "ช่อง B16"
+                # รวมอาการเสียสะสมจาก DB
+                current_notes_list = []
+                if not df_logs.empty:
+                    notes_rows = df_logs[(df_logs["Note"].notnull()) & (df_logs["Note"] != "") & (df_logs["Note"] != "nan")]
+                    for _, n_row in notes_rows.iterrows():
+                        current_notes_list.append(f"[วันที่ {n_row['Day_Num']}]: ข้อ {n_row['Item_No']} {n_row['Note']}")
                 
-                st.text_area(f"📝 รายการอาการเสียสะสม ({note_label}) [อ่านข้อมูลโหมดสัมปทานอัตโนมัติ]", value=current_notes, key=f"note_area_{m_id}", height=120, disabled=True)
+                current_notes = ", ".join(current_notes_list) if current_notes_list else "ไม่มีบันทึกอาการเสีย"
+                st.text_area(f"📝 รายการอาการเสียสะสม ({m_id})", value=current_notes, key=f"note_area_{m_id}", height=100, disabled=True)
 
                 st.write("---")
-                st.caption(f"📅 **เลือกดาวน์โหลดรูปภาพของ {m_id}:**")
-                photo_date_input = st.date_input("เลือกวันที่ต้องการดึงรูปภาพ (.zip):", value=selected_date, key=f"photo_date_{m_id}")
-                chosen_day = photo_date_input.day
-                
                 excel_col, zip_day_col, zip_month_col = st.columns(3)
                 
                 with excel_col:
-                    if os.path.isfile(target_excel_path):
-                        with open(target_excel_path, "rb") as f:
-                            st.download_button(label=f"📥 ดึง Excel {m_id}", data=f, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
+                    # ⚡ ประกอบไฟล์ Excel ให้โหลดสดๆ ใน Memory ชั่วคราว เมื่อกดปุ่มดาวน์โหลด
+                    excel_data = generate_excel_file_in_memory(m_id, year_month_key, m_type_flag)
+                    if excel_data:
+                        st.download_button(label=f"📥 ดึง Excel {m_id}", data=excel_data, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
                     else:
                         st.button(f"❌ ไม่มีไฟล์ Excel", disabled=True, key=f"dl_disabled_{m_id}")
                         
                 with zip_day_col:
-                    zip_day_data = zip_single_machine_photos(m_id, target_date_obj=photo_date_input, target_day=chosen_day)
+                    zip_day_data = zip_single_machine_photos(m_id, target_date_obj=selected_date, target_day=target_day_check)
                     if zip_day_data:
-                        st.download_button(label=f"📸 โหลดรูปวันที่ {chosen_day}", data=zip_day_data, file_name=f"Photos_{m_id}_Day_{chosen_day}.zip", mime="application/zip", key=f"zip_day_btn_{m_id}")
+                        st.download_button(label=f"📸 รูปวันที่ {target_day_check}", data=zip_day_data, file_name=f"Photos_{m_id}_Day_{target_day_check}.zip", mime="application/zip", key=f"zip_day_btn_{m_id}")
                     else:
-                        st.button(f"📷 วันที่ {chosen_day} ไม่มีรูป", disabled=True, key=f"zip_day_dis_{m_id}")
+                        st.button(f"📷 วันนี้ไม่มีรูป", disabled=True, key=f"zip_day_dis_{m_id}")
                         
                 with zip_month_col:
-                    zip_month_data = zip_single_machine_photos(m_id, target_date_obj=photo_date_input, target_day=None)
+                    zip_month_data = zip_single_machine_photos(m_id, target_date_obj=selected_date, target_day=None)
                     if zip_month_data:
-                        st.download_button(label="📦 โหลดรูปทั้งเดือน", data=zip_month_data, file_name=f"Photos_{m_id}_Full_{photo_date_input.strftime('%Y_%B')}.zip", mime="application/zip", key=f"zip_month_btn_{m_id}")
+                        st.download_button(label="📦 รูปทั้งเดือน", data=zip_month_data, file_name=f"Photos_{m_id}_Full_{selected_date.strftime('%Y_%B')}.zip", mime="application/zip", key=f"zip_month_btn_{m_id}")
                     else:
-                        st.button("📷 เดือนนี้ยังไม่มีรูป", disabled=True, key=f"zip_month_dis_{m_id}")
+                        st.button("📷 เดือนนี้ไม่มีรูป", disabled=True, key=f"zip_month_dis_{m_id}")
                 st.divider()
 
             # ---- 1. แผนก CNC ----
@@ -901,48 +841,12 @@ else:
                     if os.path.exists(target_photo_folder): shutil.rmtree(target_photo_folder)
                     
                     if supabase:
-                        try: supabase.table("maintenance_logs").delete().neq("id", 0).execute()
+                        try: 
+                            supabase.table("maintenance_logs").delete().neq("id", 0).execute()
+                            st.cache_data.clear()
                         except Exception as e_del: print(f"Delete Supabase Error: {e_del}")
                     
-                    for m_code, m_title in MACHINES.items():
-                        m_excel_file = f"FM-MN-07_{m_code}.xlsx"
-                        m_excel_path = os.path.join(BASE_FOLDER, m_excel_file)
-                        if os.path.isfile(m_excel_path):
-                            try:
-                                wb_clean = openpyxl.load_workbook(m_excel_path, data_only=False)
-                                ws_clean = wb_clean.active
-                                u_mcode = str(m_code).upper()
-                                if "CUTTER" in u_mcode: m_type_flag = "CUTTER GRINDING-01"
-                                elif "CRANE" in u_mcode: m_type_flag = "Crane no.1" if "NO.1" in u_mcode else "Crane no.2"
-                                elif "QC-" in u_mcode: m_type_flag = m_code
-                                elif "COMP-" in u_mcode: m_type_flag = m_code
-                                elif "GRINDING" in u_mcode: m_type_flag = "GRINDING-01"
-                                elif "MILLING" in u_mcode: m_type_flag = "MILLING"
-                                elif "LATHE" in u_mcode: m_type_flag = "LATHE"
-                                elif "CUTTING" in u_mcode: m_type_flag = "CUTTING"
-                                elif "BENDING" in u_mcode: m_type_flag = "BENDING"
-                                elif "MIG" in u_mcode: m_type_flag = "MIG CO2"
-                                elif "ARGON" in u_mcode: m_type_flag = "ARGON"
-                                elif "WELDING_ALUMINUM" in u_mcode: m_type_flag = "WELDING_ALUMINUM"
-                                elif "BAND" in u_mcode: m_type_flag = "BAND SAW"
-                                elif "FORKLIFT" in u_mcode: m_type_flag = "FORKLIFT"
-                                else: m_type_flag = "CNC"
-
-                                t_row, boss_row, n_cell = get_coordinates_by_machine(m_code, m_type_flag)
-                                checklist_items = CHECKLISTS[m_type_flag]
-                                
-                                for d in range(1, 32):
-                                    c_letter = get_column_letter(2 + d)
-                                    for row_idx in range(6, 6 + len(checklist_items)):
-                                        set_cell_value_safe(ws_clean, f"{c_letter}{row_idx}", "")
-                                    set_cell_value_safe(ws_clean, f"{c_letter}{t_row}", "")
-                                    set_cell_value_safe(ws_clean, f"{c_letter}{boss_row}", "")
-                                
-                                set_cell_value_safe(ws_clean, n_cell, "")
-                                wb_clean.save(m_excel_path)
-                            except Exception as e_clean: print(f"Clean excel error for {m_code}: {e_clean}")
-                    
-                    st.success("🧹 ลบรูปภาพ ฐานข้อมูล Supabase และกวาดตาราง Excel สะอาดบริสุทธิ์ 100% เรียบร้อยแล้วครับ!")
+                    st.success("🧹 ลบรูปภาพและฐานข้อมูล Supabase เรียบร้อยแล้วครับ!")
                     st.balloons()
         else:
             st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับ")
