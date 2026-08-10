@@ -220,7 +220,7 @@ def get_unmerged_cell(ws, coordinate_str):
     except:
         return ws[coordinate_str]
 
-# --- 2. ⚡ REALTIME SUPABASE ENGINE ---
+# --- 2. REALTIME SUPABASE ENGINE ---
 def save_log_to_supabase_bulk(list_of_logs):
     if not supabase: return
     try:
@@ -229,7 +229,6 @@ def save_log_to_supabase_bulk(list_of_logs):
     except Exception as e:
         print(f"Supabase Bulk Insert Error: {e}")
 
-# ⚡ ถอด Cache ออกเพื่อให้ดึงข้อมูลสดๆ ไม่ให้มีค้างจำค่าเก่าแน่นอน
 def fetch_logs_from_supabase(machine_id, year_month):
     if not supabase: return pd.DataFrame()
     try:
@@ -587,15 +586,18 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
 
                 st.info(f"⚙️ **{m_id}**\n{m_name}")
                 
-                # 🚦 เช็คสถานะเรียงตามลำดับความสำคัญ (ถ้ามีอนุมัติ ต้องขึ้นเขียวก่อนเสมอ)
+                # 🚫 ตัดคำว่า "ยังไม่มีการส่งฟอร์ม" ออก แสดงสถานะชัดเจน
                 if is_approved:
                     st.success(f"✅ อนุมัติแล้ว โดย: {boss_who_approved}")
                 elif is_reported:
                     st.warning(f"📋 ช่างตรวจแล้ว ({tech_who_checked}) - รอหัวหน้าอนุมัติ")
                 else:
-                    st.caption("⚪ ยังไม่มีการส่งฟอร์ม")
+                    st.caption("⚪ ยังไม่ได้ดำเนินการ")
 
-                if not boss_name.strip():
+                # 🔒 ปุ่มอนุมัติ: ถ้าอนุมัติแล้ว ปุ่มจะเปลี่ยนเป็นสีเทาและกดไม่ได้
+                if is_approved:
+                    st.button(f"🔒 อนุมัติแล้วโดย {boss_who_approved}", key=f"btn_approved_disabled_{m_id}", disabled=True)
+                elif not boss_name.strip():
                     st.button(f"⚠️ กรุณาระบุชื่อผู้ตรวจสอบก่อนกดอนุมัติ ({m_id})", key=f"btn_disabled_{m_id}", disabled=True)
                 else:
                     if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
