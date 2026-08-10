@@ -547,6 +547,8 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             st.divider()
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
        
+            # ⚡ ใช้ @st.fragment แยกประมวลผลเฉพาะการ์ดเครื่องนี้ ไม่กระทบทั้งหน้า
+            @st.fragment
             def render_machine_card(m_id, m_name, m_type_flag):
                 df_logs = fetch_logs_from_supabase(m_id, year_month_key)
                 
@@ -626,6 +628,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 st.write("---")
                 excel_col, zip_day_col, zip_month_col = st.columns(3)
                 
+                # ⚡ ใช้ st.popover แยกเปิดป๊อปอัพดาวน์โหลด หน้าเว็บหลักจะอยู่นิ่ง 100% ไม่รีเฟรชหมุนค้างทั้งหน้า!
                 with excel_col:
                     with st.popover("📥 ดึง Excel", use_container_width=True):
                         st.write(f"**ดาวน์โหลดแบบฟอร์ม {m_id}**")
