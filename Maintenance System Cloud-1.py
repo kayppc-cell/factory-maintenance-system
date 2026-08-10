@@ -222,11 +222,11 @@ def save_log_to_supabase_bulk(list_of_logs):
     if not supabase: return
     try:
         supabase.table("maintenance_logs").insert(list_of_logs).execute()
-        st.cache_data.clear() # เคลียร์แคชเมื่อมีข้อมูลใหม่ส่งเข้ามา
+        st.cache_data.clear()
     except Exception as e:
         print(f"Supabase Bulk Insert Error: {e}")
 
-@st.cache_data(ttl=10) # แคชข้อมูล 10 วินาที เพื่อให้โหลดหน้าเว็บได้เร็วปรี๊ด
+@st.cache_data(ttl=10)
 def fetch_logs_from_supabase(machine_id, year_month):
     if not supabase: return pd.DataFrame()
     try:
@@ -246,8 +246,8 @@ def fetch_logs_from_supabase(machine_id, year_month):
         print(f"Supabase Fetch Error: {e}")
         return pd.DataFrame()
 
-def generate_excel_file_in_memory(machine_id, year_month, m_type):
-    """ประกอบไฟล์ Excel ใน Memory ชั่วคราวเฉพาะตอนกดดาวน์โหลด (ไม่ต้องอ่านเขียนไฟล์ลง ดิสก์ ให้ช้า)"""
+@st.cache_data(ttl=300)
+def generate_excel_bytes(machine_id, year_month, m_type):
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
     if not os.path.isfile(target_excel_path): return None
@@ -282,8 +282,7 @@ def generate_excel_file_in_memory(machine_id, year_month, m_type):
 
         output_stream = BytesIO()
         wb.save(output_stream)
-        output_stream.seek(0)
-        return output_stream
+        return output_stream.getvalue()
     except Exception as e:
         print(f"Generate Excel Error: {e}")
         return None
@@ -547,10 +546,8 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
        
             def render_machine_card(m_id, m_name, m_type_flag):
-                # ⚡ ดึงข้อมูลจาก Supabase ที่แคชไว้มาแสดงผล (เร็วปรี๊ด)
                 df_logs = fetch_logs_from_supabase(m_id, year_month_key)
                 
-                # เช็คสถานะการรายงานและการอนุมัติวันปัจจุบัน
                 is_reported = False
                 is_approved = False
                 tech_who_checked = ""
@@ -613,7 +610,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 else:
                     st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
-                # รวมอาการเสียสะสมจาก DB
                 current_notes_list = []
                 if not df_logs.empty:
                     notes_rows = df_logs[(df_logs["Note"].notnull()) & (df_logs["Note"] != "") & (df_logs["Note"] != "nan")]
@@ -626,27 +622,54 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 st.write("---")
                 excel_col, zip_day_col, zip_month_col = st.columns(3)
                 
+                # ⚡ ใช้เทคนิค st.popover แยกเปิดป๊อปอัพดาวน์โหลด หน้าเว็บหลักจะอยู่นิ่ง ไม่รีเฟรชหมุนค้างทั้งหน้า!
                 with excel_col:
-                    # ⚡ ประกอบไฟล์ Excel ให้โหลดสดๆ ใน Memory ชั่วคราว เมื่อกดปุ่มดาวน์โหลด
-                    excel_data = generate_excel_file_in_memory(m_id, year_month_key, m_type_flag)
-                    if excel_data:
-                        st.download_button(label=f"📥 ดึง Excel {m_id}", data=excel_data, file_name=f"FM-MN-07_{m_id}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key=f"dl_{m_id}")
-                    else:
-                        st.button(f"❌ ไม่มีไฟล์ Excel", disabled=True, key=f"dl_disabled_{m_id}")
+                    with st.popover("📥 ดึง Excel", use_container_width=True):
+                        st.write(f"**ดาวน์โหลดแบบฟอร์ม {m_id}**")
+                        excel_bytes = generate_excel_bytes(m_id, year_month_key, m_type_flag)
+                        if excel_bytes:
+                            st.download_button(
+                                label=f"Confirm Download {m_id}", 
+                                data=excel_bytes, 
+                                file_name=f"FM-MN-07_{m_id}.xlsx", 
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                                key=f"dl_confirm_{m_id}",
+                                use_container_width=True
+                            )
+                        else:
+                            st.error("ไม่พบไฟล์แบบฟอร์ม")
                         
                 with zip_day_col:
-                    zip_day_data = zip_single_machine_photos(m_id, target_date_obj=selected_date, target_day=target_day_check)
-                    if zip_day_data:
-                        st.download_button(label=f"📸 รูปวันที่ {target_day_check}", data=zip_day_data, file_name=f"Photos_{m_id}_Day_{target_day_check}.zip", mime="application/zip", key=f"zip_day_btn_{m_id}")
-                    else:
-                        st.button(f"📷 วันนี้ไม่มีรูป", disabled=True, key=f"zip_day_dis_{m_id}")
+                    with st.popover(f"📸 รูปวันที่ {target_day_check}", use_container_width=True):
+                        st.write(f"**รูปภาพประจำวันที่ {target_day_check}**")
+                        zip_day_data = zip_single_machine_photos(m_id, target_date_obj=selected_date, target_day=target_day_check)
+                        if zip_day_data:
+                            st.download_button(
+                                label=f"Download Photos Day {target_day_check}", 
+                                data=zip_day_data, 
+                                file_name=f"Photos_{m_id}_Day_{target_day_check}.zip", 
+                                mime="application/zip", 
+                                key=f"zip_day_confirm_{m_id}",
+                                use_container_width=True
+                            )
+                        else:
+                            st.caption("วันนี้ไม่มีรูปภาพหลักฐาน")
                         
                 with zip_month_col:
-                    zip_month_data = zip_single_machine_photos(m_id, target_date_obj=selected_date, target_day=None)
-                    if zip_month_data:
-                        st.download_button(label="📦 รูปทั้งเดือน", data=zip_month_data, file_name=f"Photos_{m_id}_Full_{selected_date.strftime('%Y_%B')}.zip", mime="application/zip", key=f"zip_month_btn_{m_id}")
-                    else:
-                        st.button("📷 เดือนนี้ไม่มีรูป", disabled=True, key=f"zip_month_dis_{m_id}")
+                    with st.popover("📦 รูปทั้งเดือน", use_container_width=True):
+                        st.write(f"**รูปภาพรวมทั้งเดือน {selected_date.strftime('%Y_%B')}**")
+                        zip_month_data = zip_single_machine_photos(m_id, target_date_obj=selected_date, target_day=None)
+                        if zip_month_data:
+                            st.download_button(
+                                label="Download Full Month Photos", 
+                                data=zip_month_data, 
+                                file_name=f"Photos_{m_id}_Full_{selected_date.strftime('%Y_%B')}.zip", 
+                                mime="application/zip", 
+                                key=f"zip_month_confirm_{m_id}",
+                                use_container_width=True
+                            )
+                        else:
+                            st.caption("เดือนนี้ไม่มีรูปภาพหลักฐาน")
                 st.divider()
 
             # ---- 1. แผนก CNC ----
