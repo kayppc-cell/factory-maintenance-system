@@ -220,7 +220,7 @@ def get_unmerged_cell(ws, coordinate_str):
     except:
         return ws[coordinate_str]
 
-# --- 2. ⚡ SAFE SUPABASE ENGINE ---
+# --- 2. ⚡ REALTIME SUPABASE ENGINE ---
 def save_log_to_supabase_bulk(list_of_logs):
     if not supabase: return
     try:
@@ -229,7 +229,7 @@ def save_log_to_supabase_bulk(list_of_logs):
     except Exception as e:
         print(f"Supabase Bulk Insert Error: {e}")
 
-@st.cache_data(ttl=10)
+# ⚡ ถอด Cache ออกเพื่อให้ดึงข้อมูลสดๆ ไม่ให้มีค้างจำค่าเก่าแน่นอน
 def fetch_logs_from_supabase(machine_id, year_month):
     if not supabase: return pd.DataFrame()
     try:
@@ -266,7 +266,6 @@ def approve_excel_direct_to_disk(machine_id, day_num, boss_name, m_type):
         print(f"Excel Boss Approve Direct Error: {e}")
         return False
 
-@st.cache_data(ttl=300)
 def generate_excel_bytes(machine_id, year_month, m_type):
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
@@ -576,19 +575,19 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 
                 if not df_logs.empty:
                     day_logs = df_logs[df_logs["Day_Num"] == int(target_day_check)]
-                    tech_rows = day_logs[day_logs["Role"] == "tech"]
                     boss_rows = day_logs[day_logs["Role"] == "boss"]
+                    tech_rows = day_logs[day_logs["Role"] == "tech"]
                     
                     if not boss_rows.empty:
                         is_approved = True
-                        boss_who_approved = boss_rows.iloc[0]["Tech_Name"]
+                        boss_who_approved = str(boss_rows.iloc[0]["Tech_Name"])
                     if not tech_rows.empty:
                         is_reported = True
-                        tech_who_checked = tech_rows.iloc[0]["Tech_Name"]
+                        tech_who_checked = str(tech_rows.iloc[0]["Tech_Name"])
 
                 st.info(f"⚙️ **{m_id}**\n{m_name}")
                 
-                # ⚡ ปรับตรรกะการเช็คสถานะใหม่: ถ้ากดอนุมัติแล้ว ต้องขึ้นอนุมัติทันที 100%
+                # 🚦 เช็คสถานะเรียงตามลำดับความสำคัญ (ถ้ามีอนุมัติ ต้องขึ้นเขียวก่อนเสมอ)
                 if is_approved:
                     st.success(f"✅ อนุมัติแล้ว โดย: {boss_who_approved}")
                 elif is_reported:
@@ -614,8 +613,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                             "role": "boss"
                         }])
                         
-                        st.cache_data.clear()
-                        st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ! สถานะอัปเดตเรียบร้อย", icon="🔥")
+                        st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.rerun(scope="fragment")
                 
@@ -645,7 +643,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                     for _, n_row in notes_rows.iterrows():
                         current_notes_list.append(f"[วันที่ {n_row['Day_Num']}]: ข้อ {n_row['Item_No']} {n_row['Note']}")
                 
-                # 🚫 ตัดคำว่า "ไม่มีบันทึกอาการเสีย" ออกถาวรตามตกลงครับ
                 current_notes = ", ".join(current_notes_list) if current_notes_list else ""
                 st.text_area(f"📝 รายการอาการเสียสะสม ({m_id})", value=current_notes, key=f"note_area_{m_id}", height=100, disabled=True)
 
