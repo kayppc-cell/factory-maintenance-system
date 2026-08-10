@@ -242,6 +242,8 @@ def fetch_logs_from_supabase(machine_id, year_month):
                 "checklist_item": "Checklist_Item", "status": "Status",
                 "note": "Note", "role": "Role"
             })
+            if "Day_Num" in df.columns:
+                df["Day_Num"] = pd.to_numeric(df["Day_Num"], errors='coerce').fillna(0).astype(int)
             return df
         return pd.DataFrame()
     except Exception as e:
@@ -565,12 +567,15 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
        
             @st.fragment
             def render_machine_card(m_id, m_name, m_type_flag):
+                # ใช้ Session State ช่วยล็อคปุ่มอนุมัติทันทีใน 0.01 วินาที
+                approve_state_key = f"approved_{m_id}_{year_month_key}_{target_day_check}"
+                
                 df_logs = fetch_logs_from_supabase(m_id, year_month_key)
                 
                 is_reported = False
-                is_approved = False
+                is_approved = st.session_state.get(approve_state_key, False)
                 tech_who_checked = ""
-                boss_who_approved = ""
+                boss_who_approved = st.session_state.get(f"boss_name_{approve_state_key}", "")
                 
                 if not df_logs.empty:
                     day_logs = df_logs[df_logs["Day_Num"] == int(target_day_check)]
@@ -586,7 +591,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
 
                 st.info(f"⚙️ **{m_id}**\n{m_name}")
                 
-                # 🚫 ตัดคำว่า "ยังไม่มีการส่งฟอร์ม" ออก แสดงสถานะชัดเจน
                 if is_approved:
                     st.success(f"✅ อนุมัติแล้ว โดย: {boss_who_approved}")
                 elif is_reported:
@@ -594,13 +598,16 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 else:
                     st.caption("⚪ ยังไม่ได้ดำเนินการ")
 
-                # 🔒 ปุ่มอนุมัติ: ถ้าอนุมัติแล้ว ปุ่มจะเปลี่ยนเป็นสีเทาและกดไม่ได้
+                # 🔒 ปุ่มอนุมัติล็อคเปลี่ยนเป็นสีเทาทันที 100%
                 if is_approved:
                     st.button(f"🔒 อนุมัติแล้วโดย {boss_who_approved}", key=f"btn_approved_disabled_{m_id}", disabled=True)
                 elif not boss_name.strip():
                     st.button(f"⚠️ กรุณาระบุชื่อผู้ตรวจสอบก่อนกดอนุมัติ ({m_id})", key=f"btn_disabled_{m_id}", disabled=True)
                 else:
                     if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
+                        st.session_state[approve_state_key] = True
+                        st.session_state[f"boss_name_{approve_state_key}"] = boss_name
+                        
                         approve_excel_direct_to_disk(m_id, target_day_check, boss_name, m_type_flag)
                         
                         save_log_to_supabase_bulk([{
