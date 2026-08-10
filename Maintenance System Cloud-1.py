@@ -33,11 +33,14 @@ SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
 SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
 
 @st.cache_resource
-def init_supabase() -> Client:
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        st.error("⚠️ ไม่พบการตั้งค่า SUPABASE_URL หรือ SUPABASE_KEY ใน Secrets!")
+def init_supabase():
+    try:
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            return None
+        return create_client(SUPABASE_URL, SUPABASE_KEY)
+    except Exception as e:
+        print(f"Supabase init error: {e}")
         return None
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 supabase = init_supabase()
 
@@ -217,12 +220,11 @@ def get_unmerged_cell(ws, coordinate_str):
     except:
         return ws[coordinate_str]
 
-# --- 2. ⚡ FAST SUPABASE ENGINE WITH CACHING ---
+# --- 2. ⚡ SAFE SUPABASE ENGINE ---
 def save_log_to_supabase_bulk(list_of_logs):
     if not supabase: return
     try:
         supabase.table("maintenance_logs").insert(list_of_logs).execute()
-        st.cache_data.clear()
     except Exception as e:
         print(f"Supabase Bulk Insert Error: {e}")
 
@@ -589,24 +591,26 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                             "note": "",
                             "role": "boss"
                         }])
-                        st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
+                        st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ! (ระบบจะอัปเดตสถานะอัตโนมัติ)", icon="🔥")
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
-                        st.rerun()
                 
                 target_year_month_folder = selected_date.strftime("%Y_%B")
                 img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), target_year_month_folder, f"Day_{target_day_check}")
                 
                 if os.path.exists(img_dir):
-                    valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
-                    if valid_photos:
-                        with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check} ({len(valid_photos)} รูป)"):
-                            for p_path in sorted(valid_photos):
-                                try:
-                                    img_obj = Image.open(p_path)
-                                    img_obj.verify()
-                                    st.image(p_path, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
-                                except Exception as e_img:
-                                    st.warning(f"⚠️ รูปภาพเสีย/อ่านไม่ได้: {os.path.basename(p_path)}")
+                    try:
+                        valid_photos = [os.path.join(img_dir, p) for p in os.listdir(img_dir) if p.lower().endswith(('.png', '.jpg', '.jpeg'))]
+                        if valid_photos:
+                            with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check} ({len(valid_photos)} รูป)"):
+                                for p_path in sorted(valid_photos):
+                                    try:
+                                        img_obj = Image.open(p_path)
+                                        img_obj.verify()
+                                        st.image(p_path, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
+                                    except Exception as e_img:
+                                        st.warning(f"⚠️ รูปภาพเสีย/อ่านไม่ได้: {os.path.basename(p_path)}")
+                    except Exception as e_dir:
+                        st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
                 else:
                     st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
@@ -622,7 +626,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 st.write("---")
                 excel_col, zip_day_col, zip_month_col = st.columns(3)
                 
-                # ⚡ ใช้เทคนิค st.popover แยกเปิดป๊อปอัพดาวน์โหลด หน้าเว็บหลักจะอยู่นิ่ง ไม่รีเฟรชหมุนค้างทั้งหน้า!
                 with excel_col:
                     with st.popover("📥 ดึง Excel", use_container_width=True):
                         st.write(f"**ดาวน์โหลดแบบฟอร์ม {m_id}**")
@@ -866,7 +869,6 @@ else:
                     if supabase:
                         try: 
                             supabase.table("maintenance_logs").delete().neq("id", 0).execute()
-                            st.cache_data.clear()
                         except Exception as e_del: print(f"Delete Supabase Error: {e_del}")
                     
                     st.success("🧹 ลบรูปภาพและฐานข้อมูล Supabase เรียบร้อยแล้วครับ!")
