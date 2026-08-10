@@ -249,7 +249,6 @@ def fetch_logs_from_supabase(machine_id, year_month):
         print(f"Supabase Fetch Error: {e}")
         return pd.DataFrame()
 
-# ⚡ ฟังก์ชันเขียนอนุมัติของหัวหน้าลง Excel จริงบนดิสก์
 def approve_excel_direct_to_disk(machine_id, day_num, boss_name, m_type):
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
@@ -580,30 +579,29 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                     tech_rows = day_logs[day_logs["Role"] == "tech"]
                     boss_rows = day_logs[day_logs["Role"] == "boss"]
                     
-                    if not tech_rows.empty:
-                        is_reported = True
-                        tech_who_checked = tech_rows.iloc[0]["Tech_Name"]
                     if not boss_rows.empty:
                         is_approved = True
                         boss_who_approved = boss_rows.iloc[0]["Tech_Name"]
+                    if not tech_rows.empty:
+                        is_reported = True
+                        tech_who_checked = tech_rows.iloc[0]["Tech_Name"]
 
                 st.info(f"⚙️ **{m_id}**\n{m_name}")
                 
+                # ⚡ ปรับตรรกะการเช็คสถานะใหม่: ถ้ากดอนุมัติแล้ว ต้องขึ้นอนุมัติทันที 100%
                 if is_approved:
                     st.success(f"✅ อนุมัติแล้ว โดย: {boss_who_approved}")
                 elif is_reported:
                     st.warning(f"📋 ช่างตรวจแล้ว ({tech_who_checked}) - รอหัวหน้าอนุมัติ")
                 else:
-                    st.caption("⚪ วันนี้ยังไม่มีการส่งฟอร์ม")
+                    st.caption("⚪ ยังไม่มีการส่งฟอร์ม")
 
                 if not boss_name.strip():
                     st.button(f"⚠️ กรุณาระบุชื่อผู้ตรวจสอบก่อนกดอนุมัติ ({m_id})", key=f"btn_disabled_{m_id}", disabled=True)
                 else:
                     if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
-                        # 1. เขียนชื่อลงดิสก์ไฟล์ Excel ทันที
                         approve_excel_direct_to_disk(m_id, target_day_check, boss_name, m_type_flag)
                         
-                        # 2. บันทึกลง Supabase Database
                         save_log_to_supabase_bulk([{
                             "machine_id": m_id,
                             "day_num": int(target_day_check),
@@ -616,9 +614,8 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                             "role": "boss"
                         }])
                         
-                        # 3. ล้าง แคช และแจ้งเตือน LINE
                         st.cache_data.clear()
-                        st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ! กดดาวน์โหลด Excel ได้เลย", icon="🔥")
+                        st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ! สถานะอัปเดตเรียบร้อย", icon="🔥")
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.rerun(scope="fragment")
                 
@@ -648,7 +645,8 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                     for _, n_row in notes_rows.iterrows():
                         current_notes_list.append(f"[วันที่ {n_row['Day_Num']}]: ข้อ {n_row['Item_No']} {n_row['Note']}")
                 
-                current_notes = ", ".join(current_notes_list) if current_notes_list else "ไม่มีบันทึกอาการเสีย"
+                # 🚫 ตัดคำว่า "ไม่มีบันทึกอาการเสีย" ออกถาวรตามตกลงครับ
+                current_notes = ", ".join(current_notes_list) if current_notes_list else ""
                 st.text_area(f"📝 รายการอาการเสียสะสม ({m_id})", value=current_notes, key=f"note_area_{m_id}", height=100, disabled=True)
 
                 st.write("---")
