@@ -565,9 +565,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             st.divider()
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
        
-            @st.fragment
             def render_machine_card(m_id, m_name, m_type_flag):
-                # ใช้ Session State ช่วยล็อคปุ่มอนุมัติทันทีใน 0.01 วินาที
                 approve_state_key = f"approved_{m_id}_{year_month_key}_{target_day_check}"
                 
                 df_logs = fetch_logs_from_supabase(m_id, year_month_key)
@@ -595,10 +593,8 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                     st.success(f"✅ อนุมัติแล้ว โดย: {boss_who_approved}")
                 elif is_reported:
                     st.warning(f"📋 ช่างตรวจแล้ว ({tech_who_checked}) - รอหัวหน้าอนุมัติ")
-                else:
-                    st.caption("⚪ ยังไม่ได้ดำเนินการ")
 
-                # 🔒 ปุ่มอนุมัติล็อคเปลี่ยนเป็นสีเทาทันที 100%
+                # 🔒 ปุ่มอนุมัติ: ถอด rerun ออกเพื่อป้องกันสคริปต์ล่ม
                 if is_approved:
                     st.button(f"🔒 อนุมัติแล้วโดย {boss_who_approved}", key=f"btn_approved_disabled_{m_id}", disabled=True)
                 elif not boss_name.strip():
@@ -624,7 +620,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                         
                         st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
-                        st.rerun(scope="fragment")
                 
                 target_year_month_folder = selected_date.strftime("%Y_%B")
                 img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), target_year_month_folder, f"Day_{target_day_check}")
