@@ -29,8 +29,14 @@ BASE_FOLDER = (
 BOSS_PASSWORD = "pes1234"
 BIGBOSS_PASSWORD = "pes9999"
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", st.secrets.get("SUPABASE_URL", "") if hasattr(st, "secrets") else "")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", st.secrets.get("SUPABASE_KEY", "") if hasattr(st, "secrets") else "")
+# ⚡ อ่านค่าได้ทั้งจาก Render (os.getenv) และ Streamlit Cloud (st.secrets)
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+
+if not SUPABASE_URL and hasattr(st, "secrets"):
+    SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
+if not SUPABASE_KEY and hasattr(st, "secrets"):
+    SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
 
 @st.cache_resource
 def init_supabase():
@@ -527,7 +533,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
                 elif "ทำการแก้ไข" in status_val: fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
             
-            boss_review_url = f"https://pes-maintenance.streamlit.app/?role=boss&id={machine_id}"
+            boss_review_url = f"https://factory-maintenance-system.onrender.com/?role=boss&id={machine_id}"
             audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
             
             if fails:
@@ -565,7 +571,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             st.divider()
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
        
-            # ⚡ ครอบด้วย @st.fragment กักบริเวณไม่ให้ปุ่มดาวน์โหลด/อนุมัติ ไปรีเฟรชหน้าเพจหลัก!
             @st.fragment
             def render_machine_card(m_id, m_name, m_type_flag):
                 approve_state_key = f"approved_{m_id}_{year_month_key}_{target_day_check}"
@@ -598,7 +603,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 else:
                     st.caption("⚪ ยังไม่ได้ดำเนินการ")
 
-                # 🔒 ปุ่มอนุมัติล็อคสีเทาทันทีเมื่ออนุมัติแล้ว
                 if is_approved:
                     st.button(f"🔒 อนุมัติแล้วโดย {boss_who_approved}", key=f"btn_approved_disabled_{m_id}", disabled=True)
                 elif not boss_name.strip():
@@ -886,7 +890,7 @@ else:
 
             with st.expander("🖨️ [เฉพาะผู้บริหารสูงสุด] เครื่องมือพิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
                 sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()), key="bigboss_qr_select_box_outside")
-                qr_url = f"https://pes-maintenance.streamlit.app/?id={sel_m}" 
+                qr_url = f"https://factory-maintenance-system.onrender.com/?id={sel_m}" 
                 qr = qrcode.make(qr_url)
                 buf = BytesIO()
                 qr.save(buf)
