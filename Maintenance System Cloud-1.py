@@ -29,16 +29,9 @@ BASE_FOLDER = (
 BOSS_PASSWORD = "pes1234"
 BIGBOSS_PASSWORD = "pes9999"
 
+# ⚡ อ่านค่าจาก Render Environment Variables โดยตรง 100%
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
-
-try:
-    if not SUPABASE_URL:
-        SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
-    if not SUPABASE_KEY:
-        SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
-except Exception:
-    pass
 
 @st.cache_resource
 def init_supabase():
