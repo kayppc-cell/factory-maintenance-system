@@ -29,8 +29,8 @@ BASE_FOLDER = (
 BOSS_PASSWORD = "pes1234"
 BIGBOSS_PASSWORD = "pes9999"
 
-SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
-SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
+SUPABASE_URL = os.getenv("SUPABASE_URL", st.secrets.get("SUPABASE_URL", "") if hasattr(st, "secrets") else "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", st.secrets.get("SUPABASE_KEY", "") if hasattr(st, "secrets") else "")
 
 @st.cache_resource
 def init_supabase():
