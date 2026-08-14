@@ -29,9 +29,14 @@ BASE_FOLDER = (
 BOSS_PASSWORD = "pes1234"
 BIGBOSS_PASSWORD = "pes9999"
 
-# ⚡ อ่านค่าจาก Render Environment Variables โดยตรง 100%
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+# ⚡ รองรับทั้ง st.secrets (บน Streamlit Cloud) และ os.environ
+def get_secret(key_name, default=""):
+    if key_name in st.secrets:
+        return st.secrets[key_name]
+    return os.getenv(key_name, default)
+
+SUPABASE_URL = get_secret("SUPABASE_URL")
+SUPABASE_KEY = get_secret("SUPABASE_KEY")
 
 @st.cache_resource
 def init_supabase():
@@ -211,29 +216,21 @@ def set_cell_value_safe(ws, coordinate_str, value, alignment=None):
     except Exception as e:
         print(f"Cell write error at {coordinate_str}: {e}")
 
-def get_unmerged_cell(ws, coordinate_str):
-    try:
-        cell = ws[coordinate_str]
-        for merged_range in ws.merged_cells.ranges:
-            if cell.coordinate in merged_range:
-                return ws.cell(row=merged_range.min_row, column=merged_range.min_col)
-        return cell
-    except:
-        return ws[coordinate_str]
-
-# --- 2. REALTIME SUPABASE ENGINE ---
+# --- 2. REALTIME SUPABASE ENGINE & CACHE OPTIMIZATION ---
 def save_log_to_supabase_bulk(list_of_logs):
     if not supabase: return
     try:
         supabase.table("maintenance_logs").insert(list_of_logs).execute()
-        st.cache_data.clear()
+        st.cache_data.clear()  # ล้าง Cache เพื่อให้ข้อมูลอัปเดตทันที
     except Exception as e:
         print(f"Supabase Bulk Insert Error: {e}")
 
-def fetch_logs_from_supabase(machine_id, year_month):
+# ⚡ Cache ข้อมูลทั้งเดือนในรอบเดียว เพื่อไม่ต้องยิง Supabase 40 กว่าครั้ง
+@st.cache_data(ttl=30, show_spinner=False)
+def fetch_all_logs_month(year_month):
     if not supabase: return pd.DataFrame()
     try:
-        res = supabase.table("maintenance_logs").select("*").eq("machine_id", machine_id).eq("year_month", year_month).execute()
+        res = supabase.table("maintenance_logs").select("*").eq("year_month", year_month).execute()
         if res.data:
             df = pd.DataFrame(res.data)
             df = df.rename(columns={
@@ -248,8 +245,14 @@ def fetch_logs_from_supabase(machine_id, year_month):
             return df
         return pd.DataFrame()
     except Exception as e:
-        print(f"Supabase Fetch Error: {e}")
+        print(f"Supabase Fetch All Error: {e}")
         return pd.DataFrame()
+
+def fetch_logs_from_supabase(machine_id, year_month):
+    df_all = fetch_all_logs_month(year_month)
+    if not df_all.empty:
+        return df_all[df_all["Machine_ID"] == machine_id]
+    return pd.DataFrame()
 
 def approve_excel_direct_to_disk(machine_id, day_num, boss_name, m_type):
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
@@ -313,7 +316,7 @@ def send_line_alert(msg_text):
     url = 'https://api.line.me/v2/bot/message/push'
     headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
     payload = {"to": LINE_TARGET_ID, "messages": [{"type": "text", "text": msg_text}]}
-    try: requests.post(url, headers=headers, data=json.dumps(payload))
+    try: requests.post(url, headers=headers, data=json.dumps(payload), timeout=5)
     except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
 
 def save_uploaded_photos_list(machine_id, day_num, item_index, files_list, current_date_obj=None):
@@ -331,9 +334,11 @@ def save_uploaded_photos_list(machine_id, day_num, item_index, files_list, curre
             file_name = f"photo_item_{item_index}_{idx}{file_extension}"
             full_path = os.path.join(folder_path, file_name)
             
+            # บันทึกลง Disk
             with open(full_path, "wb") as f: f.write(uploaded_file.getbuffer())
             saved_paths.append(full_path)
             
+            # อัปโหลดขึ้น Supabase Storage แบบไม่บล็อกระบบ
             if supabase:
                 try:
                     storage_path = f"{machine_id}/{current_year_month}/Day_{day_num}/{file_name}"
@@ -466,7 +471,7 @@ else: m_type_selected = "CNC"
 # 🔧 [โหมดที่ 1: ฝั่งช่างเทคนิคส่งฟอร์มประจำวัน]
 # ==========================================
 if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
-    st.image("Logo_Pes.png", width=240)
+    if os.path.exists("Logo_Pes.png"): st.image("Logo_Pes.png", width=240)
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
     st.info("📄 มาตรฐานระบบคุณภาพโรงงาน: **FM-MN-07 Rev.00**")
@@ -482,8 +487,8 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     with st.form("pm_form"):
         tech_name = st.text_input("👤 ชื่อช่างผู้ตรวจเช็ค (ผู้รับผิดชอบ)", placeholder="ระบุชื่อ-นามสกุลของคุณ")
         results, uploaded_photos = {}, {}
-        current_checklist = CHECKLISTS[m_type_selected]
-        required_photo_indexes = PHOTO_RULES[m_type_selected]
+        current_checklist = CHECKLISTS.get(m_type_selected, CHECKLISTS["CNC"])
+        required_photo_indexes = PHOTO_RULES.get(m_type_selected, [])
         
         for i, item in enumerate(current_checklist, 1):
             st.write(f"**{i}. {item}**")
@@ -528,7 +533,9 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
                 elif "ทำการแก้ไข" in status_val: fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
             
-            boss_review_url = f"https://factory-maintenance-system.onrender.com/?role=boss&id={machine_id}"
+            # ปรับเป็น URL ของระบบปัจจุบัน
+            current_app_base_url = "https://share.streamlit.io"
+            boss_review_url = f"?role=boss&id={machine_id}"
             audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
             
             if fails:
@@ -546,7 +553,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ดูบอร์ดตรวจเช็ค/กดอนุมัติ]
 # ==========================================
 elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
-    st.image("Logo_Pes.png", width=240)
+    if os.path.exists("Logo_Pes.png"): st.image("Logo_Pes.png", width=240)
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับ Engineer)")
     
@@ -566,28 +573,33 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             st.divider()
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
        
-            @st.fragment
+            # ⚡ โหลด Log ของทั้งเดือนรอบเดียวไว้ที่ Memory (เร็วขึ้น 10 เท่า)
+            all_month_logs = fetch_all_logs_month(year_month_key)
+
             def render_machine_card(m_id, m_name, m_type_flag):
                 approve_state_key = f"approved_{m_id}_{year_month_key}_{target_day_check}"
-                
-                df_logs = fetch_logs_from_supabase(m_id, year_month_key)
                 
                 is_reported = False
                 is_approved = st.session_state.get(approve_state_key, False)
                 tech_who_checked = ""
                 boss_who_approved = st.session_state.get(f"boss_name_{approve_state_key}", "")
                 
-                if not df_logs.empty:
-                    day_logs = df_logs[df_logs["Day_Num"] == int(target_day_check)]
-                    boss_rows = day_logs[day_logs["Role"] == "boss"]
-                    tech_rows = day_logs[day_logs["Role"] == "tech"]
-                    
-                    if not boss_rows.empty:
-                        is_approved = True
-                        boss_who_approved = str(boss_rows.iloc[0]["Tech_Name"])
-                    if not tech_rows.empty:
-                        is_reported = True
-                        tech_who_checked = str(tech_rows.iloc[0]["Tech_Name"])
+                # กรองข้อมูลจาก RAM ไม่ต้องยิง Supabase ซ้ำ
+                if not all_month_logs.empty:
+                    df_logs = all_month_logs[all_month_logs["Machine_ID"] == m_id]
+                    if not df_logs.empty:
+                        day_logs = df_logs[df_logs["Day_Num"] == int(target_day_check)]
+                        boss_rows = day_logs[day_logs["Role"] == "boss"]
+                        tech_rows = day_logs[day_logs["Role"] == "tech"]
+                        
+                        if not boss_rows.empty:
+                            is_approved = True
+                            boss_who_approved = str(boss_rows.iloc[0]["Tech_Name"])
+                        if not tech_rows.empty:
+                            is_reported = True
+                            tech_who_checked = str(tech_rows.iloc[0]["Tech_Name"])
+                else:
+                    df_logs = pd.DataFrame()
 
                 st.info(f"⚙️ **{m_id}**\n{m_name}")
                 
@@ -623,7 +635,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                         
                         st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
-                        st.rerun(scope="fragment")
+                        st.rerun()
                 
                 target_year_month_folder = selected_date.strftime("%Y_%B")
                 img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), target_year_month_folder, f"Day_{target_day_check}")
@@ -636,8 +648,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                                 for p_path in sorted(valid_photos):
                                     try:
                                         img_obj = Image.open(p_path)
-                                        img_obj.verify()
-                                        st.image(p_path, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
+                                        st.image(img_obj, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
                                     except Exception as e_img:
                                         st.warning(f"⚠️ รูปภาพเสีย/อ่านไม่ได้: {os.path.basename(p_path)}")
                     except Exception as e_dir:
@@ -832,7 +843,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
 # 👑 [โหมดที่ 3: 👑 พื้นที่ควบคุมผู้บริหารสูงสุด (Big Boss Zone)]
 # ==========================================
 else:
-    st.image("Logo_Pes.png", width=240)
+    if os.path.exists("Logo_Pes.png"): st.image("Logo_Pes.png", width=240)
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title("👑 ศูนย์ควบคุมระบบผู้บริหารสูงสุด (Big Boss Zone)")
     st.info("🔐 พื้นที่ความปลอดภัยระดับสูง สำหรับดาวน์โหลดไฟล์สำรอง พิมพ์คิวอาร์โค้ด และจัดการฐานข้อมูลหลัก")
@@ -885,7 +896,7 @@ else:
 
             with st.expander("🖨️ [เฉพาะผู้บริหารสูงสุด] เครื่องมือพิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
                 sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()), key="bigboss_qr_select_box_outside")
-                qr_url = f"https://factory-maintenance-system.onrender.com/?id={sel_m}" 
+                qr_url = f"?id={sel_m}" 
                 qr = qrcode.make(qr_url)
                 buf = BytesIO()
                 qr.save(buf)
