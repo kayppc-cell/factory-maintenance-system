@@ -573,9 +573,11 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             st.divider()
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
        
-            # ⚡ โหลด Log ของทั้งเดือนรอบเดียวไว้ที่ Memory (เร็วขึ้น 10 เท่า)
+            # โหลด Log ทั้งเดือนรอบเดียวเก็บไว้ใน RAM
             all_month_logs = fetch_all_logs_month(year_month_key)
 
+            # ⚡ 1. ใส่ @st.fragment ครอบไว้ตรงนี้
+            @st.fragment
             def render_machine_card(m_id, m_name, m_type_flag):
                 approve_state_key = f"approved_{m_id}_{year_month_key}_{target_day_check}"
                 
@@ -584,7 +586,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 tech_who_checked = ""
                 boss_who_approved = st.session_state.get(f"boss_name_{approve_state_key}", "")
                 
-                # กรองข้อมูลจาก RAM ไม่ต้องยิง Supabase ซ้ำ
                 if not all_month_logs.empty:
                     df_logs = all_month_logs[all_month_logs["Machine_ID"] == m_id]
                     if not df_logs.empty:
@@ -635,7 +636,9 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                         
                         st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
-                        st.rerun()
+                        
+                        # ⚡ 2. สั่งรีรันเฉพาะการ์ดใบนี้ (ไม่รีรันทั้งหน้าจอ)
+                        st.rerun(scope="fragment")
                 
                 target_year_month_folder = selected_date.strftime("%Y_%B")
                 img_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(m_id), target_year_month_folder, f"Day_{target_day_check}")
