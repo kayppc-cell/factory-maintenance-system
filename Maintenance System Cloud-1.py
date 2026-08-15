@@ -21,6 +21,9 @@ from supabase import create_client, Client
 LINE_ACCESS_TOKEN = "SOs7DeGwVsFpuK/JN8zm58Wn3EOiB75Ww0q57z1/yht4H1imzYonre4QuPfQ3cxbJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lYwCp4biq7N20ffJqzGm+ZYNgtEzt2rYZ/GYVRV725EiAdB04t89/1O/w1cDnyilFU="
 LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
 
+# กำหนด Base URL ของระบบ Streamlit App
+DEFAULT_APP_URL = "https://factory-maintenance-system.streamlit.app"
+
 BASE_FOLDER = (
     os.path.dirname(os.path.abspath(__file__))
     if "__file__" in locals()
@@ -30,7 +33,7 @@ BASE_FOLDER = (
 BOSS_PASSWORD = "pes1234"
 BIGBOSS_PASSWORD = "pes9999"
 
-# ⚡ รองรับทั้ง st.secrets (บน Streamlit Cloud) และ os.environ
+# รองรับทั้ง st.secrets บน Streamlit Cloud และ Environment Variables
 def get_secret(key_name, default=""):
     if key_name in st.secrets:
         return st.secrets[key_name]
@@ -80,10 +83,12 @@ MACHINES = {
     "LATHE-01": "เครื่องกลึง LATHE #01",
     "CUTTING-01": "เครื่องตัด CUTTING #01",
     "BENDING-01": "เครื่องพับ BENDING #01",
-    "MIG CO2-01": "เครื่องเชื่อม MIG CO2 #01", "MIG CO2-02": "เครื่องเชื่อม MIG CO2 #02", "MIG CO2-03": "เครื่องเชื่อม MIG CO2 #03",
+    "MIG CO2-01": "เครื่องเชื่อม MIG CO2 #01", "MIG CO2-02": "เครื่องเชื่อม MIG CO2 #02",
+    "MIG CO2-03": "เครื่องเชื่อม MIG CO2 #03",
     "ARGON-01": "เครื่องเชื่อม ARGON #01", "ARGON-02": "เครื่องเชื่อม ARGON #02",
     "WELDING_ALUMINUM-01": "เครื่องเชื่อมอลูมิเนียม WELDING ALUMINUM #01",
-    "BAND SAW-01": "เครื่องเลื่อยสายพาน #01", "BAND SAW-02": "เครื่องเลื่อยสายพาน #02", "BAND SAW-03": "เครื่องเลื่อยสายพาน #03",
+    "BAND SAW-01": "เครื่องเลื่อยสายพาน #01", "BAND SAW-02": "เครื่องเลื่อยสายพาน #02",
+    "BAND SAW-03": "เครื่องเลื่อยสายพาน #03",
     "FORKLIFT-01": "รถโฟคลิฟ FORKLIFT #01",
 }
 
@@ -541,7 +546,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
                 elif "ทำการแก้ไข" in status_val: fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
             
-            boss_review_url = f"?role=boss&id={machine_id}"
+            boss_review_url = f"{DEFAULT_APP_URL}/?role=boss&id={machine_id}"
             audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
             
             if fails:
@@ -907,11 +912,17 @@ else:
 
             with st.expander("🖨️ [เฉพาะผู้บริหารสูงสุด] เครื่องมือพิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
                 sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()), key="bigboss_qr_select_box_outside")
-                qr_url = f"?id={sel_m}" 
+                
+                base_web_url = st.text_input(
+                    "🔗 ตรวจสอบ Base URL ของระบบ (ต้องขึ้นต้นด้วย https://):", 
+                    value=DEFAULT_APP_URL
+                )
+                
+                qr_url = f"{base_web_url.rstrip('/')}/?id={sel_m}" 
                 qr = qrcode.make(qr_url)
                 buf = BytesIO()
                 qr.save(buf)
-                st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
+                st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]} (ลิงก์: {qr_url})")
                 buf.close()
                 gc.collect()
 
