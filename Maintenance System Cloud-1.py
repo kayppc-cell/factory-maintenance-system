@@ -926,20 +926,53 @@ else:
                 buf.close()
                 gc.collect()
 
-            with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและตารางข้อมูล (FULL RESET SYSTEM)"):
-                st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการกวาดล้างรูปภาพหลักฐาน ประวัติข้อมูลใน Supabase และเคลียร์ตารางรอยติ๊กในไฟล์ Excel ทุกเครื่องเป็นค่าว่าง 100%")
-                if st.button("🚨 สั่งลบรูปภาพ ประวัติ Supabase และกวาดล้างตาราง Excel ทุกเครื่องสะอาดกริบ 100%", type="primary", key="reset_all_photos_primary_btn_outside"):
-                    target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
-                    if os.path.exists(target_photo_folder): shutil.rmtree(target_photo_folder)
+            # ----------------------------------------------------
+            # 🧹 กล่องเครื่องมือล้างระบบ แยก 2 ฟังก์ชั่นชัดเจน
+            # ----------------------------------------------------
+            with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบ (SYSTEM RESET ZONE)"):
+                st.warning("⚠️ โซนควบคุมความปลอดภัย: กรุณาตรวจสอบก่อนกดใช้งาน การลบข้อมูลจะไม่สามารถย้อนคืนได้")
+                
+                col_reset_photos, col_reset_db = st.columns(2)
+                
+                # ฟังก์ชันที่ 1: ลบเฉพาะระบบรูปภาพหลักฐาน
+                with col_reset_photos:
+                    st.write("#### 📸 1. ลบเฉพาะระบบรูปภาพ")
+                    st.caption("ทำหน้าที่ลบโฟลเดอร์ภาพถ่ายในเครื่อง และล้างไฟล์ใน Supabase Storage (ไม่กระทบประวัติตารางติ๊กตรวจ)")
                     
-                    if supabase:
-                        try: 
-                            supabase.table("maintenance_logs").delete().neq("id", 0).execute()
-                            st.cache_data.clear()
-                            gc.collect()
-                        except Exception as e_del: print(f"Delete Supabase Error: {e_del}")
+                    if st.button("🗑️ สั่งลบรูปภาพทั้งหมด", type="primary", key="btn_reset_only_photos"):
+                        target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
+                        if os.path.exists(target_photo_folder):
+                            shutil.rmtree(target_photo_folder)
+                        
+                        if supabase:
+                            try:
+                                files = supabase.storage.from_("maintenance-photos").list()
+                                for f in files:
+                                    if f.get("name"):
+                                        supabase.storage.from_("maintenance-photos").remove([f["name"]])
+                            except Exception as e_st_del:
+                                print(f"Storage Delete Error: {e_st_del}")
+
+                        gc.collect()
+                        st.success("✅ ล้างไฟล์รูปภาพหลักฐานทั้งหมดเรียบร้อยแล้ว!")
+                        st.toast("ลบรูปภาพสำเร็จ", icon="📸")
+
+                # ฟังก์ชันที่ 2: ลบเฉพาะฐานข้อมูลและประวัติตารางติ๊ก
+                with col_reset_db:
+                    st.write("#### 🗄️ 2. ลบเฉพาะประวัติตารางข้อมูล")
+                    st.caption("ทำหน้าที่ล้าง Log การตรวจเช็คใน Supabase Database (ไม่ลบไฟล์รูปภาพหลักฐาน)")
                     
-                    st.success("🧹 ลบรูปภาพและฐานข้อมูล Supabase เรียบร้อยแล้วครับ!")
-                    st.balloons()
+                    if st.button("🧹 สั่งล้างฐานข้อมูลประวัติ", type="primary", key="btn_reset_only_db"):
+                        if supabase:
+                            try: 
+                                supabase.table("maintenance_logs").delete().neq("id", 0).execute()
+                                st.cache_data.clear()
+                                gc.collect()
+                                st.success("✅ ล้างประวัติตารางข้อมูลใน Supabase เรียบร้อยแล้ว!")
+                                st.balloons()
+                            except Exception as e_del: 
+                                st.error(f"เกิดข้อผิดพลาดในการลบ Database: {e_del}")
+                        else:
+                            st.error("❌ ไม่สามารถเชื่อมต่อ Supabase ได้")
         else:
             st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับ")
