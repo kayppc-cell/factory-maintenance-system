@@ -6,6 +6,7 @@ import os
 import shutil
 import time
 import zipfile
+import gc
 import openpyxl
 from openpyxl.styles import Alignment
 from openpyxl.utils import get_column_letter
@@ -221,11 +222,11 @@ def save_log_to_supabase_bulk(list_of_logs):
     if not supabase: return
     try:
         supabase.table("maintenance_logs").insert(list_of_logs).execute()
-        st.cache_data.clear()  # ล้าง Cache เพื่อให้ข้อมูลอัปเดตทันที
+        st.cache_data.clear()
+        gc.collect()
     except Exception as e:
         print(f"Supabase Bulk Insert Error: {e}")
 
-# ⚡ Cache ข้อมูลทั้งเดือนในรอบเดียว เพื่อไม่ต้องยิง Supabase 40 กว่าครั้ง
 @st.cache_data(ttl=30, show_spinner=False)
 def fetch_all_logs_month(year_month):
     if not supabase: return pd.DataFrame()
@@ -266,6 +267,8 @@ def approve_excel_direct_to_disk(machine_id, day_num, boss_name, m_type):
         
         set_cell_value_safe(ws, f"{col_letter}{boss_row}", boss_name, Alignment(text_rotation=90, horizontal="center", vertical="center"))
         wb.save(target_excel_path)
+        wb.close()
+        gc.collect()
         return True
     except Exception as e:
         print(f"Excel Boss Approve Direct Error: {e}")
@@ -306,7 +309,11 @@ def generate_excel_bytes(machine_id, year_month, m_type):
 
         output_stream = BytesIO()
         wb.save(output_stream)
-        return output_stream.getvalue()
+        wb.close()
+        data = output_stream.getvalue()
+        output_stream.close()
+        gc.collect()
+        return data
     except Exception as e:
         print(f"Generate Excel Error: {e}")
         return None
@@ -334,11 +341,9 @@ def save_uploaded_photos_list(machine_id, day_num, item_index, files_list, curre
             file_name = f"photo_item_{item_index}_{idx}{file_extension}"
             full_path = os.path.join(folder_path, file_name)
             
-            # บันทึกลง Disk
             with open(full_path, "wb") as f: f.write(uploaded_file.getbuffer())
             saved_paths.append(full_path)
             
-            # อัปโหลดขึ้น Supabase Storage แบบไม่บล็อกระบบ
             if supabase:
                 try:
                     storage_path = f"{machine_id}/{current_year_month}/Day_{day_num}/{file_name}"
@@ -346,6 +351,7 @@ def save_uploaded_photos_list(machine_id, day_num, item_index, files_list, curre
                         supabase.storage.from_("maintenance-photos").upload(storage_path, f_img, {"content-type": "image/jpeg", "upsert": "true"})
                 except Exception as e_up: print(f"Photo Supabase Upload Error: {e_up}")
 
+        gc.collect()
     return saved_paths
 
 def zip_single_machine_photos(machine_id, target_date_obj, target_day=None):
@@ -366,6 +372,7 @@ def zip_single_machine_photos(machine_id, target_date_obj, target_day=None):
                     relative_path = os.path.relpath(file_path, source_dir)
                     zip_file.write(file_path, relative_path)
         zip_buffer.seek(0)
+        gc.collect()
         return zip_buffer
     except: return None
 
@@ -403,6 +410,7 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
                                 has_file = True
         if not has_file: return None
         zip_buffer.seek(0)
+        gc.collect()
         return zip_buffer
     except: return None
 
@@ -533,8 +541,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
                 elif "ทำการแก้ไข" in status_val: fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
             
-            # ปรับเป็น URL ของระบบปัจจุบัน
-            current_app_base_url = "https://share.streamlit.io"
             boss_review_url = f"?role=boss&id={machine_id}"
             audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
             
@@ -573,10 +579,8 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             st.divider()
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
        
-            # โหลด Log ทั้งเดือนรอบเดียวเก็บไว้ใน RAM
             all_month_logs = fetch_all_logs_month(year_month_key)
 
-            # ⚡ 1. ใส่ @st.fragment ครอบไว้ตรงนี้
             @st.fragment
             def render_machine_card(m_id, m_name, m_type_flag):
                 approve_state_key = f"approved_{m_id}_{year_month_key}_{target_day_check}"
@@ -636,8 +640,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                         
                         st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
-                        
-                        # ⚡ 2. สั่งรีรันเฉพาะการ์ดใบนี้ (ไม่รีรันทั้งหน้าจอ)
                         st.rerun(scope="fragment")
                 
                 target_year_month_folder = selected_date.strftime("%Y_%B")
@@ -652,6 +654,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                                     try:
                                         img_obj = Image.open(p_path)
                                         st.image(img_obj, caption=f"หลักฐาน: {os.path.basename(p_path)}", use_container_width=True)
+                                        img_obj.close()
                                     except Exception as e_img:
                                         st.warning(f"⚠️ รูปภาพเสีย/อ่านไม่ได้: {os.path.basename(p_path)}")
                     except Exception as e_dir:
@@ -674,50 +677,53 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 with excel_col:
                     with st.popover("📥 ดึง Excel", use_container_width=True):
                         st.write(f"**ดาวน์โหลดแบบฟอร์ม {m_id}**")
-                        excel_bytes = generate_excel_bytes(m_id, year_month_key, m_type_flag)
-                        if excel_bytes:
-                            st.download_button(
-                                label=f"Confirm Download {m_id}", 
-                                data=excel_bytes, 
-                                file_name=f"FM-MN-07_{m_id}.xlsx", 
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
-                                key=f"dl_confirm_{m_id}",
-                                use_container_width=True
-                            )
-                        else:
-                            st.error("ไม่พบไฟล์แบบฟอร์ม")
+                        if st.button(f"สร้างไฟล์ Excel ({m_id})", key=f"btn_gen_excel_{m_id}"):
+                            excel_bytes = generate_excel_bytes(m_id, year_month_key, m_type_flag)
+                            if excel_bytes:
+                                st.download_button(
+                                    label=f"💾 กดบันทึกไฟล์ {m_id}.xlsx", 
+                                    data=excel_bytes, 
+                                    file_name=f"FM-MN-07_{m_id}.xlsx", 
+                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                                    key=f"dl_confirm_{m_id}",
+                                    use_container_width=True
+                                )
+                            else:
+                                st.error("ไม่พบไฟล์แบบฟอร์ม")
                         
                 with zip_day_col:
                     with st.popover(f"📸 รูปวันที่ {target_day_check}", use_container_width=True):
                         st.write(f"**รูปภาพประจำวันที่ {target_day_check}**")
-                        zip_day_data = zip_single_machine_photos(m_id, target_date_obj=selected_date, target_day=target_day_check)
-                        if zip_day_data:
-                            st.download_button(
-                                label=f"Download Photos Day {target_day_check}", 
-                                data=zip_day_data, 
-                                file_name=f"Photos_{m_id}_Day_{target_day_check}.zip", 
-                                mime="application/zip", 
-                                key=f"zip_day_confirm_{m_id}",
-                                use_container_width=True
-                            )
-                        else:
-                            st.caption("วันนี้ไม่มีรูปภาพหลักฐาน")
+                        if st.button(f"สร้างไฟล์ Zip วันนี้ ({m_id})", key=f"btn_gen_zip_day_{m_id}"):
+                            zip_day_data = zip_single_machine_photos(m_id, target_date_obj=selected_date, target_day=target_day_check)
+                            if zip_day_data:
+                                st.download_button(
+                                    label=f"💾 กดบันทึกรูป Day {target_day_check}", 
+                                    data=zip_day_data, 
+                                    file_name=f"Photos_{m_id}_Day_{target_day_check}.zip", 
+                                    mime="application/zip", 
+                                    key=f"zip_day_confirm_{m_id}",
+                                    use_container_width=True
+                                )
+                            else:
+                                st.caption("วันนี้ไม่มีรูปภาพหลักฐาน")
                         
                 with zip_month_col:
                     with st.popover("📦 รูปทั้งเดือน", use_container_width=True):
                         st.write(f"**รูปภาพรวมทั้งเดือน {selected_date.strftime('%Y_%B')}**")
-                        zip_month_data = zip_single_machine_photos(m_id, target_date_obj=selected_date, target_day=None)
-                        if zip_month_data:
-                            st.download_button(
-                                label="Download Full Month Photos", 
-                                data=zip_month_data, 
-                                file_name=f"Photos_{m_id}_Full_{selected_date.strftime('%Y_%B')}.zip", 
-                                mime="application/zip", 
-                                key=f"zip_month_confirm_{m_id}",
-                                use_container_width=True
-                            )
-                        else:
-                            st.caption("เดือนนี้ไม่มีรูปภาพหลักฐาน")
+                        if st.button(f"สร้างไฟล์ Zip ทั้งเดือน ({m_id})", key=f"btn_gen_zip_month_{m_id}"):
+                            zip_month_data = zip_single_machine_photos(m_id, target_date_obj=selected_date, target_day=None)
+                            if zip_month_data:
+                                st.download_button(
+                                    label="💾 กดบันทึกรูปทั้งเดือน", 
+                                    data=zip_month_data, 
+                                    file_name=f"Photos_{m_id}_Full_{selected_date.strftime('%Y_%B')}.zip", 
+                                    mime="application/zip", 
+                                    key=f"zip_month_confirm_{m_id}",
+                                    use_container_width=True
+                                )
+                            else:
+                                st.caption("เดือนนี้ไม่มีรูปภาพหลักฐาน")
                 st.divider()
 
             # ---- 1. แผนก CNC ----
@@ -861,41 +867,43 @@ else:
             selected_date = st.date_input("📆 เลือกวันที่สำหรับอ้างอิงการดาวน์โหลดข้อมูลย้อนหลัง:", value=datetime.date.today())
             
             with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดไฟล์ดิบฐานข้อมูลหลัก (SUPABASE BACKUP)"):
-                st.info("📂 ปุ่มนี้ทำหน้าที่ดึงประวัติข้อมูลทั้งหมดใน Supabase ออกมาเป็นไฟล์ .csv")
+                st.info("📂 ปุ่มนี้ทำหน้าที่ดึงประวัติข้อมูลใน Supabase ออกมาเป็นไฟล์ .csv (จำกัด 3,000 แถวล่าสุด เพื่อความเสถียร)")
                 if supabase:
-                    try:
-                        res = supabase.table("maintenance_logs").select("*").execute()
-                        if res.data:
-                            df_db = pd.DataFrame(res.data)
-                            st.download_button(
-                                label="📥 ดาวน์โหลดไฟล์ฐานข้อมูลดิบ (Supabase_Master_Backup.csv)",
-                                data=df_db.to_csv(index=False, encoding="utf-8-sig"),
-                                file_name=f"Backup_Master_Database_{datetime.datetime.now().strftime('%Y_%m_%d')}.csv",
-                                mime="text/csv",
-                                type="primary"
-                            )
-                        else: st.caption("ℹ️ ยังไม่มีข้อมูลบันทึกในฐานข้อมูล Supabase")
-                    except Exception as e_db: st.error(f"Error: {e_db}")
+                    if st.button("📥 เตรียมไฟล์สำรองข้อมูล (CSV)", type="primary"):
+                        try:
+                            res = supabase.table("maintenance_logs").select("*").order("timestamp", desc=True).limit(3000).execute()
+                            if res.data:
+                                df_db = pd.DataFrame(res.data)
+                                csv_data = df_db.to_csv(index=False, encoding="utf-8-sig")
+                                st.download_button(
+                                    label="💾 ยืนยันดาวน์โหลดไฟล์ CSV",
+                                    data=csv_data,
+                                    file_name=f"Backup_Master_Database_{datetime.datetime.now().strftime('%Y_%m_%d')}.csv",
+                                    mime="text/csv"
+                                )
+                                gc.collect()
+                            else: st.caption("ℹ️ ยังไม่มีข้อมูลบันทึกในฐานข้อมูล Supabase")
+                        except Exception as e_db: st.error(f"Error: {e_db}")
 
             with st.expander("📸 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดรูปภาพ PM รวมหมดทั้งโรงงาน (.zip)"):
-                st.info("📦 ปุ่มนี้จะทำหน้าที่เดินสแกนกวาดรูปถ่าย PM ของทุกแผนก ทุกเครื่องจักร มารวมเป็นไฟล์ .zip ก้อนเดียวเพื่อใช้ส่งผลตรวจมาตรฐานโรงงาน")
+                st.info("📦 ปุ่มนี้จะทำหน้าที่กวาดรูปถ่าย PM ตามแผนกที่เลือกมารวมเป็นไฟล์ .zip")
                 
                 dept_target = st.selectbox("เลือกแผนกที่บอสต้องการดาวน์โหลดรูปภาพ:", [
                     "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC", "MILLING", "MIG CO2", "ARGON", "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
                 ])
                 current_boss_month = selected_date.strftime("%Y_%B")
                 
-                filtered_zip_data = zip_all_factory_photos_by_filter(filter_type=dept_target, target_date_obj=selected_date)
-                if filtered_zip_data:
-                    st.download_button(
-                        label=f"📥 ดาวน์โหลดรูปภาพแผนก [{dept_target}]", 
-                        data=filtered_zip_data, 
-                        file_name=f"Photos_Filter_{dept_target}_{current_boss_month}.zip", 
-                        mime="application/zip", 
-                        type="primary"
-                    )
-                else:
-                    st.warning(f"⚠️ ในระบบคลาวด์ตามช่วงปฏิทินที่เลือก ยังไม่มีรูปภาพบันทึกอยู่ในกลุ่มแผนก [{dept_target}] เลยครับบอส")
+                if st.button(f"📦 สั่งสร้างไฟล์ Zip แผนก [{dept_target}]", type="primary"):
+                    filtered_zip_data = zip_all_factory_photos_by_filter(filter_type=dept_target, target_date_obj=selected_date)
+                    if filtered_zip_data:
+                        st.download_button(
+                            label=f"💾 ดาวน์โหลดรูปภาพแผนก [{dept_target}]", 
+                            data=filtered_zip_data, 
+                            file_name=f"Photos_Filter_{dept_target}_{current_boss_month}.zip", 
+                            mime="application/zip"
+                        )
+                    else:
+                        st.warning(f"⚠️ ในระบบคลาวด์ตามช่วงปฏิทินที่เลือก ยังไม่มีรูปภาพบันทึกอยู่ในกลุ่มแผนก [{dept_target}] เลยครับบอส")
 
             with st.expander("🖨️ [เฉพาะผู้บริหารสูงสุด] เครื่องมือพิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
                 sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()), key="bigboss_qr_select_box_outside")
@@ -904,6 +912,8 @@ else:
                 buf = BytesIO()
                 qr.save(buf)
                 st.image(buf, caption=f"QR สำหรับแปะหน้าเครื่อง {MACHINES[sel_m]}")
+                buf.close()
+                gc.collect()
 
             with st.expander("🧹 [เฉพาะผู้บริหารสูงสุด] กล่องเครื่องมือล้างระบบภาพถ่ายและตารางข้อมูล (FULL RESET SYSTEM)"):
                 st.warning("⚠️ คำเตือน: ปุ่มนี้จะทำการกวาดล้างรูปภาพหลักฐาน ประวัติข้อมูลใน Supabase และเคลียร์ตารางรอยติ๊กในไฟล์ Excel ทุกเครื่องเป็นค่าว่าง 100%")
@@ -915,6 +925,7 @@ else:
                         try: 
                             supabase.table("maintenance_logs").delete().neq("id", 0).execute()
                             st.cache_data.clear()
+                            gc.collect()
                         except Exception as e_del: print(f"Delete Supabase Error: {e_del}")
                     
                     st.success("🧹 ลบรูปภาพและฐานข้อมูล Supabase เรียบร้อยแล้วครับ!")
