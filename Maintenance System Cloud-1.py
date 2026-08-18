@@ -302,11 +302,19 @@ def generate_excel_bytes(machine_id, year_month, m_type):
                     item_idx = int(row["Item_No"])
                     if item_idx > 0:
                         cell_coord = f"{col_letter}{5 + item_idx}"
-                        mark = "/"
-                        if "ปกติ" in status_val and "แก้ไข" not in status_val: mark = "/"
-                        elif "แก้ไข" in status_val and "ปกติ" in status_val: mark = "⨂"
-                        elif "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: mark = "X"
-                        elif "ไม่ได้ทำงาน" in status_val or "-" in status_val: mark = "-"
+                        
+                        # ⚡ สลับลำดับการตรวจเช็คให้ถูกต้อง (แก้ปัญหาไม่ได้ทำงานขึ้น X)
+                        if "ไม่ได้ทำงาน" in status_val or status_val == "-":
+                            mark = "-"
+                        elif "แก้ไข" in status_val and "ปกติ" in status_val:
+                            mark = "⨂"
+                        elif "ปกติ" in status_val and "แก้ไข" not in status_val:
+                            mark = "/"
+                        elif "ต้องแก้ไข" in status_val or "ไม่ได้" in status_val:
+                            mark = "X"
+                        else:
+                            mark = "-"
+                            
                         set_cell_value_safe(ws, cell_coord, mark, center_align)
                     set_cell_value_safe(ws, f"{col_letter}{t_row}", row["Tech_Name"], Alignment(text_rotation=90, horizontal='center', vertical='center'))
                 elif str(row["Role"]).strip() == "boss":
