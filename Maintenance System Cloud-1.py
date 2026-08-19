@@ -156,7 +156,7 @@ CHECKLISTS = {
     "CUTTING": ["การ Worm spindle ก่อนเริ่มงาน เพื่อตรวจ ความผิดปกติของชุด Back gauge และ Motor", "เช็ค Auto Up-Down back gauge และ Manual ( ความคล่องตัวในการเคลื่อนที่ )", "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับในปั้มน้ำมัน หล่อลืนแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด", "ตรวจสอบ Digital  read out และการทำงาน ของ Linear  scale", "อัดจาระบีตามจุดที่อัดจาระบีทุกๆจุด", "ตรวจสอบใบมีด  บนและล่าง", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง จักรและอุปกรณ์เสริมต่าง ๆ"],
     "BENDING": [
         "การ Worm spindle ก่อนเริมงาน เพื่อตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor",
-        "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคล่องตัวในการเคลื่อนที่ของ Spindle )",
+        "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคล่องตัวในการเคลื่อนที่ของ Spindle )", 
         "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับน้ำมันในปั้ม น้ำมันหล่อลื่นแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด",
         "ตรวจสอบหน้าจอ Digital read out  และการทำงาน ของ Linear  scale", "อัดจาระบีตามจุดหัวอัดจาระบีทุก ๆจุด 1ครั้งตต่อเดือน",
         "ตรวจสอบการทำงานของไฟฟ้าแสงสว่างของเครื่อง", "ตรวจสอบฟันพับของร่อง  V",
@@ -192,6 +192,29 @@ PHOTO_RULES = {
     "CUTTER GRINDING-01": [], "MILLING": [6, 7], "LATHE": [2, 5, 6], "CUTTING": [3, 5, 7], "BENDING": [3, 5, 6], "MIG CO2": [3, 4, 5],
     "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [2, 3, 5], "FORKLIFT": [1, 2, 5]
 }
+
+def get_machine_type_by_id(machine_id):
+    u_id = str(machine_id).upper()
+    if "CUTTER" in u_id: return "CUTTER GRINDING-01"
+    elif "CRANE NO.1" in u_id or "CRANE no.1" in machine_id: return "Crane no.1"
+    elif "CRANE NO.2" in u_id or "CRANE no.2" in machine_id: return "Crane no.2"
+    elif any(f"QC-{i:02d}" in u_id for i in range(1, 22)):
+        for i in range(1, 22):
+            if f"QC-{i:02d}" in u_id: return f"QC-{i:02d}"
+    elif "COMP-01" in u_id: return "COMP-01"
+    elif "COMP-02" in u_id: return "COMP-02"
+    elif "GRINDING-01" in u_id: return "GRINDING-01"
+    elif "GRINDING-02" in u_id: return "GRINDING-02"
+    elif "MILLING" in u_id: return "MILLING"
+    elif "LATHE" in u_id: return "LATHE"
+    elif "CUTTING" in u_id: return "CUTTING"
+    elif "BENDING" in u_id: return "BENDING"
+    elif "MIG" in u_id: return "MIG CO2"
+    elif "ARGON" in u_id: return "ARGON"
+    elif "WELDING_ALUMINUM" in u_id: return "WELDING_ALUMINUM"
+    elif "BAND" in u_id: return "BAND SAW"
+    elif "FORKLIFT" in u_id: return "FORKLIFT"
+    return "CNC"
 
 def get_coordinates_by_machine(m_id, m_type):
     u_id = str(m_id).upper()
@@ -331,6 +354,26 @@ def generate_excel_bytes(machine_id, year_month, m_type):
         print(f"Generate Excel Error: {e}")
         return None
 
+# ⚡ ฟังก์ชันรวมไฟล์ Excel ทุกเครื่องจักรทั้งโรงงานใส่ Zip File
+def zip_all_factory_excel(year_month_key):
+    zip_buffer = BytesIO()
+    has_file = False
+    try:
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for m_id in MACHINES.keys():
+                m_type = get_machine_type_by_id(m_id)
+                excel_bytes = generate_excel_bytes(m_id, year_month_key, m_type)
+                if excel_bytes:
+                    zip_file.writestr(f"FM-MN-07_{m_id}_{year_month_key}.xlsx", excel_bytes)
+                    has_file = True
+        if not has_file: return None
+        zip_buffer.seek(0)
+        gc.collect()
+        return zip_buffer
+    except Exception as e:
+        print(f"Zip All Excel Error: {e}")
+        return None
+
 # --- PHOTO & ZIP FUNCTIONS ---
 def send_line_alert(msg_text):
     url = 'https://api.line.me/v2/bot/message/push'
@@ -449,44 +492,7 @@ if isinstance(raw_machine_id, list): machine_id = str(raw_machine_id[0]).strip()
 else: machine_id = str(raw_machine_id).strip()
 machine_id = machine_id.replace("%20", " ")
 
-if "CUTTER" in machine_id.upper(): m_type_selected = "CUTTER GRINDING-01"
-elif "CRANE NO.1" in machine_id.upper() or "CRANE no.1" in machine_id: m_type_selected = "Crane no.1"
-elif "CRANE NO.2" in machine_id.upper() or "CRANE no.2" in machine_id: m_type_selected = "Crane no.2"
-elif "QC-01" in machine_id.upper() or "QC-01" in machine_id: m_type_selected = "QC-01"
-elif "QC-02" in machine_id.upper() or "QC-02" in machine_id: m_type_selected = "QC-02"
-elif "QC-03" in machine_id.upper() or "QC-03" in machine_id: m_type_selected = "QC-03"
-elif "QC-04" in machine_id.upper() or "QC-04" in machine_id: m_type_selected = "QC-04"
-elif "QC-05" in machine_id.upper() or "QC-05" in machine_id: m_type_selected = "QC-05"
-elif "QC-06" in machine_id.upper() or "QC-06" in machine_id: m_type_selected = "QC-06"
-elif "QC-07" in machine_id.upper() or "QC-07" in machine_id: m_type_selected = "QC-07"
-elif "QC-08" in machine_id.upper() or "QC-08" in machine_id: m_type_selected = "QC-08"
-elif "QC-09" in machine_id.upper() or "QC-09" in machine_id: m_type_selected = "QC-09"
-elif "QC-10" in machine_id.upper() or "QC-10" in machine_id: m_type_selected = "QC-10"
-elif "QC-11" in machine_id.upper() or "QC-11" in machine_id: m_type_selected = "QC-11"
-elif "QC-12" in machine_id.upper() or "QC-12" in machine_id: m_type_selected = "QC-12"
-elif "QC-13" in machine_id.upper() or "QC-13" in machine_id: m_type_selected = "QC-13"
-elif "QC-14" in machine_id.upper() or "QC-14" in machine_id: m_type_selected = "QC-14"
-elif "QC-15" in machine_id.upper() or "QC-15" in machine_id: m_type_selected = "QC-15"
-elif "QC-16" in machine_id.upper() or "QC-16" in machine_id: m_type_selected = "QC-16"
-elif "QC-17" in machine_id.upper() or "QC-17" in machine_id: m_type_selected = "QC-17"
-elif "QC-18" in machine_id.upper() or "QC-18" in machine_id: m_type_selected = "QC-18"
-elif "QC-19" in machine_id.upper() or "QC-19" in machine_id: m_type_selected = "QC-19"
-elif "QC-20" in machine_id.upper() or "QC-20" in machine_id: m_type_selected = "QC-20" 
-elif "QC-21" in machine_id.upper() or "QC-21" in machine_id: m_type_selected = "QC-21"
-elif "COMP-01" in machine_id.upper(): m_type_selected = "COMP-01"
-elif "COMP-02" in machine_id.upper(): m_type_selected = "COMP-02"
-elif "GRINDING-01" in machine_id.upper(): m_type_selected = "GRINDING-01"
-elif "GRINDING-02" in machine_id.upper(): m_type_selected = "GRINDING-02"
-elif "MILLING" in machine_id.upper(): m_type_selected = "MILLING"
-elif "LATHE" in machine_id.upper(): m_type_selected = "LATHE"
-elif "CUTTING" in machine_id.upper(): m_type_selected = "CUTTING"
-elif "BENDING" in machine_id.upper(): m_type_selected = "BENDING" 
-elif "MIG" in machine_id.upper(): m_type_selected = "MIG CO2"
-elif "ARGON" in machine_id.upper(): m_type_selected = "ARGON"
-elif "WELDING_ALUMINUM" in machine_id.upper(): m_type_selected = "WELDING_ALUMINUM"
-elif "BAND" in machine_id.upper(): m_type_selected = "BAND SAW"
-elif "FORKLIFT" in machine_id.upper(): m_type_selected = "FORKLIFT"
-else: m_type_selected = "CNC"
+m_type_selected = get_machine_type_by_id(machine_id)
 
 # ==========================================
 # 🔧 [โหมดที่ 1: ฝั่งช่างเทคนิคส่งฟอร์มประจำวัน]
@@ -878,7 +884,24 @@ else:
             st.divider()
             
             selected_date = st.date_input("📆 เลือกวันที่สำหรับอ้างอิงการดาวน์โหลดข้อมูลย้อนหลัง:", value=datetime.date.today())
+            current_boss_month = selected_date.strftime("%Y_%B")
             
+            # ⚡ 1. กล่องดาวน์โหลด Excel ทุกเครื่องจักรทั้งโรงงาน
+            with st.expander(f"📊 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดไฟล์ Excel รวมทุกเครื่องจักรทั้งโรงงาน (.zip) ประจำเดือน {current_boss_month}"):
+                st.info(f"📂 ปุ่มนี้จะทำการรวบรวมไฟล์แบบฟอร์ม Excel (FM-MN-07) ที่มีรอยติ๊กครบทุกเครื่องจักรของเดือน **{current_boss_month}** รวมเป็นไฟล์ .zip ก้อนเดียว")
+                if st.button("📦 รวบรวมและสร้างไฟล์ Excel รวมทั้งโรงงาน (.zip)", type="primary"):
+                    with st.spinner("กำลังประกอบไฟล์ Excel ทุกเครื่องจักร กรุณารอสักครู่..."):
+                        excel_all_zip = zip_all_factory_excel(current_boss_month)
+                        if excel_all_zip:
+                            st.download_button(
+                                label=f"💾 ดาวน์โหลด Excel ทั้งโรงงาน (Excel_All_Machines_{current_boss_month}.zip)",
+                                data=excel_all_zip,
+                                file_name=f"Excel_All_Machines_{current_boss_month}.zip",
+                                mime="application/zip"
+                            )
+                        else:
+                            st.error("ไม่สามารถสร้างไฟล์ Zip ได้ หรือไม่พบไฟล์เทมเพลต Excel")
+
             with st.expander("📦 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดไฟล์ดิบฐานข้อมูลหลัก (SUPABASE BACKUP)"):
                 st.info("📂 ปุ่มนี้ทำหน้าที่ดึงประวัติข้อมูลใน Supabase ออกมาเป็นไฟล์ .csv (จำกัด 3,000 แถวล่าสุด เพื่อความเสถียร)")
                 if supabase:
@@ -904,9 +927,8 @@ else:
                 dept_target = st.selectbox("เลือกแผนกที่บอสต้องการดาวน์โหลดรูปภาพ:", [
                     "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC", "MILLING", "MIG CO2", "ARGON", "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
                 ])
-                current_boss_month = selected_date.strftime("%Y_%B")
                 
-                if st.button(f"📦 สั่งสร้างไฟล์ Zip แผนก [{dept_target}]", type="primary"):
+                if st.button(f"📦 สั่งสร้างไฟล์ Zip รูปภาพแผนก [{dept_target}]", type="primary"):
                     filtered_zip_data = zip_all_factory_photos_by_filter(filter_type=dept_target, target_date_obj=selected_date)
                     if filtered_zip_data:
                         st.download_button(
