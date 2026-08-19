@@ -219,9 +219,15 @@ def get_machine_type_by_id(machine_id):
 def get_coordinates_by_machine(m_id, m_type):
     u_id = str(m_id).upper()
     if "CUTTER" in u_id or m_type == "CUTTER GRINDING-01": return 13, 15, "B18"
-    if "QC-01" in u_id: return 10, 12, "B15"
-    if any(k in u_id for k in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-13", "QC-14", "QC-16", "QC-17", "QC-18", "QC-19", "QC-20", "QC-21"]): return 11, 13, "B16"
-    if any(k in u_id for k in ["QC-10", "QC-11", "QC-12"]): return 11, 13, "B15"
+    
+    # ⚡ กลุ่ม QC ที่มี 4 ข้อตรวจ (QC-01, QC-10 ถึง QC-14) -> ช่องชื่อช่างแถว 10, หัวหน้าแถว 12
+    if any(k in u_id for k in ["QC-01", "QC-10", "QC-11", "QC-12", "QC-13", "QC-14"]): 
+        return 10, 12, "B15"
+
+    # ⚡ กลุ่ม QC ที่มี 5 ข้อตรวจ (QC-02 ถึง QC-09, QC-16 ถึง QC-21) -> ช่องชื่อช่างแถว 11, หัวหน้าแถว 13
+    if any(k in u_id for k in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-16", "QC-17", "QC-18", "QC-19", "QC-20", "QC-21"]): 
+        return 11, 13, "B16"
+
     if "QC-15" in u_id: return 12, 14, "B17"
     if "ARGON-02" in u_id or "ARGON-01" in u_id: return 14, 16, "B19"
     if m_type == "FORKLIFT" or "FORKLIFT" in u_id: return 13, 15, "B18"
@@ -326,7 +332,7 @@ def generate_excel_bytes(machine_id, year_month, m_type):
                     if item_idx > 0:
                         cell_coord = f"{col_letter}{5 + item_idx}"
                         
-                        # ⚡ สลับลำดับการตรวจเช็คให้ถูกต้อง (แก้ปัญหาไม่ได้ทำงานขึ้น X)
+                        # ⚡ ตรวจสอบผลการเช็คให้แสดงผลถูกต้อง
                         if "ไม่ได้ทำงาน" in status_val or status_val == "-":
                             mark = "-"
                         elif "แก้ไข" in status_val and "ปกติ" in status_val:
