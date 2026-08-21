@@ -261,7 +261,7 @@ def save_log_to_supabase_bulk(list_of_logs):
     except Exception as e:
         print(f"Supabase Bulk Insert Error: {e}")
 
-@st.cache_data(ttl=15, show_spinner=False)
+@st.cache_data(ttl=10, show_spinner=False)
 def fetch_all_logs_month(year_month):
     if not supabase: return pd.DataFrame()
     try:
@@ -343,7 +343,8 @@ def generate_excel_bytes(machine_id, year_month, m_type):
                 day_val = int(row["Day_Num"])
                 col_letter = get_column_letter(2 + day_val)
                 
-                if str(row["Role"]).strip() == "tech":
+                role_val = str(row["Role"]).strip().lower()
+                if role_val == "tech":
                     status_val = str(row["Status"]).strip()
                     item_idx = int(row["Item_No"])
                     if item_idx > 0:
@@ -363,7 +364,7 @@ def generate_excel_bytes(machine_id, year_month, m_type):
                             
                         set_cell_value_safe(ws, cell_coord, mark, center_align)
                     set_cell_value_safe(ws, f"{col_letter}{t_row}", row["Tech_Name"], Alignment(text_rotation=90, horizontal='center', vertical='center'))
-                elif str(row["Role"]).strip() == "boss":
+                elif role_val == "boss":
                     set_cell_value_safe(ws, f"{col_letter}{boss_row}", row["Tech_Name"], Alignment(text_rotation=90, horizontal="center", vertical="center"))
 
         output_stream = BytesIO()
@@ -605,7 +606,16 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
     st.title("🔐 หน้าต่างควบคุมระบบตรวจสอบคุณภาพ (สำหรับ Engineer)")
     
-    selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและดูรูปภาพย้อนหลัง:", value=datetime.date.today())
+    col_date, col_refresh = st.columns([3, 1])
+    with col_date:
+        selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและดูรูปภาพย้อนหลัง:", value=datetime.date.today())
+    with col_refresh:
+        st.write("")
+        st.write("")
+        if st.button("🔄 รีเฟรชข้อมูลล่าสุด", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+
     target_day_check = selected_date.day
     year_month_key = selected_date.strftime("%Y_%B")
     
@@ -633,11 +643,14 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 boss_who_approved = st.session_state.get(f"boss_name_{approve_state_key}", "")
                 
                 if not all_month_logs.empty:
-                    df_logs = all_month_logs[all_month_logs["Machine_ID"] == m_id]
+                    df_logs = all_month_logs[all_month_logs["Machine_ID"] == m_id].copy()
                     if not df_logs.empty:
+                        # ⚡ แปลง Day_Num เป็นตัวเลข int และทำความสะอาด Role เพื่อให้ตรวจจับสถานะแม่นยำ 100%
+                        df_logs["Day_Num"] = pd.to_numeric(df_logs["Day_Num"], errors='coerce').fillna(0).astype(int)
+                        
                         day_logs = df_logs[df_logs["Day_Num"] == int(target_day_check)]
-                        boss_rows = day_logs[day_logs["Role"] == "boss"]
-                        tech_rows = day_logs[day_logs["Role"] == "tech"]
+                        boss_rows = day_logs[day_logs["Role"].astype(str).str.strip().str.lower() == "boss"]
+                        tech_rows = day_logs[day_logs["Role"].astype(str).str.strip().str.lower() == "tech"]
                         
                         if not boss_rows.empty:
                             is_approved = True
