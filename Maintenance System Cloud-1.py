@@ -220,11 +220,9 @@ def get_coordinates_by_machine(m_id, m_type):
     u_id = str(m_id).upper().strip()
     if "CUTTER" in u_id or m_type == "CUTTER GRINDING-01": return 13, 15, "B18"
     
-    # ⚡ กลุ่ม QC ที่มี 4 ข้อตรวจ (QC-01, QC-10 ถึง QC-14) -> ช่องชื่อช่างแถว 10, หัวหน้าแถว 12
     if any(k in u_id for k in ["QC-01", "QC-10", "QC-11", "QC-12", "QC-13", "QC-14"]): 
         return 10, 12, "B15"
 
-    # ⚡ กลุ่ม QC ที่มี 5 ข้อตรวจ (QC-02 ถึง QC-09, QC-16 ถึง QC-21) -> ช่องชื่อช่างแถว 11, หัวหน้าแถว 13
     if any(k in u_id for k in ["QC-02", "QC-03", "QC-04", "QC-05", "QC-06", "QC-07", "QC-08", "QC-09", "QC-16", "QC-17", "QC-18", "QC-19", "QC-20", "QC-21"]): 
         return 11, 13, "B16"
 
@@ -251,7 +249,7 @@ def set_cell_value_safe(ws, coordinate_str, value, alignment=None):
     except Exception as e:
         print(f"Cell write error at {coordinate_str}: {e}")
 
-# --- 2. REALTIME SUPABASE ENGINE & CACHE OPTIMIZATION ---
+# --- 2. REALTIME SUPABASE ENGINE WITH PAGINATION ---
 def save_log_to_supabase_bulk(list_of_logs):
     if not supabase: return
     try:
@@ -261,13 +259,29 @@ def save_log_to_supabase_bulk(list_of_logs):
     except Exception as e:
         print(f"Supabase Bulk Insert Error: {e}")
 
-@st.cache_data(ttl=10, show_spinner=False)
-def fetch_all_logs_month(year_month):
+# ⚡ ฟังก์ชันดึงข้อมูลแบบปลอดภัย ดึงตรงตามวันที่เลือก (ไม่ชน Limit 1,000 แถวแน่นอน)
+@st.cache_data(ttl=5, show_spinner=False)
+def fetch_day_logs(year_month, day_num):
     if not supabase: return pd.DataFrame()
     try:
-        res = supabase.table("maintenance_logs").select("*").eq("year_month", year_month).limit(20000).execute()
-        if res.data:
-            df = pd.DataFrame(res.data)
+        all_data = []
+        page_size = 1000
+        start = 0
+        while True:
+            res = supabase.table("maintenance_logs").select("*")\
+                .eq("year_month", year_month)\
+                .eq("day_num", int(day_num))\
+                .range(start, start + page_size - 1)\
+                .execute()
+            if not res.data:
+                break
+            all_data.extend(res.data)
+            if len(res.data) < page_size:
+                break
+            start += page_size
+            
+        if all_data:
+            df = pd.DataFrame(all_data)
             df = df.rename(columns={
                 "timestamp": "Timestamp", "machine_id": "Machine_ID",
                 "day_num": "Day_Num", "year_month": "Year_Month",
@@ -280,15 +294,33 @@ def fetch_all_logs_month(year_month):
             return df
         return pd.DataFrame()
     except Exception as e:
-        print(f"Supabase Fetch All Error: {e}")
+        print(f"Supabase Fetch Day Error: {e}")
         return pd.DataFrame()
 
-def fetch_logs_from_supabase(machine_id, year_month):
+# ⚡ ฟังก์ชันดึงข้อมูลสะสมทั้งเดือนของเครื่องนั้นๆ สำหรับ Note และ Excel
+@st.cache_data(ttl=10, show_spinner=False)
+def fetch_machine_all_month_logs(machine_id, year_month):
     if not supabase: return pd.DataFrame()
     try:
-        res = supabase.table("maintenance_logs").select("*").eq("machine_id", machine_id).eq("year_month", year_month).limit(5000).execute()
-        if res.data:
-            df = pd.DataFrame(res.data)
+        all_data = []
+        page_size = 1000
+        start = 0
+        target_mid_clean = str(machine_id).strip().upper()
+        
+        while True:
+            res = supabase.table("maintenance_logs").select("*")\
+                .eq("year_month", year_month)\
+                .range(start, start + page_size - 1)\
+                .execute()
+            if not res.data:
+                break
+            all_data.extend(res.data)
+            if len(res.data) < page_size:
+                break
+            start += page_size
+            
+        if all_data:
+            df = pd.DataFrame(all_data)
             df = df.rename(columns={
                 "timestamp": "Timestamp", "machine_id": "Machine_ID",
                 "day_num": "Day_Num", "year_month": "Year_Month",
@@ -298,6 +330,10 @@ def fetch_logs_from_supabase(machine_id, year_month):
             })
             if "Day_Num" in df.columns:
                 df["Day_Num"] = pd.to_numeric(df["Day_Num"], errors='coerce').fillna(0).astype(int)
+                
+            df = df[df["Machine_ID"].astype(str).str.strip().str.upper().apply(
+                lambda x: (x == target_mid_clean) or (x.startswith(target_mid_clean)) or (target_mid_clean in x)
+            )]
             return df
         return pd.DataFrame()
     except Exception as e:
@@ -328,7 +364,7 @@ def generate_excel_bytes(machine_id, year_month, m_type):
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
     if not os.path.isfile(target_excel_path): return None
     
-    df_logs = fetch_logs_from_supabase(machine_id, year_month)
+    df_logs = fetch_machine_all_month_logs(machine_id, year_month)
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
@@ -424,7 +460,6 @@ def save_uploaded_photos_list(machine_id, day_num, item_index, files_list, curre
         gc.collect()
     return saved_paths
 
-# ⚡ ฟังก์ชันดึงรูปจาก Supabase Storage โดยตรง (Lazy Fetch)
 def get_photos_from_supabase_storage(machine_id, year_month, day_num):
     if not supabase: return []
     photo_urls = []
@@ -450,10 +485,7 @@ def zip_single_machine_photos(machine_id, target_date_obj, target_day=None):
     
     try:
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            if target_day:
-                days_to_check = [target_day]
-            else:
-                days_to_check = range(1, 32)
+            days_to_check = [target_day] if target_day else range(1, 32)
                 
             for d in days_to_check:
                 folder_path = f"{machine_id}/{current_year_month}/Day_{d}"
@@ -651,7 +683,8 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             st.divider()
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
        
-            all_month_logs = fetch_all_logs_month(year_month_key)
+            # ⚡ ดึงเฉพาะข้อมูลของวันที่เลือก ดึงครบ 100% ไม่ติดเพดาน 1,000 แถว
+            day_logs_all = fetch_day_logs(year_month_key, target_day_check)
 
             @st.fragment
             def render_machine_card(m_id, m_name, m_type_flag):
@@ -662,16 +695,18 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 tech_who_checked = ""
                 boss_who_approved = st.session_state.get(f"boss_name_{approve_state_key}", "")
                 
-                if not all_month_logs.empty:
-                    target_mid_clean = str(m_id).strip().upper()
-                    df_logs = all_month_logs[all_month_logs["Machine_ID"].astype(str).str.strip().str.upper() == target_mid_clean].copy()
+                target_mid_clean = str(m_id).strip().upper()
+                
+                if not day_logs_all.empty:
+                    df_day = day_logs_all[
+                        day_logs_all["Machine_ID"].astype(str).str.strip().str.upper().apply(
+                            lambda x: (x == target_mid_clean) or (x.startswith(target_mid_clean)) or (target_mid_clean in x)
+                        )
+                    ].copy()
                     
-                    if not df_logs.empty:
-                        df_logs["Day_Num"] = pd.to_numeric(df_logs["Day_Num"], errors='coerce').fillna(0).astype(int)
-                        
-                        day_logs = df_logs[df_logs["Day_Num"] == int(target_day_check)]
-                        boss_rows = day_logs[day_logs["Role"].astype(str).str.strip().str.lower() == "boss"]
-                        tech_rows = day_logs[day_logs["Role"].astype(str).str.strip().str.lower() == "tech"]
+                    if not df_day.empty:
+                        boss_rows = df_day[df_day["Role"].astype(str).str.strip().str.lower() == "boss"]
+                        tech_rows = df_day[df_day["Role"].astype(str).str.strip().str.lower() == "tech"]
                         
                         if not boss_rows.empty:
                             is_approved = True
@@ -679,8 +714,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                         if not tech_rows.empty:
                             is_reported = True
                             tech_who_checked = str(tech_rows.iloc[0]["Tech_Name"])
-                else:
-                    df_logs = pd.DataFrame()
 
                 st.info(f"⚙️ **{m_id}**\n{m_name}")
                 
@@ -718,7 +751,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.rerun(scope="fragment")
                 
-                # ⚡ ดึงรูปภาพ Lazy Load ตรงจาก Supabase Storage Bucket
+                # ⚡ ตรวจรูปภาพ Lazy Load จาก Supabase Storage Bucket
                 with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check}"):
                     cloud_photos = get_photos_from_supabase_storage(m_id, year_month_key, target_day_check)
                     if cloud_photos:
@@ -727,9 +760,11 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                     else:
                         st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
+                # ดึง Note อาการเสียสะสมของเครื่องนี้
+                df_machine_logs = fetch_machine_all_month_logs(m_id, year_month_key)
                 current_notes_list = []
-                if not df_logs.empty:
-                    notes_rows = df_logs[(df_logs["Note"].notnull()) & (df_logs["Note"] != "") & (df_logs["Note"] != "nan")]
+                if not df_machine_logs.empty:
+                    notes_rows = df_machine_logs[(df_machine_logs["Note"].notnull()) & (df_machine_logs["Note"] != "") & (df_machine_logs["Note"] != "nan")]
                     for _, n_row in notes_rows.iterrows():
                         current_notes_list.append(f"[วันที่ {n_row['Day_Num']}]: ข้อ {n_row['Item_No']} {n_row['Note']}")
                 
