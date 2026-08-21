@@ -261,11 +261,12 @@ def save_log_to_supabase_bulk(list_of_logs):
     except Exception as e:
         print(f"Supabase Bulk Insert Error: {e}")
 
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=15, show_spinner=False)
 def fetch_all_logs_month(year_month):
     if not supabase: return pd.DataFrame()
     try:
-        res = supabase.table("maintenance_logs").select("*").eq("year_month", year_month).execute()
+        # ⚡ ปลดล็อก Limit 20000 แถว เพื่อไม่ให้ข้อมูลวันที่ท้ายๆ เดือนถูกตัดทิ้ง
+        res = supabase.table("maintenance_logs").select("*").eq("year_month", year_month).limit(20000).execute()
         if res.data:
             df = pd.DataFrame(res.data)
             df = df.rename(columns={
@@ -284,10 +285,26 @@ def fetch_all_logs_month(year_month):
         return pd.DataFrame()
 
 def fetch_logs_from_supabase(machine_id, year_month):
-    df_all = fetch_all_logs_month(year_month)
-    if not df_all.empty:
-        return df_all[df_all["Machine_ID"] == machine_id]
-    return pd.DataFrame()
+    if not supabase: return pd.DataFrame()
+    try:
+        # ⚡ ดึงตรงเจาะจงเฉพาะเครื่องนั้นๆ พร้อมปลด Limit ป้องกันข้อมูลขาดหาย 100%
+        res = supabase.table("maintenance_logs").select("*").eq("machine_id", machine_id).eq("year_month", year_month).limit(5000).execute()
+        if res.data:
+            df = pd.DataFrame(res.data)
+            df = df.rename(columns={
+                "timestamp": "Timestamp", "machine_id": "Machine_ID",
+                "day_num": "Day_Num", "year_month": "Year_Month",
+                "tech_name": "Tech_Name", "item_no": "Item_No",
+                "checklist_item": "Checklist_Item", "status": "Status",
+                "note": "Note", "role": "Role"
+            })
+            if "Day_Num" in df.columns:
+                df["Day_Num"] = pd.to_numeric(df["Day_Num"], errors='coerce').fillna(0).astype(int)
+            return df
+        return pd.DataFrame()
+    except Exception as e:
+        print(f"Fetch Machine Log Error: {e}")
+        return pd.DataFrame()
 
 def approve_excel_direct_to_disk(machine_id, day_num, boss_name, m_type):
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
