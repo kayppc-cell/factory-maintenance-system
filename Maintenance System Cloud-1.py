@@ -259,7 +259,6 @@ def save_log_to_supabase_bulk(list_of_logs):
     except Exception as e:
         print(f"Supabase Bulk Insert Error: {e}")
 
-# ⚡ ฟังก์ชันดึงข้อมูลแบบปลอดภัย ดึงตรงตามวันที่เลือก (ไม่ชน Limit 1,000 แถวแน่นอน)
 @st.cache_data(ttl=5, show_spinner=False)
 def fetch_day_logs(year_month, day_num):
     if not supabase: return pd.DataFrame()
@@ -297,7 +296,6 @@ def fetch_day_logs(year_month, day_num):
         print(f"Supabase Fetch Day Error: {e}")
         return pd.DataFrame()
 
-# ⚡ ฟังก์ชันดึงข้อมูลสะสมทั้งเดือนของเครื่องนั้นๆ สำหรับ Note และ Excel
 @st.cache_data(ttl=10, show_spinner=False)
 def fetch_machine_all_month_logs(machine_id, year_month):
     if not supabase: return pd.DataFrame()
@@ -430,7 +428,7 @@ def zip_all_factory_excel(year_month_key):
         print(f"Zip All Excel Error: {e}")
         return None
 
-# --- PHOTO & SUPABASE CLOUD STORAGE FUNCTIONS ---
+# --- PHOTO & DUAL STORAGE (LOCAL + SUPABASE CLOUD) ---
 def send_line_alert(msg_text):
     url = 'https://api.line.me/v2/bot/message/push'
     headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
@@ -438,47 +436,69 @@ def send_line_alert(msg_text):
     try: requests.post(url, headers=headers, data=json.dumps(payload), timeout=5)
     except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
 
-def save_uploaded_photos_list(machine_id, day_num, item_index, files_list, current_date_obj=None):
-    saved_paths = []
-    if files_list:
-        if current_date_obj is None: current_date_obj = datetime.date.today()
-        current_year_month = current_date_obj.strftime("%Y_%B")
-        
-        for idx, uploaded_file in enumerate(files_list, 1):
-            file_extension = os.path.splitext(uploaded_file.name)[1]
-            file_name = f"photo_item_{item_index}_{idx}{file_extension}"
-            file_bytes = uploaded_file.getvalue()
-            
-            if supabase:
+# ⚡ ฟังก์ชันบันทึกภาพทุกข้ออย่างถูกต้องลงทั้ง Local และ Cloud Storage
+def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current_date_obj=None):
+    if current_date_obj is None: current_date_obj = datetime.date.today()
+    current_year_month = current_date_obj.strftime("%Y_%B")
+    
+    local_day_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), current_year_month, f"Day_{day_num}")
+    os.makedirs(local_day_dir, exist_ok=True)
+    
+    for item_idx, photo_data in uploaded_photos_dict.items():
+        files_list = photo_data.get("files", [])
+        if files_list:
+            for f_order, uploaded_file in enumerate(files_list, 1):
+                file_ext = os.path.splitext(uploaded_file.name)[1]
+                file_name = f"photo_item_{item_idx}_{f_order}{file_ext}"
+                file_bytes = uploaded_file.getvalue()
+                
+                # 1. เซฟลง Disk สำหรับสำรองใช้งานทันที
+                full_local_path = os.path.join(local_day_dir, file_name)
+                with open(full_local_path, "wb") as f_out:
+                    f_out.write(file_bytes)
+                
+                # 2. อัปโหลดขึ้น Supabase Storage เพื่อคงอยู่ถาวร
+                if supabase:
+                    try:
+                        storage_path = f"{machine_id}/{current_year_month}/Day_{day_num}/{file_name}"
+                        supabase.storage.from_("maintenance-photos").upload(storage_path, file_bytes, {"content-type": "image/jpeg", "upsert": "true"})
+                    except Exception as e_up:
+                        print(f"Photo Supabase Upload Error: {e_up}")
+    gc.collect()
+
+# ⚡ ฟังก์ชันอ่านรูปภาพ Dual-Source (เช็คทั้ง Local Disk และ Supabase Storage)
+def get_machine_photos(machine_id, year_month, day_num):
+    photos = []
+    
+    # 1. ตรวจสอบโฟลเดอร์ Local Disk ก่อน
+    local_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), year_month, f"Day_{day_num}")
+    if os.path.exists(local_dir):
+        for f in sorted(os.listdir(local_dir)):
+            if f.lower().endswith(('.png', '.jpg', '.jpeg')):
+                p_path = os.path.join(local_dir, f)
                 try:
-                    storage_path = f"{machine_id}/{current_year_month}/Day_{day_num}/{file_name}"
-                    supabase.storage.from_("maintenance-photos").upload(storage_path, file_bytes, {"content-type": "image/jpeg", "upsert": "true"})
-                    saved_paths.append(storage_path)
-                except Exception as e_up:
-                    print(f"Photo Supabase Upload Error: {e_up}")
+                    with open(p_path, "rb") as f_img:
+                        photos.append((f, f_img.read()))
+                except Exception as e_read:
+                    pass
 
-        gc.collect()
-    return saved_paths
-
-def get_photos_from_supabase_storage(machine_id, year_month, day_num):
-    if not supabase: return []
-    photo_urls = []
-    try:
-        folder_path = f"{machine_id}/{year_month}/Day_{day_num}"
-        files = supabase.storage.from_("maintenance-photos").list(folder_path)
-        if files:
-            for f in files:
-                f_name = f.get("name")
-                if f_name and f_name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                    full_path = f"{folder_path}/{f_name}"
-                    public_url = supabase.storage.from_("maintenance-photos").get_public_url(full_path)
-                    photo_urls.append((f_name, public_url, full_path))
-    except Exception as e:
-        print(f"Storage List Error: {e}")
-    return photo_urls
+    # 2. ถ้า Local ไม่มี ให้ดึงตรงจาก Supabase Storage Bucket
+    if not photos and supabase:
+        try:
+            folder_path = f"{machine_id}/{year_month}/Day_{day_num}"
+            files = supabase.storage.from_("maintenance-photos").list(folder_path)
+            if files:
+                for f in files:
+                    f_name = f.get("name")
+                    if f_name and f_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+                        file_data = supabase.storage.from_("maintenance-photos").download(f"{folder_path}/{f_name}")
+                        photos.append((f_name, file_data))
+        except Exception as e_sb:
+            print(f"Supabase fetch photo error: {e_sb}")
+            
+    return photos
 
 def zip_single_machine_photos(machine_id, target_date_obj, target_day=None):
-    if not supabase: return None
     current_year_month = target_date_obj.strftime("%Y_%B")
     zip_buffer = BytesIO()
     has_file = False
@@ -488,15 +508,11 @@ def zip_single_machine_photos(machine_id, target_date_obj, target_day=None):
             days_to_check = [target_day] if target_day else range(1, 32)
                 
             for d in days_to_check:
-                folder_path = f"{machine_id}/{current_year_month}/Day_{d}"
-                files = supabase.storage.from_("maintenance-photos").list(folder_path)
-                if files:
-                    for f in files:
-                        f_name = f.get("name")
-                        if f_name and f_name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                            file_data = supabase.storage.from_("maintenance-photos").download(f"{folder_path}/{f_name}")
-                            zip_file.writestr(f"Day_{d}/{f_name}", file_data)
-                            has_file = True
+                photos = get_machine_photos(machine_id, current_year_month, d)
+                for f_name, f_bytes in photos:
+                    zip_file.writestr(f"Day_{d}/{f_name}", f_bytes)
+                    has_file = True
+                    
         if not has_file: return None
         zip_buffer.seek(0)
         gc.collect()
@@ -506,7 +522,6 @@ def zip_single_machine_photos(machine_id, target_date_obj, target_day=None):
         return None
 
 def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน", target_date_obj=None):
-    if not supabase: return None
     if target_date_obj is None: target_date_obj = datetime.date.today()
     current_year_month = target_date_obj.strftime("%Y_%B")
     zip_buffer = BytesIO()
@@ -529,15 +544,11 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
                 
                 if match:
                     for d in range(1, 32):
-                        folder_path = f"{machine_code}/{current_year_month}/Day_{d}"
-                        files = supabase.storage.from_("maintenance-photos").list(folder_path)
-                        if files:
-                            for f in files:
-                                f_name = f.get("name")
-                                if f_name and f_name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                                    file_data = supabase.storage.from_("maintenance-photos").download(f"{folder_path}/{f_name}")
-                                    zip_file.writestr(f"{machine_code}/Day_{d}/{f_name}", file_data)
-                                    has_file = True
+                        photos = get_machine_photos(machine_code, current_year_month, d)
+                        for f_name, f_bytes in photos:
+                            zip_file.writestr(f"{machine_code}/Day_{d}/{f_name}", f_bytes)
+                            has_file = True
+                            
         if not has_file: return None
         zip_buffer.seek(0)
         gc.collect()
@@ -612,7 +623,8 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
         elif any((uploaded_photos[idx]["files"] is None or len(uploaded_photos[idx]["files"]) == 0) for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
         else:
-            save_uploaded_photos_list(machine_id, current_day, required_photo_indexes[0] if required_photo_indexes else 1, [uploaded_photos[idx]["files"][0] for idx in required_photo_indexes if uploaded_photos[idx]["files"]], current_date_obj=report_date)
+            # ⚡ บันทึกรูปภาพทุกข้อที่ช่างอัปโหลดเข้ามาอย่างสมบูรณ์
+            save_uploaded_photos_dict(machine_id, current_day, uploaded_photos, current_date_obj=report_date)
 
             logs_to_save = []
             for i, item in enumerate(current_checklist, 1):
@@ -648,7 +660,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 ok_msg = f"\n🎉 [รายงานเครื่องจักรปกติ - ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n✅ ผลการตรวจสอบ: ปกติทุกหัวข้อ\n👤 ผู้ตรวจสอบ: {tech_name}"
                 if fixed_items: ok_msg += "\n\n🛠️ รายการที่ช่างแก้ไขหน้างานสำเร็จ (ลงตาราง ⨂):\n" + "\n".join(fixed_items)
                 send_line_alert(ok_msg + audit_tag)
-            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลรอยติ๊กอัปเดตลง Supabase เรียบร้อยแล้ว")
+            st.success(f"🎉 บันทึกรายงานเครื่อง {machine_id} สำเร็จ! ข้อมูลรอยติ๊กและรูปภาพอัปเดตเรียบร้อยแล้ว")
 
 # ==========================================
 # 🔐 [โหมดที่ 2: ฝั่งหัวหน้างาน ดูบอร์ดตรวจเช็ค/กดอนุมัติ]
@@ -683,7 +695,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             st.divider()
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
        
-            # ⚡ ดึงเฉพาะข้อมูลของวันที่เลือก ดึงครบ 100% ไม่ติดเพดาน 1,000 แถว
             day_logs_all = fetch_day_logs(year_month_key, target_day_check)
 
             @st.fragment
@@ -751,12 +762,16 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.rerun(scope="fragment")
                 
-                # ⚡ ตรวจรูปภาพ Lazy Load จาก Supabase Storage Bucket
+                # ⚡ แสดงรูปภาพหลักฐาน (ดึงจาก Dual-Source ทั้ง Local และ Supabase Cloud)
                 with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check}"):
-                    cloud_photos = get_photos_from_supabase_storage(m_id, year_month_key, target_day_check)
-                    if cloud_photos:
-                        for f_name, pub_url, _ in cloud_photos:
-                            st.image(pub_url, caption=f"หลักฐานคลาวด์: {f_name}", use_container_width=True)
+                    photos_list = get_machine_photos(m_id, year_month_key, target_day_check)
+                    if photos_list:
+                        for f_name, f_bytes in photos_list:
+                            try:
+                                img_obj = Image.open(BytesIO(f_bytes))
+                                st.image(img_obj, caption=f"หลักฐาน: {f_name}", use_container_width=True)
+                            except Exception as e_im:
+                                st.warning(f"ไฟล์ภาพ {f_name} ไม่สามารถแสดงได้")
                     else:
                         st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
 
@@ -1049,6 +1064,12 @@ else:
                     st.caption("ทำหน้าที่ลบโฟลเดอร์ภาพถ่ายในเครื่อง และล้างไฟล์ใน Supabase Storage (ไม่กระทบประวัติตารางติ๊กตรวจ)")
                     
                     if st.button("🗑️ สั่งลบรูปภาพทั้งหมด", type="primary", key="btn_reset_only_photos"):
+                        # ลบในเครื่อง
+                        target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
+                        if os.path.exists(target_photo_folder):
+                            shutil.rmtree(target_photo_folder)
+                            
+                        # ลบใน Cloud Storage
                         if supabase:
                             try:
                                 files = supabase.storage.from_("maintenance-photos").list()
