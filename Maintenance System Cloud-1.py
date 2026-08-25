@@ -436,7 +436,6 @@ def send_line_alert(msg_text):
     try: requests.post(url, headers=headers, data=json.dumps(payload), timeout=5)
     except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
 
-# ⚡ ฟังก์ชันบันทึกภาพทุกข้ออย่างถูกต้องลงทั้ง Local และ Cloud Storage
 def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current_date_obj=None):
     if current_date_obj is None: current_date_obj = datetime.date.today()
     current_year_month = current_date_obj.strftime("%Y_%B")
@@ -452,12 +451,12 @@ def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current
                 file_name = f"photo_item_{item_idx}_{f_order}{file_ext}"
                 file_bytes = uploaded_file.getvalue()
                 
-                # 1. เซฟลง Disk สำหรับสำรองใช้งานทันที
+                # 1. บันทึกลง Local Disk
                 full_local_path = os.path.join(local_day_dir, file_name)
                 with open(full_local_path, "wb") as f_out:
                     f_out.write(file_bytes)
                 
-                # 2. อัปโหลดขึ้น Supabase Storage เพื่อคงอยู่ถาวร
+                # 2. อัปโหลดขึ้น Supabase Storage
                 if supabase:
                     try:
                         storage_path = f"{machine_id}/{current_year_month}/Day_{day_num}/{file_name}"
@@ -466,11 +465,10 @@ def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current
                         print(f"Photo Supabase Upload Error: {e_up}")
     gc.collect()
 
-# ⚡ ฟังก์ชันอ่านรูปภาพ Dual-Source (เช็คทั้ง Local Disk และ Supabase Storage)
 def get_machine_photos(machine_id, year_month, day_num):
     photos = []
     
-    # 1. ตรวจสอบโฟลเดอร์ Local Disk ก่อน
+    # 1. ตรวจสอบโฟลเดอร์ Local Disk
     local_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), year_month, f"Day_{day_num}")
     if os.path.exists(local_dir):
         for f in sorted(os.listdir(local_dir)):
@@ -479,16 +477,16 @@ def get_machine_photos(machine_id, year_month, day_num):
                 try:
                     with open(p_path, "rb") as f_img:
                         photos.append((f, f_img.read()))
-                except Exception as e_read:
+                except Exception:
                     pass
 
-    # 2. ถ้า Local ไม่มี ให้ดึงตรงจาก Supabase Storage Bucket
+    # 2. ตรวจสอบ Supabase Storage Bucket
     if not photos and supabase:
         try:
             folder_path = f"{machine_id}/{year_month}/Day_{day_num}"
             files = supabase.storage.from_("maintenance-photos").list(folder_path)
             if files:
-                for f in files:
+                for f in sorted(files, key=lambda x: x.get("name", "")):
                     f_name = f.get("name")
                     if f_name and f_name.lower().endswith(('.png', '.jpg', '.jpeg')):
                         file_data = supabase.storage.from_("maintenance-photos").download(f"{folder_path}/{f_name}")
@@ -623,7 +621,6 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
         elif any((uploaded_photos[idx]["files"] is None or len(uploaded_photos[idx]["files"]) == 0) for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายภาพหลักฐานประจำข้อ {required_photo_indexes} ให้ครบถ้วนก่อนกดส่งครับ")
         else:
-            # ⚡ บันทึกรูปภาพทุกข้อที่ช่างอัปโหลดเข้ามาอย่างสมบูรณ์
             save_uploaded_photos_dict(machine_id, current_day, uploaded_photos, current_date_obj=report_date)
 
             logs_to_save = []
@@ -762,15 +759,28 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                         send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
                         st.rerun(scope="fragment")
                 
-                # ⚡ แสดงรูปภาพหลักฐาน (ดึงจาก Dual-Source ทั้ง Local และ Supabase Cloud)
+                # ⚡ แสดงรูปภาพหลักฐาน พร้อมชื่อหัวข้อข้อตรวจจริงใต้ภาพ (Caption)
                 with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check}"):
                     photos_list = get_machine_photos(m_id, year_month_key, target_day_check)
                     if photos_list:
+                        machine_checklist = CHECKLISTS.get(m_type_flag, CHECKLISTS["CNC"])
                         for f_name, f_bytes in photos_list:
                             try:
                                 img_obj = Image.open(BytesIO(f_bytes))
-                                st.image(img_obj, caption=f"หลักฐาน: {f_name}", use_container_width=True)
-                            except Exception as e_im:
+                                
+                                # ดึงเลขข้อจากชื่อไฟล์ (เช่น photo_item_8_1.jpg -> ข้อ 8)
+                                caption_title = f_name
+                                if "item_" in f_name:
+                                    try:
+                                        item_num = int(f_name.split("item_")[1].split("_")[0])
+                                        if 1 <= item_num <= len(machine_checklist):
+                                            item_desc = machine_checklist[item_num - 1]
+                                            caption_title = f"📌 [ข้อ {item_num}] {item_desc}"
+                                    except Exception:
+                                        pass
+                                        
+                                st.image(img_obj, caption=caption_title, use_container_width=True)
+                            except Exception:
                                 st.warning(f"ไฟล์ภาพ {f_name} ไม่สามารถแสดงได้")
                     else:
                         st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
@@ -1064,12 +1074,10 @@ else:
                     st.caption("ทำหน้าที่ลบโฟลเดอร์ภาพถ่ายในเครื่อง และล้างไฟล์ใน Supabase Storage (ไม่กระทบประวัติตารางติ๊กตรวจ)")
                     
                     if st.button("🗑️ สั่งลบรูปภาพทั้งหมด", type="primary", key="btn_reset_only_photos"):
-                        # ลบในเครื่อง
                         target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
                         if os.path.exists(target_photo_folder):
                             shutil.rmtree(target_photo_folder)
                             
-                        # ลบใน Cloud Storage
                         if supabase:
                             try:
                                 files = supabase.storage.from_("maintenance-photos").list()
