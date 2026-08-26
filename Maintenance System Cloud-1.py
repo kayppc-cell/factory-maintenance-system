@@ -196,6 +196,7 @@ PHOTO_RULES = {
 def get_machine_type_by_id(machine_id):
     u_id = str(machine_id).upper().strip()
     if "CUTTER" in u_id: return "CUTTER GRINDING-01"
+    elif "MILLING" in u_id or "MILL" in u_id: return "MILLING"
     elif "CRANE NO.1" in u_id or "CRANE NO. 1" in u_id: return "Crane no.1"
     elif "CRANE NO.2" in u_id or "CRANE NO. 2" in u_id: return "Crane no.2"
     elif any(f"QC-{i:02d}" in u_id for i in range(1, 22)):
@@ -205,7 +206,6 @@ def get_machine_type_by_id(machine_id):
     elif "COMP-02" in u_id: return "COMP-02"
     elif "GRINDING-01" in u_id: return "GRINDING-01"
     elif "GRINDING-02" in u_id: return "GRINDING-02"
-    elif "MILLING" in u_id: return "MILLING"
     elif "LATHE" in u_id: return "LATHE"
     elif "CUTTING" in u_id: return "CUTTING"
     elif "BENDING" in u_id: return "BENDING"
@@ -218,6 +218,15 @@ def get_machine_type_by_id(machine_id):
 
 def get_coordinates_by_machine(m_id, m_type):
     u_id = str(m_id).upper().strip()
+    
+    # ⚡ 1. ล็อกเฉพาะ MILLING-04 (ช่างแถว 17, หัวหน้าแถว 19, บันทึกเพิ่มเติม B22)
+    if "MILLING-04" in u_id or "MILLING NO. 4" in u_id or "MILLING NO.4" in u_id or "MILLING_04" in u_id:
+        return 17, 19, "B22"
+
+    # ⚡ 2. MILLING-01, 02, 03 (ช่างแถว 20, หัวหน้าแถว 22, บันทึกเพิ่มเติม B25)
+    if "MILLING" in u_id or "MILL" in u_id or m_type == "MILLING": 
+        return 20, 22, "B25"
+        
     if "CUTTER" in u_id or m_type == "CUTTER GRINDING-01": return 13, 15, "B18"
     
     if any(k in u_id for k in ["QC-01", "QC-10", "QC-11", "QC-12", "QC-13", "QC-14"]): 
@@ -232,7 +241,6 @@ def get_coordinates_by_machine(m_id, m_type):
     if m_type == "CNC" or "CNC" in u_id: return 22, 24, "B28"
     if "CRANE" in u_id: return 14, 16, "B19"
     if "GRINDING" in m_type or "GRINDING" in u_id: return 16, 18, "B21"
-    if m_type == "MILLING" or "MILLING" in u_id: return 20, 22, "B25" 
     if m_type == "LATHE" or "LATHE" in u_id: return 17, 19, "B22"
     if m_type == "CUTTING" or "CUTTING" in u_id: return 13, 15, "B18"
     if m_type == "BENDING" or "BENDING" in u_id: return 15, 17, "B20" 
@@ -371,14 +379,20 @@ def generate_excel_bytes(machine_id, year_month, m_type):
         
         if not df_logs.empty:
             df_logs = df_logs.sort_values(by="Timestamp")
+            notes_accumulator = []
+            
             for _, row in df_logs.iterrows():
                 day_val = int(row["Day_Num"])
                 col_letter = get_column_letter(2 + day_val)
                 
                 role_val = str(row["Role"]).strip().lower()
+                tech_boss_name = str(row["Tech_Name"]).strip()
+                
                 if role_val == "tech":
                     status_val = str(row["Status"]).strip()
                     item_idx = int(row["Item_No"])
+                    note_val = str(row["Note"]).strip()
+                    
                     if item_idx > 0:
                         cell_coord = f"{col_letter}{5 + item_idx}"
                         
@@ -394,9 +408,20 @@ def generate_excel_bytes(machine_id, year_month, m_type):
                             mark = "-"
                             
                         set_cell_value_safe(ws, cell_coord, mark, center_align)
-                    set_cell_value_safe(ws, f"{col_letter}{t_row}", row["Tech_Name"], Alignment(text_rotation=90, horizontal='center', vertical='center'))
+                        
+                        if note_val and note_val.lower() != "nan":
+                            notes_accumulator.append(f"[วันที่ {day_val}]: ข้อ {item_idx} {note_val}")
+                        
+                    if tech_boss_name and tech_boss_name.lower() != "nan":
+                        set_cell_value_safe(ws, f"{col_letter}{t_row}", tech_boss_name, Alignment(text_rotation=90, horizontal='center', vertical='center'))
                 elif role_val == "boss":
-                    set_cell_value_safe(ws, f"{col_letter}{boss_row}", row["Tech_Name"], Alignment(text_rotation=90, horizontal="center", vertical="center"))
+                    if tech_boss_name and tech_boss_name.lower() != "nan":
+                        set_cell_value_safe(ws, f"{col_letter}{boss_row}", tech_boss_name, Alignment(text_rotation=90, horizontal="center", vertical="center"))
+
+            # บันทึกหมายเหตุลงช่องบันทึกเพิ่มเติม
+            if notes_accumulator:
+                combined_notes = ", ".join(notes_accumulator)
+                set_cell_value_safe(ws, n_cell, combined_notes)
 
         output_stream = BytesIO()
         wb.save(output_stream)
@@ -451,12 +476,10 @@ def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current
                 file_name = f"photo_item_{item_idx}_{f_order}{file_ext}"
                 file_bytes = uploaded_file.getvalue()
                 
-                # 1. บันทึกลง Local Disk
                 full_local_path = os.path.join(local_day_dir, file_name)
                 with open(full_local_path, "wb") as f_out:
                     f_out.write(file_bytes)
                 
-                # 2. อัปโหลดขึ้น Supabase Storage
                 if supabase:
                     try:
                         storage_path = f"{machine_id}/{current_year_month}/Day_{day_num}/{file_name}"
@@ -468,7 +491,6 @@ def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current
 def get_machine_photos(machine_id, year_month, day_num):
     photos = []
     
-    # 1. ตรวจสอบโฟลเดอร์ Local Disk
     local_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), year_month, f"Day_{day_num}")
     if os.path.exists(local_dir):
         for f in sorted(os.listdir(local_dir)):
@@ -480,7 +502,6 @@ def get_machine_photos(machine_id, year_month, day_num):
                 except Exception:
                     pass
 
-    # 2. ตรวจสอบ Supabase Storage Bucket
     if not photos and supabase:
         try:
             folder_path = f"{machine_id}/{year_month}/Day_{day_num}"
@@ -768,7 +789,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                             try:
                                 img_obj = Image.open(BytesIO(f_bytes))
                                 
-                                # ดึงเลขข้อจากชื่อไฟล์ (เช่น photo_item_8_1.jpg -> ข้อ 8)
                                 caption_title = f_name
                                 if "item_" in f_name:
                                     try:
