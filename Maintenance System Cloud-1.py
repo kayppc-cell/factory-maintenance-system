@@ -242,7 +242,11 @@ def get_coordinates_by_machine(m_id, m_type):
     if "CRANE" in u_id: return 14, 16, "B19"
     if "GRINDING" in m_type or "GRINDING" in u_id: return 16, 18, "B21"
     if m_type == "LATHE" or "LATHE" in u_id: return 17, 19, "B22"
-    if m_type == "CUTTING" or "CUTTING" in u_id: return 13, 15, "B18"
+    
+    # ⚡ 3. CUTTING-01 (ช่างแถว 14, ผู้ตรวจสอบแถว 16, บันทึกเพิ่มเติม B19)
+    if m_type == "CUTTING" or "CUTTING" in u_id: 
+        return 14, 16, "B19"
+        
     if m_type == "BENDING" or "BENDING" in u_id: return 15, 17, "B20" 
     if m_type == "WELDING_ALUMINUM" or "WELDING_ALUMINUM" in u_id: return 13, 15, "B18"
     if m_type == "MIG CO2" or "MIG" in u_id: return 13, 15, "B18"
