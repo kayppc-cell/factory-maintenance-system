@@ -381,14 +381,29 @@ def generate_excel_bytes(machine_id, year_month, m_type):
         t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
         center_align = Alignment(horizontal='center', vertical='center')
         
+        # ⚡ 1. ล้างข้อมูลรอยติ๊กเก่า วันที่ 1-31 ทุกข้อตรวจ และช่องลงชื่อ ให้สะอาดก่อนเสมอ
+        for d in range(1, 32):
+            col_letter = get_column_letter(2 + d)
+            # ล้างรอยติ๊กข้อตรวจ (แถว 6 ถึง 21)
+            for r in range(6, 22):
+                set_cell_value_safe(ws, f"{col_letter}{r}", None)
+            # ล้างช่องชื่อช่างและชื่อหัวหน้า
+            set_cell_value_safe(ws, f"{col_letter}{t_row}", None)
+            set_cell_value_safe(ws, f"{col_letter}{boss_row}", None)
+        # ล้างช่องบันทึกเพิ่มเติม
+        set_cell_value_safe(ws, n_cell, None)
+        
+        # ⚡ 2. นำข้อมูล Log เฉพาะของเดือนที่เลือก (year_month) มาเขียนลงตาราง
         if not df_logs.empty:
             df_logs = df_logs.sort_values(by="Timestamp")
             notes_accumulator = []
             
             for _, row in df_logs.iterrows():
                 day_val = int(row["Day_Num"])
+                if not (1 <= day_val <= 31):
+                    continue
+                    
                 col_letter = get_column_letter(2 + day_val)
-                
                 role_val = str(row["Role"]).strip().lower()
                 tech_boss_name = str(row["Tech_Name"]).strip()
                 
