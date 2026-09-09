@@ -7,9 +7,11 @@ import shutil
 import time
 import zipfile
 import gc
+import html
 import pandas as pd
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 from supabase import create_client, Client
 
 # --- 1. CONFIGURATION & SUPABASE SETUP ---
@@ -592,6 +594,69 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
         print(f"Zip Filter Photos Error: {e}")
         return None
 
+def build_factory_issue_print_html(month_logs, year_month_key):
+    """สร้างรายงาน HTML สำหรับ Print / Save as PDF แยกปัญหาตามเครื่องจักร"""
+    required = {"Note", "Role", "Machine_ID"}
+    if month_logs.empty or not required.issubset(month_logs.columns):
+        return None
+
+    notes = month_logs[
+        month_logs["Note"].notna()
+        & month_logs["Note"].astype(str).str.strip().ne("")
+        & month_logs["Note"].astype(str).str.strip().str.lower().ne("nan")
+        & month_logs["Role"].astype(str).str.strip().str.lower().eq("tech")
+    ].copy()
+    if notes.empty:
+        return None
+
+    notes = notes.sort_values(["Machine_ID", "Day_Num", "Item_No", "Timestamp"])
+    sections, total_issues = [], 0
+    for machine_code, rows in notes.groupby("Machine_ID", sort=True):
+        machine_code = str(machine_code).strip()
+        issue_rows = []
+        for _, row in rows.iterrows():
+            total_issues += 1
+            safe = lambda value: html.escape(str(value if pd.notna(value) else ""))
+            issue_rows.append(
+                f"<tr><td>{safe(row.get('Day_Num', ''))}</td><td>{safe(row.get('Item_No', ''))}</td>"
+                f"<td>{safe(row.get('Checklist_Item', ''))}</td><td>{safe(row.get('Status', ''))}</td>"
+                f"<td>{safe(row.get('Note', ''))}</td><td>{safe(row.get('Tech_Name', ''))}</td></tr>"
+            )
+        sections.append(
+            "<section class='machine'>"
+            f"<h2>{html.escape(machine_code)} - {html.escape(MACHINES.get(machine_code, machine_code))}</h2>"
+            f"<div class='count'>จำนวนรายการที่บันทึก: {len(issue_rows)} รายการ</div>"
+            "<table><thead><tr><th>วันที่</th><th>ข้อ</th><th>หัวข้อตรวจ</th><th>ผลตรวจ</th>"
+            "<th>รายละเอียดปัญหา/การแก้ไข</th><th>ผู้ตรวจ</th></tr></thead>"
+            f"<tbody>{''.join(issue_rows)}</tbody></table></section>"
+        )
+
+    created_at = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+    report_document = f"""<!doctype html><html lang='th'><head><meta charset='utf-8'>
+<title>Factory Issues - {html.escape(year_month_key)}</title><style>
+@page {{ size:A4 landscape; margin:12mm; }} * {{ box-sizing:border-box; }}
+body {{ font-family:Tahoma,'Noto Sans Thai',Arial,sans-serif; color:#172033; margin:0; font-size:10pt; }}
+h1 {{ margin:0 0 4px; color:#8b1e2d; font-size:20pt; }} .meta {{ color:#526070; margin-bottom:14px; }}
+.summary {{ background:#f7ecee; border-left:5px solid #8b1e2d; padding:8px 12px; margin-bottom:14px; }}
+.machine {{ break-inside:avoid; page-break-inside:avoid; margin:0 0 15px; }}
+h2 {{ color:white; background:#8b1e2d; padding:7px 10px; margin:0; font-size:13pt; }}
+.count {{ border:1px solid #ccd2da; border-bottom:0; padding:5px 8px; font-weight:bold; }}
+table {{ width:100%; border-collapse:collapse; table-layout:fixed; }}
+th,td {{ border:1px solid #aeb7c2; padding:5px; vertical-align:top; overflow-wrap:anywhere; }}
+th {{ background:#e9edf2; text-align:center; }}
+th:nth-child(1),td:nth-child(1) {{ width:6%; text-align:center; }} th:nth-child(2),td:nth-child(2) {{ width:5%; text-align:center; }}
+th:nth-child(3),td:nth-child(3) {{ width:27%; }} th:nth-child(4),td:nth-child(4) {{ width:14%; }}
+th:nth-child(5),td:nth-child(5) {{ width:34%; }} th:nth-child(6),td:nth-child(6) {{ width:14%; }}
+.footer {{ margin-top:10px; color:#687386; text-align:right; font-size:8pt; }}
+</style></head><body><h1>รายงานรายการปัญหาสะสมของเครื่องจักรทั้งโรงงาน</h1>
+<div class='meta'>PHOLLAWAT ENGINEERING SUPPLY CO., LTD. | เดือนข้อมูล: {html.escape(year_month_key)} | จัดทำเมื่อ: {created_at}</div>
+<div class='summary'>เครื่องที่มีการบันทึกปัญหา {len(sections)} เครื่อง | รวม {total_issues} รายการ</div>
+{''.join(sections)}<div class='footer'>Smart Factory PM SYSTEM - FM-MN-07</div></body></html>"""
+
+    document_json = json.dumps(report_document, ensure_ascii=False).replace("</", "<\\/")
+    return f"""<button onclick='printIssueReport()' style='width:100%;padding:12px;border:0;border-radius:8px;background:#8b1e2d;color:white;font-size:16px;font-weight:bold;cursor:pointer;'>🖨️ พิมพ์ / บันทึก PDF รายการปัญหาสะสมทั้งโรงงาน</button>
+<script>function printIssueReport() {{ const w=window.open('', '_blank'); if(!w){{alert('กรุณาอนุญาต Pop-up ของเว็บไซต์ก่อนสั่งพิมพ์ PDF');return;}} w.document.open();w.document.write({document_json});w.document.close();w.onload=()=>{{w.focus();w.print();}}; }}</script>"""
+
 # --- 3. UI NAVIGATION SIDEBAR & QUERY PARAMETERS ---
 st.set_page_config(page_title="Smart Factory PM SYSTEM", page_icon="🔧", layout="wide")
 
@@ -734,6 +799,15 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 day_logs_all = month_logs_all[month_logs_all["Day_Num"].eq(int(target_day_check))]
             else:
                 day_logs_all = pd.DataFrame()
+
+            st.write("#### 🖨️ รายงานรายการปัญหาสะสมทั้งโรงงาน")
+            issue_print_html = build_factory_issue_print_html(month_logs_all, year_month_key)
+            if issue_print_html:
+                st.caption("รายงานจะแยกหัวข้อของแต่ละเครื่อง และใช้ข้อมูลปัญหาที่มีการบันทึกหมายเหตุในเดือนที่เลือก")
+                components.html(issue_print_html, height=64)
+            else:
+                st.info("เดือนที่เลือกยังไม่มีรายการปัญหาหรือหมายเหตุสำหรับจัดทำรายงาน PDF")
+            st.divider()
 
             # สร้างดัชนีครั้งเดียว แล้วให้การ์ดทุกเครื่องใช้ข้อมูลในหน่วยความจำร่วมกัน
             # แทนการกรอง DataFrame ทั้งก้อนและยิง Supabase ซ้ำประมาณ 50 รอบ
