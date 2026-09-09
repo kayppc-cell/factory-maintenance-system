@@ -7,20 +7,12 @@ import shutil
 import time
 import zipfile
 import gc
-import openpyxl
-from openpyxl.styles import Alignment
-from openpyxl.utils import get_column_letter
 import pandas as pd
-from PIL import Image
-import qrcode
 import requests
 import streamlit as st
 from supabase import create_client, Client
 
 # --- 1. CONFIGURATION & SUPABASE SETUP ---
-LINE_ACCESS_TOKEN = "SOs7DeGwVsFpuK/JN8zm58Wn3EOiB75Ww0q57z1/yht4H1imzYonre4QuPfQ3cxbJ7j9dpyNMSTviG06LCe//YM1+r5TqRQx09p8nLNh5lYwCp4biq7N20ffJqzGm+ZYNgtEzt2rYZ/GYVRV725EiAdB04t89/1O/w1cDnyilFU="
-LINE_TARGET_ID = "Cbf3d27d5280ae8b258727047a26b399a"
-
 # กำหนด Base URL ของระบบ Streamlit App
 DEFAULT_APP_URL = "https://factory-maintenance-system.streamlit.app"
 
@@ -41,6 +33,8 @@ def get_secret(key_name, default=""):
 
 SUPABASE_URL = get_secret("SUPABASE_URL")
 SUPABASE_KEY = get_secret("SUPABASE_KEY")
+LINE_ACCESS_TOKEN = get_secret("LINE_ACCESS_TOKEN")
+LINE_TARGET_ID = get_secret("LINE_TARGET_ID")
 
 @st.cache_resource
 def init_supabase():
@@ -271,7 +265,23 @@ def save_log_to_supabase_bulk(list_of_logs):
     except Exception as e:
         print(f"Supabase Bulk Insert Error: {e}")
 
-@st.cache_data(ttl=5, show_spinner=False)
+LOG_COLUMNS = "timestamp,machine_id,day_num,year_month,tech_name,item_no,checklist_item,status,note,role"
+
+def logs_to_dataframe(rows):
+    if not rows:
+        return pd.DataFrame()
+    df = pd.DataFrame(rows).rename(columns={
+        "timestamp": "Timestamp", "machine_id": "Machine_ID",
+        "day_num": "Day_Num", "year_month": "Year_Month",
+        "tech_name": "Tech_Name", "item_no": "Item_No",
+        "checklist_item": "Checklist_Item", "status": "Status",
+        "note": "Note", "role": "Role"
+    })
+    if "Day_Num" in df.columns:
+        df["Day_Num"] = pd.to_numeric(df["Day_Num"], errors="coerce").fillna(0).astype(int)
+    return df
+
+@st.cache_data(ttl=30, show_spinner=False)
 def fetch_day_logs(year_month, day_num):
     if not supabase: return pd.DataFrame()
     try:
@@ -279,7 +289,7 @@ def fetch_day_logs(year_month, day_num):
         page_size = 1000
         start = 0
         while True:
-            res = supabase.table("maintenance_logs").select("*")\
+            res = supabase.table("maintenance_logs").select(LOG_COLUMNS)\
                 .eq("year_month", year_month)\
                 .eq("day_num", int(day_num))\
                 .range(start, start + page_size - 1)\
@@ -291,34 +301,20 @@ def fetch_day_logs(year_month, day_num):
                 break
             start += page_size
             
-        if all_data:
-            df = pd.DataFrame(all_data)
-            df = df.rename(columns={
-                "timestamp": "Timestamp", "machine_id": "Machine_ID",
-                "day_num": "Day_Num", "year_month": "Year_Month",
-                "tech_name": "Tech_Name", "item_no": "Item_No",
-                "checklist_item": "Checklist_Item", "status": "Status",
-                "note": "Note", "role": "Role"
-            })
-            if "Day_Num" in df.columns:
-                df["Day_Num"] = pd.to_numeric(df["Day_Num"], errors='coerce').fillna(0).astype(int)
-            return df
-        return pd.DataFrame()
+        return logs_to_dataframe(all_data)
     except Exception as e:
         print(f"Supabase Fetch Day Error: {e}")
         return pd.DataFrame()
 
-@st.cache_data(ttl=10, show_spinner=False)
-def fetch_machine_all_month_logs(machine_id, year_month):
+@st.cache_data(ttl=60, show_spinner=False)
+def fetch_month_logs(year_month):
     if not supabase: return pd.DataFrame()
     try:
         all_data = []
         page_size = 1000
         start = 0
-        target_mid_clean = str(machine_id).strip().upper()
-        
         while True:
-            res = supabase.table("maintenance_logs").select("*")\
+            res = supabase.table("maintenance_logs").select(LOG_COLUMNS)\
                 .eq("year_month", year_month)\
                 .range(start, start + page_size - 1)\
                 .execute()
@@ -329,28 +325,23 @@ def fetch_machine_all_month_logs(machine_id, year_month):
                 break
             start += page_size
             
-        if all_data:
-            df = pd.DataFrame(all_data)
-            df = df.rename(columns={
-                "timestamp": "Timestamp", "machine_id": "Machine_ID",
-                "day_num": "Day_Num", "year_month": "Year_Month",
-                "tech_name": "Tech_Name", "item_no": "Item_No",
-                "checklist_item": "Checklist_Item", "status": "Status",
-                "note": "Note", "role": "Role"
-            })
-            if "Day_Num" in df.columns:
-                df["Day_Num"] = pd.to_numeric(df["Day_Num"], errors='coerce').fillna(0).astype(int)
-                
-            df = df[df["Machine_ID"].astype(str).str.strip().str.upper().apply(
-                lambda x: (x == target_mid_clean) or (x.startswith(target_mid_clean)) or (target_mid_clean in x)
-            )]
-            return df
-        return pd.DataFrame()
+        return logs_to_dataframe(all_data)
     except Exception as e:
-        print(f"Fetch Machine Log Error: {e}")
+        print(f"Fetch Month Log Error: {e}")
         return pd.DataFrame()
 
+def fetch_machine_all_month_logs(machine_id, year_month, month_logs=None):
+    df = fetch_month_logs(year_month) if month_logs is None else month_logs
+    if df.empty or "Machine_ID" not in df.columns:
+        return pd.DataFrame()
+    target = str(machine_id).strip().upper()
+    normalized_ids = df["Machine_ID"].astype(str).str.strip().str.upper()
+    return df[normalized_ids.eq(target)].copy()
+
 def approve_excel_direct_to_disk(machine_id, day_num, boss_name, m_type):
+    import openpyxl
+    from openpyxl.styles import Alignment
+    from openpyxl.utils import get_column_letter
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
     if not os.path.isfile(target_excel_path): return False
@@ -370,6 +361,9 @@ def approve_excel_direct_to_disk(machine_id, day_num, boss_name, m_type):
         return False
 
 def generate_excel_bytes(machine_id, year_month, m_type):
+    import openpyxl
+    from openpyxl.styles import Alignment
+    from openpyxl.utils import get_column_letter
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
     if not os.path.isfile(target_excel_path): return None
@@ -474,6 +468,9 @@ def zip_all_factory_excel(year_month_key):
 
 # --- PHOTO & DUAL STORAGE (LOCAL + SUPABASE CLOUD) ---
 def send_line_alert(msg_text):
+    if not LINE_ACCESS_TOKEN or not LINE_TARGET_ID:
+        print("LINE alert skipped: missing LINE_ACCESS_TOKEN or LINE_TARGET_ID")
+        return
     url = 'https://api.line.me/v2/bot/message/push'
     headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_ACCESS_TOKEN}'}
     payload = {"to": LINE_TARGET_ID, "messages": [{"type": "text", "text": msg_text}]}
@@ -732,7 +729,25 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             st.divider()
             st.write("### 📊 บอร์ดควบคุมการรายงานตรวจเช็ค ทั้งโรงงาน")
        
-            day_logs_all = fetch_day_logs(year_month_key, target_day_check)
+            month_logs_all = fetch_month_logs(year_month_key)
+            if not month_logs_all.empty and "Day_Num" in month_logs_all.columns:
+                day_logs_all = month_logs_all[month_logs_all["Day_Num"].eq(int(target_day_check))]
+            else:
+                day_logs_all = pd.DataFrame()
+
+            # สร้างดัชนีครั้งเดียว แล้วให้การ์ดทุกเครื่องใช้ข้อมูลในหน่วยความจำร่วมกัน
+            # แทนการกรอง DataFrame ทั้งก้อนและยิง Supabase ซ้ำประมาณ 50 รอบ
+            day_logs_by_machine = {}
+            if not day_logs_all.empty and "Machine_ID" in day_logs_all.columns:
+                day_index = day_logs_all["Machine_ID"].astype(str).str.strip().str.upper()
+                for normalized_id, indexes in day_logs_all.groupby(day_index).groups.items():
+                    day_logs_by_machine[normalized_id] = day_logs_all.loc[indexes]
+
+            month_logs_by_machine = {}
+            if not month_logs_all.empty and "Machine_ID" in month_logs_all.columns:
+                month_index = month_logs_all["Machine_ID"].astype(str).str.strip().str.upper()
+                for normalized_id, indexes in month_logs_all.groupby(month_index).groups.items():
+                    month_logs_by_machine[normalized_id] = month_logs_all.loc[indexes]
 
             @st.fragment
             def render_machine_card(m_id, m_name, m_type_flag):
@@ -745,13 +760,8 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 
                 target_mid_clean = str(m_id).strip().upper()
                 
-                if not day_logs_all.empty:
-                    df_day = day_logs_all[
-                        day_logs_all["Machine_ID"].astype(str).str.strip().str.upper().apply(
-                            lambda x: (x == target_mid_clean) or (x.startswith(target_mid_clean)) or (target_mid_clean in x)
-                        )
-                    ].copy()
-                    
+                df_day = day_logs_by_machine.get(target_mid_clean, pd.DataFrame())
+                if not df_day.empty:
                     if not df_day.empty:
                         boss_rows = df_day[df_day["Role"].astype(str).str.strip().str.lower() == "boss"]
                         tech_rows = df_day[df_day["Role"].astype(str).str.strip().str.lower() == "tech"]
@@ -801,31 +811,34 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 
                 # ⚡ แสดงรูปภาพหลักฐาน พร้อมชื่อหัวข้อข้อตรวจจริงใต้ภาพ (Caption)
                 with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check}"):
-                    photos_list = get_machine_photos(m_id, year_month_key, target_day_check)
-                    if photos_list:
-                        machine_checklist = CHECKLISTS.get(m_type_flag, CHECKLISTS["CNC"])
-                        for f_name, f_bytes in photos_list:
-                            try:
-                                img_obj = Image.open(BytesIO(f_bytes))
-                                
-                                caption_title = f_name
-                                if "item_" in f_name:
-                                    try:
-                                        item_num = int(f_name.split("item_")[1].split("_")[0])
-                                        if 1 <= item_num <= len(machine_checklist):
-                                            item_desc = machine_checklist[item_num - 1]
-                                            caption_title = f"📌 [ข้อ {item_num}] {item_desc}"
-                                    except Exception:
-                                        pass
-                                        
-                                st.image(img_obj, caption=caption_title, use_container_width=True)
-                            except Exception:
-                                st.warning(f"ไฟล์ภาพ {f_name} ไม่สามารถแสดงได้")
+                    load_photos = st.toggle("โหลดและแสดงรูปภาพ", key=f"load_photos_{m_id}_{year_month_key}_{target_day_check}")
+                    if load_photos:
+                        from PIL import Image
+                        photos_list = get_machine_photos(m_id, year_month_key, target_day_check)
+                        if photos_list:
+                            machine_checklist = CHECKLISTS.get(m_type_flag, CHECKLISTS["CNC"])
+                            for f_name, f_bytes in photos_list:
+                                try:
+                                    img_obj = Image.open(BytesIO(f_bytes))
+                                    caption_title = f_name
+                                    if "item_" in f_name:
+                                        try:
+                                            item_num = int(f_name.split("item_")[1].split("_")[0])
+                                            if 1 <= item_num <= len(machine_checklist):
+                                                item_desc = machine_checklist[item_num - 1]
+                                                caption_title = f"📌 [ข้อ {item_num}] {item_desc}"
+                                        except Exception:
+                                            pass
+                                    st.image(img_obj, caption=caption_title, use_container_width=True)
+                                except Exception:
+                                    st.warning(f"ไฟล์ภาพ {f_name} ไม่สามารถแสดงได้")
+                        else:
+                            st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
                     else:
-                        st.caption(f"ℹ️ วันที่ {target_day_check} ไม่มีรูปภาพหลักฐาน")
+                        st.caption("เปิดสวิตช์เมื่อต้องการดูรูป ระบบจะไม่ดาวน์โหลดรูปโดยอัตโนมัติ")
 
                 # ดึง Note อาการเสียสะสมของเครื่องนี้
-                df_machine_logs = fetch_machine_all_month_logs(m_id, year_month_key)
+                df_machine_logs = month_logs_by_machine.get(target_mid_clean, pd.DataFrame())
                 current_notes_list = []
                 if not df_machine_logs.empty:
                     notes_rows = df_machine_logs[(df_machine_logs["Note"].notnull()) & (df_machine_logs["Note"] != "") & (df_machine_logs["Note"] != "nan")]
@@ -1092,6 +1105,7 @@ else:
                     value=DEFAULT_APP_URL
                 )
                 
+                import qrcode
                 qr_url = f"{base_web_url.rstrip('/')}/?id={sel_m}" 
                 qr = qrcode.make(qr_url)
                 buf = BytesIO()
