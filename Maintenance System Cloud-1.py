@@ -366,7 +366,7 @@ def fetch_machine_all_month_logs(machine_id, year_month, month_logs=None):
     normalized_ids = df["Machine_ID"].astype(str).str.strip().str.upper()
     return df[normalized_ids.eq(target)].copy()
 
-def generate_excel_bytes(machine_id, year_month, m_type):
+def generate_excel_bytes(machine_id, year_month, m_type, target_day=None):
     import openpyxl
     from openpyxl.styles import Alignment
     from openpyxl.utils import get_column_letter
@@ -375,6 +375,8 @@ def generate_excel_bytes(machine_id, year_month, m_type):
     if not os.path.isfile(target_excel_path): return None
     
     df_logs = fetch_machine_all_month_logs(machine_id, year_month)
+    if target_day is not None and not df_logs.empty:
+        df_logs = df_logs[df_logs["Day_Num"].eq(int(target_day))].copy()
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
@@ -453,16 +455,17 @@ def generate_excel_bytes(machine_id, year_month, m_type):
         print(f"Generate Excel Error: {e}")
         return None
 
-def zip_all_factory_excel(year_month_key):
+def zip_all_factory_excel(year_month_key, target_day=None):
     zip_buffer = BytesIO()
     has_file = False
     try:
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             for m_id in MACHINES.keys():
                 m_type = get_machine_type_by_id(m_id)
-                excel_bytes = generate_excel_bytes(m_id, year_month_key, m_type)
+                excel_bytes = generate_excel_bytes(m_id, year_month_key, m_type, target_day=target_day)
                 if excel_bytes:
-                    zip_file.writestr(f"FM-MN-07_{m_id}_{year_month_key}.xlsx", excel_bytes)
+                    period_tag = f"Day_{target_day}" if target_day is not None else year_month_key
+                    zip_file.writestr(f"FM-MN-07_{m_id}_{period_tag}.xlsx", excel_bytes)
                     has_file = True
         if not has_file: return None
         zip_buffer.seek(0)
@@ -566,6 +569,34 @@ def delete_all_storage_photos():
         supabase.storage.from_("maintenance-photos").remove(paths[start:start + 100])
     return len(paths)
 
+PHOTO_DEPARTMENTS = [
+    "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC",
+    "MILLING", "MIG CO2", "ARGON", "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
+]
+
+def machine_codes_by_department(filter_type):
+    selected = []
+    for machine_code in MACHINES:
+        code = machine_code.upper()
+        match = (
+            filter_type == "ทั้งโรงงาน"
+            or (filter_type == "CNC" and "CNC" in code)
+            or (filter_type == "GRINDING" and "GRINDING" in code and "CUTTER" not in code)
+            or (filter_type == "CRANE" and "CRANE" in code)
+            or (filter_type == "COMPRESSOR" and "COMP-" in code)
+            or (filter_type == "QC" and "QC-" in code)
+            or (filter_type == "MILLING" and "MILLING" in code)
+            or (filter_type == "MIG CO2" and "MIG" in code)
+            or (filter_type == "ARGON" and "ARGON" in code)
+            or (
+                filter_type == "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
+                and any(k in code for k in ["BENDING", "CUTTING", "LATHE", "FORKLIFT", "WELDING_ALUMINUM", "BAND SAW", "CUTTER GRINDING"])
+            )
+        )
+        if match:
+            selected.append(machine_code)
+    return selected
+
 def zip_single_machine_photos(machine_id, target_date_obj, target_day=None):
     current_year_month = target_date_obj.strftime("%Y_%B")
     zip_buffer = BytesIO()
@@ -589,7 +620,7 @@ def zip_single_machine_photos(machine_id, target_date_obj, target_day=None):
         print(f"Zip Machine Photos Error: {e}")
         return None
 
-def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน", target_date_obj=None):
+def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน", target_date_obj=None, target_day=None):
     if target_date_obj is None: target_date_obj = datetime.date.today()
     current_year_month = target_date_obj.strftime("%Y_%B")
     zip_buffer = BytesIO()
@@ -597,25 +628,13 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
     
     try:
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-            for machine_code in MACHINES.keys():
-                match = False
-                if filter_type == "ทั้งโรงงาน": match = True
-                elif filter_type == "CNC" and "CNC" in machine_code: match = True
-                elif filter_type == "GRINDING" and "GRINDING" in machine_code.upper(): match = True
-                elif filter_type == "CRANE" and "CRANE" in machine_code.upper(): match = True
-                elif filter_type == "COMPRESSOR" and "COMP-" in machine_code.upper(): match = True
-                elif filter_type == "QC" and "QC-" in machine_code.upper(): match = True
-                elif filter_type == "MILLING" and "MILLING" in machine_code: match = True
-                elif filter_type == "MIG CO2" and "MIG" in machine_code: match = True
-                elif filter_type == "ARGON" and "ARGON" in machine_code: match = True
-                elif filter_type == "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)" and any(k in machine_code for k in ["BENDING", "CUTTING", "LATHE", "FORKLIFT", "WELDING_ALUMINUM", "SAW"]): match = True
-                
-                if match:
-                    for d in range(1, 32):
-                        photos = get_machine_photos(machine_code, current_year_month, d)
-                        for f_name, f_bytes in photos:
-                            zip_file.writestr(f"{machine_code}/Day_{d}/{f_name}", f_bytes)
-                            has_file = True
+            days_to_check = [int(target_day)] if target_day is not None else range(1, 32)
+            for machine_code in machine_codes_by_department(filter_type):
+                for d in days_to_check:
+                    photos = get_machine_photos(machine_code, current_year_month, d)
+                    for f_name, f_bytes in photos:
+                        zip_file.writestr(f"{machine_code}/Day_{d}/{f_name}", f_bytes)
+                        has_file = True
                             
         if not has_file: return None
         zip_buffer.seek(0)
@@ -624,6 +643,34 @@ def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน
     except Exception as e:
         print(f"Zip Filter Photos Error: {e}")
         return None
+
+def delete_photos_by_department_and_period(filter_type, target_date_obj, period_scope):
+    """ลบรูปตามแผนกและช่วงเวลา ทั้ง Cloud และ local fallback"""
+    machine_codes = machine_codes_by_department(filter_type)
+    year_month = target_date_obj.strftime("%Y_%B")
+    day_num = target_date_obj.day
+    cloud_paths = []
+
+    for machine_code in machine_codes:
+        if period_scope == "เฉพาะวันที่เลือก":
+            prefix = f"{machine_code}/{year_month}/Day_{day_num}"
+            local_target = os.path.join(BASE_FOLDER, "maintenance_photos", machine_code, year_month, f"Day_{day_num}")
+        elif period_scope == "ทั้งเดือนที่เลือก":
+            prefix = f"{machine_code}/{year_month}"
+            local_target = os.path.join(BASE_FOLDER, "maintenance_photos", machine_code, year_month)
+        else:  # ทั้งหมดของแผนก
+            prefix = machine_code
+            local_target = os.path.join(BASE_FOLDER, "maintenance_photos", machine_code)
+
+        if supabase:
+            cloud_paths.extend(list_storage_files_recursive(prefix))
+        if os.path.exists(local_target):
+            shutil.rmtree(local_target)
+
+    if supabase:
+        for start in range(0, len(cloud_paths), 100):
+            supabase.storage.from_("maintenance-photos").remove(cloud_paths[start:start + 100])
+    return len(cloud_paths), len(machine_codes)
 
 def build_factory_issue_print_html(month_logs, year_month_key):
     """สร้างรายงาน HTML สำหรับ Print / Save as PDF แยกปัญหาตามเครื่องจักร"""
@@ -1152,16 +1199,24 @@ else:
             selected_date = st.date_input("📆 เลือกวันที่สำหรับอ้างอิงการดาวน์โหลดข้อมูลย้อนหลัง:", value=datetime.date.today())
             current_boss_month = selected_date.strftime("%Y_%B")
             
-            with st.expander(f"📊 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดไฟล์ Excel รวมทุกเครื่องจักรทั้งโรงงาน (.zip) ประจำเดือน {current_boss_month}"):
-                st.info(f"📂 ปุ่มนี้จะทำการรวบรวมไฟล์แบบฟอร์ม Excel (FM-MN-07) ที่มีรอยติ๊กครบทุกเครื่องจักรของเดือน **{current_boss_month}** รวมเป็นไฟล์ .zip ก้อนเดียว")
-                if st.button("📦 รวบรวมและสร้างไฟล์ Excel รวมทั้งโรงงาน (.zip)", type="primary"):
+            with st.expander("📊 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดไฟล์ Excel รวมทุกเครื่องจักรทั้งโรงงาน (.zip)"):
+                excel_period = st.radio(
+                    "เลือกช่วงข้อมูล Excel:",
+                    ["เฉพาะวันที่เลือก", "ทั้งเดือนที่เลือก"],
+                    horizontal=True,
+                    key="bigboss_excel_period"
+                )
+                excel_target_day = selected_date.day if excel_period == "เฉพาะวันที่เลือก" else None
+                excel_period_label = selected_date.strftime("Day_%d_%Y_%m") if excel_target_day else current_boss_month
+                st.info(f"📂 ระบบจะรวมแบบฟอร์ม Excel (FM-MN-07) ของทุกเครื่อง สำหรับ **{excel_period_label}** เป็นไฟล์ .zip")
+                if st.button(f"📦 สร้าง Excel ทุกเครื่อง - {excel_period}", type="primary"):
                     with st.spinner("กำลังประกอบไฟล์ Excel ทุกเครื่องจักร กรุณารอสักครู่..."):
-                        excel_all_zip = zip_all_factory_excel(current_boss_month)
+                        excel_all_zip = zip_all_factory_excel(current_boss_month, target_day=excel_target_day)
                         if excel_all_zip:
                             st.download_button(
-                                label=f"💾 ดาวน์โหลด Excel ทั้งโรงงาน (Excel_All_Machines_{current_boss_month}.zip)",
+                                label=f"💾 ดาวน์โหลด Excel ทั้งโรงงาน - {excel_period_label}",
                                 data=excel_all_zip,
-                                file_name=f"Excel_All_Machines_{current_boss_month}.zip",
+                                file_name=f"Excel_All_Machines_{excel_period_label}.zip",
                                 mime="application/zip"
                             )
                         else:
@@ -1187,23 +1242,27 @@ else:
                         except Exception as e_db: st.error(f"Error: {e_db}")
 
             with st.expander("📸 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดรูปภาพ PM รวมหมดทั้งโรงงาน (.zip)"):
-                st.info("📦 ปุ่มนี้จะทำหน้าที่กวาดรูปถ่าย PM ตามแผนกที่เลือกมารวมเป็นไฟล์ .zip")
-                
-                dept_target = st.selectbox("เลือกแผนกที่บอสต้องการดาวน์โหลดรูปภาพ:", [
-                    "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC", "MILLING", "MIG CO2", "ARGON", "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
-                ])
-                
-                if st.button(f"📦 สั่งสร้างไฟล์ Zip รูปภาพแผนก [{dept_target}]", type="primary"):
-                    filtered_zip_data = zip_all_factory_photos_by_filter(filter_type=dept_target, target_date_obj=selected_date)
+                dept_target = st.selectbox("เลือกแผนกที่ต้องการดาวน์โหลดรูปภาพ:", PHOTO_DEPARTMENTS, key="photo_download_department")
+                photo_period = st.radio(
+                    "เลือกช่วงรูปภาพ:", ["เฉพาะวันที่เลือก", "ทั้งเดือนที่เลือก"],
+                    horizontal=True, key="photo_download_period"
+                )
+                photo_target_day = selected_date.day if photo_period == "เฉพาะวันที่เลือก" else None
+                photo_period_label = selected_date.strftime("Day_%d_%Y_%m") if photo_target_day else current_boss_month
+                st.info(f"📦 รวมรูปแผนก **{dept_target}** ช่วง **{photo_period_label}** เป็นไฟล์ .zip")
+                if st.button(f"📦 สร้าง Zip รูป [{dept_target}] - {photo_period}", type="primary"):
+                    filtered_zip_data = zip_all_factory_photos_by_filter(
+                        filter_type=dept_target, target_date_obj=selected_date, target_day=photo_target_day
+                    )
                     if filtered_zip_data:
                         st.download_button(
-                            label=f"💾 ดาวน์โหลดรูปภาพแผนก [{dept_target}]", 
+                            label=f"💾 ดาวน์โหลดรูป [{dept_target}] - {photo_period_label}",
                             data=filtered_zip_data, 
-                            file_name=f"Photos_Filter_{dept_target}_{current_boss_month}.zip", 
+                            file_name=f"Photos_Filter_{dept_target}_{photo_period_label}.zip",
                             mime="application/zip"
                         )
                     else:
-                        st.warning(f"⚠️ ในระบบคลาวด์ตามช่วงปฏิทินที่เลือก ยังไม่มีรูปภาพบันทึกอยู่ในกลุ่มแผนก [{dept_target}] เลยครับบอส")
+                        st.warning(f"⚠️ ไม่พบรูปภาพของแผนก [{dept_target}] ในช่วงที่เลือก")
 
             with st.expander("🖨️ [เฉพาะผู้บริหารสูงสุด] เครื่องมือพิมพ์ QR Code สำหรับไปแปะหน้าเครื่องจักร"):
                 sel_m = st.selectbox("เลือกเครื่องที่ต้องการพิมพ์ QR:", list(MACHINES.keys()), key="bigboss_qr_select_box_outside")
@@ -1232,28 +1291,46 @@ else:
                 
                 with col_reset_photos:
                     st.write("#### 📸 1. ลบเฉพาะระบบรูปภาพ")
-                    st.caption("ทำหน้าที่ลบโฟลเดอร์ภาพถ่ายในเครื่อง และล้างไฟล์ใน Supabase Storage (ไม่กระทบประวัติตารางติ๊กตรวจ)")
-                    confirm_delete_photos = st.checkbox("ยืนยันว่าต้องการลบรูปภาพทั้งหมด", key="confirm_delete_photos")
-                    if st.button("🗑️ สั่งลบรูปภาพทั้งหมด", type="primary", key="btn_reset_only_photos", disabled=not confirm_delete_photos):
-                        cloud_delete_ok = True
-                        target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
-                        if os.path.exists(target_photo_folder):
-                            shutil.rmtree(target_photo_folder)
-                            
-                        if supabase:
-                            try:
-                                deleted_count = delete_all_storage_photos()
-                                st.caption(f"ลบรูปจาก Cloud แล้ว {deleted_count} ไฟล์")
-                            except Exception as e_st_del:
-                                cloud_delete_ok = False
-                                st.error(f"ลบรูปจาก Cloud ไม่สำเร็จ: {e_st_del}")
+                    st.caption("เลือกแผนกและช่วงเวลาที่ต้องการลบ โดยไม่กระทบประวัติตารางตรวจ")
+                    reset_photo_dept = st.selectbox(
+                        "เลือกแผนกที่จะลบรูป:", PHOTO_DEPARTMENTS,
+                        key="reset_photo_department"
+                    )
+                    reset_photo_period = st.radio(
+                        "เลือกช่วงรูปที่จะลบ:",
+                        ["เฉพาะวันที่เลือก", "ทั้งเดือนที่เลือก", "ทั้งหมดของแผนก"],
+                        key="reset_photo_period"
+                    )
+                    if reset_photo_period == "เฉพาะวันที่เลือก":
+                        reset_scope_label = selected_date.strftime("วันที่ %d/%m/%Y")
+                    elif reset_photo_period == "ทั้งเดือนที่เลือก":
+                        reset_scope_label = f"เดือน {current_boss_month}"
+                    else:
+                        reset_scope_label = "ทุกวันและทุกเดือน"
 
-                        gc.collect()
-                        if cloud_delete_ok:
-                            st.success("✅ ล้างไฟล์รูปภาพหลักฐานทั้งหมดเรียบร้อยแล้ว!")
-                            st.toast("ลบรูปภาพสำเร็จ", icon="📸")
-                        else:
-                            st.warning("ลบรูปในเครื่องแล้ว แต่รูปบน Cloud ยังลบไม่ครบ กรุณาลองใหม่")
+                    st.warning(f"กำลังเลือก: แผนก [{reset_photo_dept}] | {reset_scope_label}")
+                    confirm_delete_photos = st.checkbox(
+                        f"ยืนยันลบรูปแผนก [{reset_photo_dept}] - {reset_scope_label}",
+                        key="confirm_delete_photos_filtered"
+                    )
+                    if st.button(
+                        "🗑️ ลบรูปตามตัวเลือก",
+                        type="primary",
+                        key="btn_reset_filtered_photos",
+                        disabled=(not confirm_delete_photos or not supabase)
+                    ):
+                        try:
+                            deleted_count, affected_machines = delete_photos_by_department_and_period(
+                                reset_photo_dept, selected_date, reset_photo_period
+                            )
+                            gc.collect()
+                            st.success(
+                                f"✅ ลบรูปสำเร็จ {deleted_count} ไฟล์ "
+                                f"จากขอบเขต {affected_machines} เครื่อง"
+                            )
+                            st.toast("ลบรูปตามตัวเลือกสำเร็จ", icon="📸")
+                        except Exception as e_st_del:
+                            st.error(f"ลบรูปไม่สำเร็จ: {e_st_del}")
 
                 with col_reset_db:
                     st.write("#### 🗄️ 2. ลบเฉพาะประวัติตารางข้อมูล")
