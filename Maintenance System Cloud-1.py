@@ -2,6 +2,7 @@ import base64
 import datetime
 from io import BytesIO
 import json
+import mimetypes
 import os
 import shutil
 import time
@@ -24,9 +25,6 @@ BASE_FOLDER = (
     else os.getcwd()
 )
 
-BOSS_PASSWORD = "pes1234"
-BIGBOSS_PASSWORD = "pes9999"
-
 # รองรับทั้ง st.secrets บน Streamlit Cloud และ Environment Variables
 def get_secret(key_name, default=""):
     if key_name in st.secrets:
@@ -37,6 +35,8 @@ SUPABASE_URL = get_secret("SUPABASE_URL")
 SUPABASE_KEY = get_secret("SUPABASE_KEY")
 LINE_ACCESS_TOKEN = get_secret("LINE_ACCESS_TOKEN")
 LINE_TARGET_ID = get_secret("LINE_TARGET_ID")
+BOSS_PASSWORD = get_secret("BOSS_PASSWORD")
+BIGBOSS_PASSWORD = get_secret("BIGBOSS_PASSWORD")
 
 @st.cache_resource
 def init_supabase():
@@ -259,15 +259,39 @@ def set_cell_value_safe(ws, coordinate_str, value, alignment=None):
 
 # --- 2. REALTIME SUPABASE ENGINE WITH PAGINATION ---
 def save_log_to_supabase_bulk(list_of_logs):
-    if not supabase: return
+    if not supabase or not list_of_logs:
+        return False
     try:
-        supabase.table("maintenance_logs").insert(list_of_logs).execute()
-        st.cache_data.clear()
-        gc.collect()
-    except Exception as e:
-        print(f"Supabase Bulk Insert Error: {e}")
+        # อ่าน ID ชุดเดิมก่อน แล้วบันทึกชุดใหม่ให้สำเร็จก่อนค่อยลบชุดเก่า
+        # จึงไม่ทำข้อมูลเดิมหายหากการ insert ใหม่ล้มเหลว
+        contexts = {
+            (
+                str(log["machine_id"]), str(log["year_month"]),
+                int(log["day_num"]), str(log["role"])
+            )
+            for log in list_of_logs
+        }
+        old_ids = []
+        for machine_id, year_month, day_num, role in contexts:
+            old = supabase.table("maintenance_logs").select("id")\
+                .eq("machine_id", machine_id)\
+                .eq("year_month", year_month)\
+                .eq("day_num", day_num)\
+                .eq("role", role)\
+                .execute()
+            old_ids.extend(row["id"] for row in (old.data or []) if row.get("id") is not None)
 
-LOG_COLUMNS = "timestamp,machine_id,day_num,year_month,tech_name,item_no,checklist_item,status,note,role"
+        supabase.table("maintenance_logs").insert(list_of_logs).execute()
+        if old_ids:
+            for start in range(0, len(old_ids), 200):
+                supabase.table("maintenance_logs").delete().in_("id", old_ids[start:start + 200]).execute()
+        st.cache_data.clear()
+        return True
+    except Exception as e:
+        print(f"Supabase Safe Replace Error: {e}")
+        return False
+
+LOG_COLUMNS = "id,timestamp,machine_id,day_num,year_month,tech_name,item_no,checklist_item,status,note,role"
 
 def logs_to_dataframe(rows):
     if not rows:
@@ -294,6 +318,7 @@ def fetch_day_logs(year_month, day_num):
             res = supabase.table("maintenance_logs").select(LOG_COLUMNS)\
                 .eq("year_month", year_month)\
                 .eq("day_num", int(day_num))\
+                .order("id")\
                 .range(start, start + page_size - 1)\
                 .execute()
             if not res.data:
@@ -318,6 +343,7 @@ def fetch_month_logs(year_month):
         while True:
             res = supabase.table("maintenance_logs").select(LOG_COLUMNS)\
                 .eq("year_month", year_month)\
+                .order("id")\
                 .range(start, start + page_size - 1)\
                 .execute()
             if not res.data:
@@ -339,28 +365,6 @@ def fetch_machine_all_month_logs(machine_id, year_month, month_logs=None):
     target = str(machine_id).strip().upper()
     normalized_ids = df["Machine_ID"].astype(str).str.strip().str.upper()
     return df[normalized_ids.eq(target)].copy()
-
-def approve_excel_direct_to_disk(machine_id, day_num, boss_name, m_type):
-    import openpyxl
-    from openpyxl.styles import Alignment
-    from openpyxl.utils import get_column_letter
-    excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
-    target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
-    if not os.path.isfile(target_excel_path): return False
-    try:
-        wb = openpyxl.load_workbook(target_excel_path, data_only=False)
-        ws = wb.active
-        _, boss_row, _ = get_coordinates_by_machine(machine_id, m_type)
-        col_letter = get_column_letter(2 + int(day_num))
-        
-        set_cell_value_safe(ws, f"{col_letter}{boss_row}", boss_name, Alignment(text_rotation=90, horizontal="center", vertical="center"))
-        wb.save(target_excel_path)
-        wb.close()
-        gc.collect()
-        return True
-    except Exception as e:
-        print(f"Excel Boss Approve Direct Error: {e}")
-        return False
 
 def generate_excel_bytes(machine_id, year_month, m_type):
     import openpyxl
@@ -493,6 +497,7 @@ def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current
                 file_ext = os.path.splitext(uploaded_file.name)[1]
                 file_name = f"photo_item_{item_idx}_{f_order}{file_ext}"
                 file_bytes = uploaded_file.getvalue()
+                content_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
                 
                 full_local_path = os.path.join(local_day_dir, file_name)
                 with open(full_local_path, "wb") as f_out:
@@ -501,26 +506,18 @@ def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current
                 if supabase:
                     try:
                         storage_path = f"{machine_id}/{current_year_month}/Day_{day_num}/{file_name}"
-                        supabase.storage.from_("maintenance-photos").upload(storage_path, file_bytes, {"content-type": "image/jpeg", "upsert": "true"})
+                        supabase.storage.from_("maintenance-photos").upload(
+                            storage_path, file_bytes,
+                            {"content-type": content_type, "upsert": "true"}
+                        )
                     except Exception as e_up:
                         print(f"Photo Supabase Upload Error: {e_up}")
     gc.collect()
 
 def get_machine_photos(machine_id, year_month, day_num):
     photos = []
-    
-    local_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), year_month, f"Day_{day_num}")
-    if os.path.exists(local_dir):
-        for f in sorted(os.listdir(local_dir)):
-            if f.lower().endswith(('.png', '.jpg', '.jpeg')):
-                p_path = os.path.join(local_dir, f)
-                try:
-                    with open(p_path, "rb") as f_img:
-                        photos.append((f, f_img.read()))
-                except Exception:
-                    pass
-
-    if not photos and supabase:
+    # Cloud เป็นแหล่งข้อมูลหลัก เพราะ local disk ของ Streamlit Cloud ไม่ถาวร
+    if supabase:
         try:
             folder_path = f"{machine_id}/{year_month}/Day_{day_num}"
             files = supabase.storage.from_("maintenance-photos").list(folder_path)
@@ -532,8 +529,42 @@ def get_machine_photos(machine_id, year_month, day_num):
                         photos.append((f_name, file_data))
         except Exception as e_sb:
             print(f"Supabase fetch photo error: {e_sb}")
-            
+
+    # ใช้ local เป็น fallback เมื่อ Cloud ไม่มีข้อมูลหรือเชื่อมต่อไม่ได้
+    if not photos:
+        local_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), year_month, f"Day_{day_num}")
+        if os.path.exists(local_dir):
+            for f in sorted(os.listdir(local_dir)):
+                if f.lower().endswith(('.png', '.jpg', '.jpeg')):
+                    try:
+                        with open(os.path.join(local_dir, f), "rb") as f_img:
+                            photos.append((f, f_img.read()))
+                    except Exception:
+                        pass
     return photos
+
+def list_storage_files_recursive(prefix=""):
+    """คืน path ของไฟล์ทั้งหมดใน Supabase Storage รวมทุกโฟลเดอร์ย่อย"""
+    if not supabase:
+        return []
+    paths = []
+    entries = supabase.storage.from_("maintenance-photos").list(prefix)
+    for entry in entries or []:
+        name = entry.get("name")
+        if not name:
+            continue
+        path = f"{prefix}/{name}" if prefix else name
+        if entry.get("id") is not None or entry.get("metadata"):
+            paths.append(path)
+        else:
+            paths.extend(list_storage_files_recursive(path))
+    return paths
+
+def delete_all_storage_photos():
+    paths = list_storage_files_recursive()
+    for start in range(0, len(paths), 100):
+        supabase.storage.from_("maintenance-photos").remove(paths[start:start + 100])
+    return len(paths)
 
 def zip_single_machine_photos(machine_id, target_date_obj, target_day=None):
     current_year_month = target_date_obj.strftime("%Y_%B")
@@ -738,7 +769,9 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                     "note": str(results[item]["note"]).strip(),
                     "role": "tech"
                 })
-            save_log_to_supabase_bulk(logs_to_save)
+            if not save_log_to_supabase_bulk(logs_to_save):
+                st.error("❌ บันทึกฐานข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่")
+                st.stop()
 
             fails, fixed_items = [], []
             for i, item in enumerate(current_checklist, 1):
@@ -785,6 +818,8 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
     st.subheader(f"📅 ประจำวันที่เลือก: {selected_date.strftime('%d/%m/%Y')} (คอลัมน์ Excel ช่องวันที่ {target_day_check})")
     
     password_input = st.text_input("🔑 กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบบอร์ดควบคุม Engineer:", type="password")
+    if not BOSS_PASSWORD and not BIGBOSS_PASSWORD:
+        st.error("❌ ยังไม่ได้ตั้งค่า BOSS_PASSWORD และ BIGBOSS_PASSWORD ใน Streamlit Secrets")
     
     if password_input != "":
         if password_input == BOSS_PASSWORD or password_input == BIGBOSS_PASSWORD:
@@ -836,16 +871,14 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                 
                 df_day = day_logs_by_machine.get(target_mid_clean, pd.DataFrame())
                 if not df_day.empty:
-                    if not df_day.empty:
-                        boss_rows = df_day[df_day["Role"].astype(str).str.strip().str.lower() == "boss"]
-                        tech_rows = df_day[df_day["Role"].astype(str).str.strip().str.lower() == "tech"]
-                        
-                        if not boss_rows.empty:
-                            is_approved = True
-                            boss_who_approved = str(boss_rows.iloc[0]["Tech_Name"])
-                        if not tech_rows.empty:
-                            is_reported = True
-                            tech_who_checked = str(tech_rows.iloc[0]["Tech_Name"])
+                    boss_rows = df_day[df_day["Role"].astype(str).str.strip().str.lower() == "boss"]
+                    tech_rows = df_day[df_day["Role"].astype(str).str.strip().str.lower() == "tech"]
+                    if not boss_rows.empty:
+                        is_approved = True
+                        boss_who_approved = str(boss_rows.iloc[0]["Tech_Name"])
+                    if not tech_rows.empty:
+                        is_reported = True
+                        tech_who_checked = str(tech_rows.iloc[0]["Tech_Name"])
 
                 st.info(f"⚙️ **{m_id}**\n{m_name}")
                 
@@ -862,12 +895,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                     st.button(f"⚠️ กรุณาระบุชื่อผู้ตรวจสอบก่อนกดอนุมัติ ({m_id})", key=f"btn_disabled_{m_id}", disabled=True)
                 else:
                     if st.button(f"✅ อนุมัติฟอร์มของ {m_id}", key=f"btn_{m_id}"):
-                        st.session_state[approve_state_key] = True
-                        st.session_state[f"boss_name_{approve_state_key}"] = boss_name
-                        
-                        approve_excel_direct_to_disk(m_id, target_day_check, boss_name, m_type_flag)
-                        
-                        save_log_to_supabase_bulk([{
+                        approval_saved = save_log_to_supabase_bulk([{
                             "machine_id": m_id,
                             "day_num": int(target_day_check),
                             "year_month": year_month_key,
@@ -878,10 +906,14 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                             "note": "",
                             "role": "boss"
                         }])
-                        
-                        st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
-                        send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
-                        st.rerun(scope="fragment")
+                        if approval_saved:
+                            st.session_state[approve_state_key] = True
+                            st.session_state[f"boss_name_{approve_state_key}"] = boss_name
+                            st.toast(f"ลงนามดิจิทัลเครื่อง {m_id} สำเร็จ!", icon="🔥")
+                            send_line_alert(f"🔒 [ISO Approved]: หัวหน้างาน/Engineer ({boss_name}) ได้อนุมัติใบตรวจประจำวันที่ {target_day_check} ของเครื่อง {m_id} แล้ว")
+                            st.rerun(scope="fragment")
+                        else:
+                            st.error("❌ บันทึกการอนุมัติไม่สำเร็จ กรุณาลองใหม่")
                 
                 # ⚡ แสดงรูปภาพหลักฐาน พร้อมชื่อหัวข้อข้อตรวจจริงใต้ภาพ (Caption)
                 with st.expander(f"📸 ตรวจรูปภาพหลักฐานวันที่ {target_day_check}"):
@@ -1109,6 +1141,8 @@ else:
     st.info("🔐 พื้นที่ความปลอดภัยระดับสูง สำหรับดาวน์โหลดไฟล์สำรอง พิมพ์คิวอาร์โค้ด และจัดการฐานข้อมูลหลัก")
     
     bigboss_code_input = st.text_input("🔑 กรุณากรอกรหัสผ่านผู้บริหารสูงสุด เพื่อปลดล็อกศูนย์ควบคุม:", type="password", key="bigboss_outside_secret_key")
+    if not BIGBOSS_PASSWORD:
+        st.error("❌ ยังไม่ได้ตั้งค่า BIGBOSS_PASSWORD ใน Streamlit Secrets")
     
     if bigboss_code_input != "":
         if bigboss_code_input == BIGBOSS_PASSWORD:
@@ -1199,30 +1233,33 @@ else:
                 with col_reset_photos:
                     st.write("#### 📸 1. ลบเฉพาะระบบรูปภาพ")
                     st.caption("ทำหน้าที่ลบโฟลเดอร์ภาพถ่ายในเครื่อง และล้างไฟล์ใน Supabase Storage (ไม่กระทบประวัติตารางติ๊กตรวจ)")
-                    
-                    if st.button("🗑️ สั่งลบรูปภาพทั้งหมด", type="primary", key="btn_reset_only_photos"):
+                    confirm_delete_photos = st.checkbox("ยืนยันว่าต้องการลบรูปภาพทั้งหมด", key="confirm_delete_photos")
+                    if st.button("🗑️ สั่งลบรูปภาพทั้งหมด", type="primary", key="btn_reset_only_photos", disabled=not confirm_delete_photos):
+                        cloud_delete_ok = True
                         target_photo_folder = os.path.join(BASE_FOLDER, "maintenance_photos")
                         if os.path.exists(target_photo_folder):
                             shutil.rmtree(target_photo_folder)
                             
                         if supabase:
                             try:
-                                files = supabase.storage.from_("maintenance-photos").list()
-                                for f in files:
-                                    if f.get("name"):
-                                        supabase.storage.from_("maintenance-photos").remove([f["name"]])
+                                deleted_count = delete_all_storage_photos()
+                                st.caption(f"ลบรูปจาก Cloud แล้ว {deleted_count} ไฟล์")
                             except Exception as e_st_del:
-                                print(f"Storage Delete Error: {e_st_del}")
+                                cloud_delete_ok = False
+                                st.error(f"ลบรูปจาก Cloud ไม่สำเร็จ: {e_st_del}")
 
                         gc.collect()
-                        st.success("✅ ล้างไฟล์รูปภาพหลักฐานทั้งหมดเรียบร้อยแล้ว!")
-                        st.toast("ลบรูปภาพสำเร็จ", icon="📸")
+                        if cloud_delete_ok:
+                            st.success("✅ ล้างไฟล์รูปภาพหลักฐานทั้งหมดเรียบร้อยแล้ว!")
+                            st.toast("ลบรูปภาพสำเร็จ", icon="📸")
+                        else:
+                            st.warning("ลบรูปในเครื่องแล้ว แต่รูปบน Cloud ยังลบไม่ครบ กรุณาลองใหม่")
 
                 with col_reset_db:
                     st.write("#### 🗄️ 2. ลบเฉพาะประวัติตารางข้อมูล")
                     st.caption("ทำหน้าที่ล้าง Log การตรวจเช็คใน Supabase Database (ไม่ลบไฟล์รูปภาพหลักฐาน)")
-                    
-                    if st.button("🧹 สั่งล้างฐานข้อมูลประวัติ", type="primary", key="btn_reset_only_db"):
+                    confirm_delete_db = st.checkbox("ยืนยันว่าต้องการล้างประวัติทั้งหมด", key="confirm_delete_db")
+                    if st.button("🧹 สั่งล้างฐานข้อมูลประวัติ", type="primary", key="btn_reset_only_db", disabled=not confirm_delete_db):
                         if supabase:
                             try: 
                                 supabase.table("maintenance_logs").delete().neq("id", 0).execute()
