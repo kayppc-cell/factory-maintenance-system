@@ -9,6 +9,7 @@ import time
 import zipfile
 import gc
 import html
+from urllib.parse import quote
 import pandas as pd
 import requests
 import streamlit as st
@@ -86,6 +87,11 @@ MACHINES = {
     "BAND SAW-01": "เครื่องเลื่อยสายพาน #01", "BAND SAW-02": "เครื่องเลื่อยสายพาน #02",
     "BAND SAW-03": "เครื่องเลื่อยสายพาน #03",
     "FORKLIFT-01": "รถโฟคลิฟ FORKLIFT #01",
+    "CAR-2ฒข-5050": "รถยนต์ทะเบียน 2ฒข-5050",
+    "CAR-2ฒข-5353": "รถยนต์ทะเบียน 2ฒข-5353",
+    "CAR-2ฒฆ-5151": "รถยนต์ทะเบียน 2ฒฆ-5151",
+    "CAR-2ฒถ-5252": "รถยนต์ทะเบียน 2ฒถ-5252",
+    "Truck-83-2329": "รถบรรทุกทะเบียน 83-2329",
 }
 
 CHECKLISTS = {
@@ -176,6 +182,19 @@ CHECKLISTS = {
         "ตรวจเช็คระบบน้ำหม้อน้ำให้อยู่ในระดับ Hight", "ตรวจเช็คน้ำมันเครื่องยนต์ต้องอยู่ไม่เกินขีดที่3ของตัวเช็ค", "ตรวจเช็คไส้กรองและเป่าลมทำความสะอาด",
         "ตรวจเช็คการรั่วซึมofน้ำมันไฮดรอริก", "ตรวจเช็คระบบเบรคและน้ำมันเบรค", "ตรวจเช็คไฟส่องสว่างและไฟเลี้ยว",
         "ตรวจเช็คสัญญานแตร"
+    ],
+    "VEHICLE": [
+        "เช็คยางรถยนต์ ไม่บวม หรือฉีกขาด",
+        "เช็คหน้ากระจกรถ ต้องไม่มีรอยแตกร้าว",
+        "เช็คระบบไฟหน้า ไฟเบรก ไฟเลี้ยว ไฟหรี่ และไฟฉุกเฉิน ต้องใช้ได้ทุกดวง",
+        "เช็คที่ปัดน้ำฝน ต้องไม่แข็ง แห้ง หรือกรอบ",
+        "เช็คเลขหน้าปัดไมล์ และถ่ายรูปเลขหน้าปัดไมล์ยืนยันก่อนเริ่มใช้งาน",
+        "เช็คระดับน้ำมันเบรก ต้องอยู่ในระดับปกติ",
+        "เช็คระดับน้ำมันเครื่อง ต้องอยู่ในระดับปกติ",
+        "เช็คระดับหม้อพักน้ำ ต้องอยู่ในระดับปกติ",
+        "เช็คระดับหม้อพักน้ำฉีดกระจก ต้องอยู่ในระดับปกติ",
+        "เช็คระบบสายพานต่าง ๆ ต้องไม่เปื่อยหรือมีรอยฉีกขาด",
+        "ตรวจสอบเอกสาร ประกัน / พ.ร.บ. / ภาษี"
     ]
 }
 
@@ -186,12 +205,14 @@ PHOTO_RULES = {
     "QC-13": [2, 3], "QC-14": [2, 3], "QC-15": [6], "QC-16": [3], "QC-17": [2], "QC-18": [3], "QC-19": [3],
     "QC-20": [3], "QC-21": [3], "COMP-01": [1, 2, 3], "COMP-02": [1, 2, 3], "GRINDING-01": [2, 4, 7], "GRINDING-02": [4, 7],
     "CUTTER GRINDING-01": [], "MILLING": [6, 7], "LATHE": [2, 5], "CUTTING": [3, 5, 7], "BENDING": [3, 5, 6], "MIG CO2": [3, 4, 5],
-    "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [3, 5], "FORKLIFT": [1, 2, 5]
+    "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [3, 5], "FORKLIFT": [1, 2, 5],
+    "VEHICLE": list(range(1, 12))
 }
 
 def get_machine_type_by_id(machine_id):
     u_id = str(machine_id).upper().strip()
-    if "CUTTER" in u_id: return "CUTTER GRINDING-01"
+    if u_id.startswith("CAR-") or u_id.startswith("TRUCK-"): return "VEHICLE"
+    elif "CUTTER" in u_id: return "CUTTER GRINDING-01"
     elif "MILLING" in u_id or "MILL" in u_id: return "MILLING"
     elif "CRANE NO.1" in u_id or "CRANE NO. 1" in u_id: return "Crane no.1"
     elif "CRANE NO.2" in u_id or "CRANE NO. 2" in u_id: return "Crane no.2"
@@ -214,6 +235,10 @@ def get_machine_type_by_id(machine_id):
 
 def get_coordinates_by_machine(m_id, m_type):
     u_id = str(m_id).upper().strip()
+
+    # แบบฟอร์มรถ: รายการตรวจแถว 6-16, ผู้ตรวจแถว 17, ผู้อนุมัติแถว 19, หมายเหตุ B22
+    if m_type == "VEHICLE" or u_id.startswith("CAR-") or u_id.startswith("TRUCK-"):
+        return 17, 19, "B22"
     
     # ⚡ 1. ล็อกเฉพาะ MILLING-04 (ช่างแถว 17, หัวหน้าแถว 19, บันทึกเพิ่มเติม B22)
     if "MILLING-04" in u_id or "MILLING NO. 4" in u_id or "MILLING NO.4" in u_id or "MILLING_04" in u_id:
@@ -571,7 +596,8 @@ def delete_all_storage_photos():
 
 PHOTO_DEPARTMENTS = [
     "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC",
-    "MILLING", "MIG CO2", "ARGON", "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
+    "MILLING", "MIG CO2", "ARGON", "รถยนต์และรถบรรทุก",
+    "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
 ]
 
 def machine_codes_by_department(filter_type):
@@ -588,6 +614,7 @@ def machine_codes_by_department(filter_type):
             or (filter_type == "MILLING" and "MILLING" in code)
             or (filter_type == "MIG CO2" and "MIG" in code)
             or (filter_type == "ARGON" and "ARGON" in code)
+            or (filter_type == "รถยนต์และรถบรรทุก" and (code.startswith("CAR-") or code.startswith("TRUCK-")))
             or (
                 filter_type == "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
                 and any(k in code for k in ["BENDING", "CUTTING", "LATHE", "FORKLIFT", "WELDING_ALUMINUM", "BAND SAW", "CUTTER GRINDING"])
@@ -786,8 +813,13 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             st.write(f"**{i}. {item}**")
             status = st.radio(f"ผลการตรวจข้อ {i}", ["ใช้งานได้ปกติ", "ทำการแก้ไขใช้งานได้ปกติ", "ใช้งานไม่ได้ต้องแก้ไข", "ไม่ได้ทำงาน"], horizontal=True, key=f"check_{i}", label_visibility="collapsed", index=None)
             if i in required_photo_indexes:
-                st.write("📷 *หัวข้อบังคับถ่ายรูปหลักฐานยืนยันหน้างานจริง (เลือกได้มากกว่า 1 รูป)*")
-                uploaded_files = st.file_uploader(f"แนบรูปข้อ {i}", type=["jpg", "jpeg", "png"], key=f"photo_{i}", accept_multiple_files=True)
+                if m_type_selected == "VEHICLE":
+                    st.write("📷 *บังคับถ่ายรูปหัวข้อนี้ก่อนส่งรายงาน*")
+                    captured_photo = st.camera_input(f"ถ่ายรูปข้อ {i}", key=f"camera_{i}")
+                    uploaded_files = [captured_photo] if captured_photo is not None else []
+                else:
+                    st.write("📷 *หัวข้อบังคับถ่ายรูปหลักฐานยืนยันหน้างานจริง (เลือกได้มากกว่า 1 รูป)*")
+                    uploaded_files = st.file_uploader(f"แนบรูปข้อ {i}", type=["jpg", "jpeg", "png"], key=f"photo_{i}", accept_multiple_files=True)
                 uploaded_photos[i] = {"files": uploaded_files, "index": i}
             note = st.text_input(f"หมายเหตุ/อาการเสีย (ข้อ {i})", key=f"note_{i}", placeholder="ระบุรายละเอียดหากพบจุดพังหรือบันทึกงานซ่อมแก้ไข")
             results[item] = {"status": status, "note": note}
@@ -827,7 +859,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if "ไม่ได้" in status_val or "ต้องแก้ไข" in status_val: fails.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
                 elif "ทำการแก้ไข" in status_val: fixed_items.append(f"- ข้อ {i}. {item}" + (f" ({note_val})" if note_val else ""))
             
-            boss_review_url = f"{DEFAULT_APP_URL}/?role=boss&id={machine_id}"
+            boss_review_url = f"{DEFAULT_APP_URL}/?role=boss&id={quote(machine_id, safe='')}"
             audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
             
             if fails:
@@ -1175,6 +1207,16 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             st.write("#### 🔹 รถโฟคลิฟ FORKLIFT (1 เครื่อง)")
             fork_col1, = st.columns(1)
             with fork_col1: render_machine_card("FORKLIFT-01", MACHINES["FORKLIFT-01"], "FORKLIFT")
+
+            # ---- 16. รถยนต์และรถบรรทุก ----
+            st.write("#### 🚗 รถยนต์และรถบรรทุก (5 คัน)")
+            vehicle_cols = st.columns(3)
+            vehicle_idx = 0
+            for m_id, m_name in MACHINES.items():
+                if m_id.upper().startswith("CAR-") or m_id.upper().startswith("TRUCK-"):
+                    with vehicle_cols[vehicle_idx % 3]:
+                        render_machine_card(m_id, m_name, "VEHICLE")
+                    vehicle_idx += 1
         else:
             st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับ")
 
@@ -1273,7 +1315,7 @@ else:
                 )
                 
                 import qrcode
-                qr_url = f"{base_web_url.rstrip('/')}/?id={sel_m}" 
+                qr_url = f"{base_web_url.rstrip('/')}/?id={quote(sel_m, safe='')}" 
                 qr = qrcode.make(qr_url)
                 buf = BytesIO()
                 qr.save(buf)
