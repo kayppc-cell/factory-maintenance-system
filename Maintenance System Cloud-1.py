@@ -79,7 +79,6 @@ MACHINES = {
     "MILLING-03": "เครื่องมิลลิ่ง #03", "MILLING-04": "เครื่องเฟสเก็บขนาด",
     "LATHE-01": "เครื่องกลึง LATHE #01",
     "CUTTING-01": "เครื่องตัด CUTTING #01",
-    "BENDING-01": "เครื่องพับ BENDING #01",
     "MIG CO2-01": "เครื่องเชื่อม MIG CO2 #01", "MIG CO2-02": "เครื่องเชื่อม MIG CO2 #02",
     "MIG CO2-03": "เครื่องเชื่อม MIG CO2 #03",
     "ARGON-01": "เครื่องเชื่อม ARGON #01", "ARGON-02": "เครื่องเชื่อม ARGON #02",
@@ -156,14 +155,6 @@ CHECKLISTS = {
         "ตรวจสอบการทำงานของไฟฟ้าแสงสว่าง", "อัดจาระบีตามหัวอัดจาระบีทุก ๆ จุด", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง"
     ],
     "CUTTING": ["การ Worm spindle ก่อนเริ่มงาน เพื่อตรวจ ความผิดปกติของชุด Back gauge และ Motor", "เช็ค Auto Up-Down back gauge และ Manual ( ความคล่องตัวในการเคลื่อนที่ )", "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับในปั้มน้ำมัน หล่อลืนแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด", "ตรวจสอบ Digital  read out และการทำงาน ของ Linear  scale", "อัดจาระบีตามจุดที่อัดจาระบีทุกๆจุด", "ตรวจสอบใบมีด  บนและล่าง", "ตรวจสอบความพร้อมสภาพโดยรวมของเครื่อง จักรและอุปกรณ์เสริมต่าง ๆ"],
-    "BENDING": [
-        "การ Worm spindle ก่อนเริมงาน เพื่อตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor",
-        "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคล่องตัวในการเคลื่อนที่ของ Spindle )", 
-        "ระดับน้ำมันไฮดรอลิค ตรวจสอบระดับน้ำมันในปั้ม น้ำมันหล่อลื่นแกน  Back gauge", "ตรวจเช็ค  Switch  เปิด-ปิด",
-        "ตรวจสอบหน้าจอ Digital read out  และการทำงาน ของ Linear  scale", "อัดจาระบีตามจุดหัวอัดจาระบีทุก ๆจุด 1ครั้งตต่อเดือน",
-        "ตรวจสอบการทำงานของไฟฟ้าแสงสว่างของเครื่อง", "ตรวจสอบฟันพับของร่อง  V",
-        "ตรวจสอบความพร้อมและสภาพโดยรวมของเครื่องจักรและอุกรณ์เสริมต่าง ๆ"
-    ],
     "MIG CO2": ["ตรวจสภาพความพร้อมโดยรวมของเครื่อง", "เช็ค BREAKER เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์ และสวิชท์ต่าง ๆ", "ตรวจสภาพความพร้อมของมาตราวัดแรงดัน ของก๊าซ CO2 และปรับตั้งอย่างถูกต้อง", "ตรวจจุดต่อของก๊าซ CO2 รั่วหรือไม่", "ตรวจสภาพความพร้อมของสายไฟ สายก๊าซ  CO2 ว่ารั่วหรือไม่", "ตรวจสภาพความพร้อมของสายกราวด์", "ทำความสะอาดหัวเชื่อมก่อนใช้งาน"],
     "ARGON": [
         "ตรวจสภาพความพรัอมโดยรวมของเครื่อง", "เช็ค  BREAKER  เพื่อเช็คระบบไฟฟ้า ตามตำแหน่งไฟ โชว์  และ SWITCH  ต่าง ๆ", 
@@ -204,7 +195,7 @@ PHOTO_RULES = {
     "QC-07": [2, 4], "QC-08": [2, 4], "QC-09": [2, 4], "QC-10": [2, 3], "QC-11": [2, 3], "QC-12": [2, 3],
     "QC-13": [2, 3], "QC-14": [2, 3], "QC-15": [6], "QC-16": [3], "QC-17": [2], "QC-18": [3], "QC-19": [3],
     "QC-20": [3], "QC-21": [3], "COMP-01": [1, 2, 3], "COMP-02": [1, 2, 3], "GRINDING-01": [2, 4, 7], "GRINDING-02": [4, 7],
-    "CUTTER GRINDING-01": [], "MILLING": [6, 7], "LATHE": [2, 5], "CUTTING": [3, 5, 7], "BENDING": [3, 5, 6], "MIG CO2": [3, 4, 5],
+    "CUTTER GRINDING-01": [], "MILLING": [6, 7], "LATHE": [2, 5], "CUTTING": [3, 5, 7], "MIG CO2": [3, 4, 5],
     "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [3, 5], "FORKLIFT": [1, 2, 5],
     "VEHICLE": list(range(1, 12))
 }
@@ -225,7 +216,6 @@ def get_machine_type_by_id(machine_id):
     elif "GRINDING-02" in u_id: return "GRINDING-02"
     elif "LATHE" in u_id: return "LATHE"
     elif "CUTTING" in u_id: return "CUTTING"
-    elif "BENDING" in u_id: return "BENDING"
     elif "MIG" in u_id: return "MIG CO2"
     elif "ARGON" in u_id: return "ARGON"
     elif "WELDING_ALUMINUM" in u_id: return "WELDING_ALUMINUM"
@@ -268,7 +258,6 @@ def get_coordinates_by_machine(m_id, m_type):
     if m_type == "CUTTING" or "CUTTING" in u_id: 
         return 14, 16, "B19"
         
-    if m_type == "BENDING" or "BENDING" in u_id: return 15, 17, "B20" 
     if m_type == "WELDING_ALUMINUM" or "WELDING_ALUMINUM" in u_id: return 13, 15, "B18"
     if m_type == "MIG CO2" or "MIG" in u_id: return 13, 15, "B18"
     if m_type == "BAND SAW" or "BAND" in u_id: return 11, 13, "B16"
@@ -597,7 +586,7 @@ def delete_all_storage_photos():
 PHOTO_DEPARTMENTS = [
     "ทั้งโรงงาน", "CNC", "GRINDING", "CRANE", "COMPRESSOR", "QC",
     "MILLING", "MIG CO2", "ARGON", "รถยนต์และรถบรรทุก",
-    "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
+    "เครื่องจักรอื่น ๆ (ตัด/กลึง/โฟคลิฟ)"
 ]
 
 def machine_codes_by_department(filter_type):
@@ -616,8 +605,8 @@ def machine_codes_by_department(filter_type):
             or (filter_type == "ARGON" and "ARGON" in code)
             or (filter_type == "รถยนต์และรถบรรทุก" and (code.startswith("CAR-") or code.startswith("TRUCK-")))
             or (
-                filter_type == "เครื่องจักรอื่น ๆ (พับ/ตัด/กลึง/โฟคลิฟ)"
-                and any(k in code for k in ["BENDING", "CUTTING", "LATHE", "FORKLIFT", "WELDING_ALUMINUM", "BAND SAW", "CUTTER GRINDING"])
+                filter_type == "เครื่องจักรอื่น ๆ (ตัด/กลึง/โฟคลิฟ)"
+                and any(k in code for k in ["CUTTING", "LATHE", "FORKLIFT", "WELDING_ALUMINUM", "BAND SAW", "CUTTER GRINDING"])
             )
         )
         if match:
@@ -1162,11 +1151,6 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             st.write("#### 🔹 เครื่องตัด CUTTING (1 เครื่อง)")
             cut_col1, = st.columns(1)
             with cut_col1: render_machine_card("CUTTING-01", MACHINES["CUTTING-01"], "CUTTING")
-
-            # ---- 10. แผนก BENDING ----
-            st.write("#### 🔹 เครื่องพับ BENDING (1 เครื่อง)")
-            bend_col1, = st.columns(1)
-            with bend_col1: render_machine_card("BENDING-01", MACHINES["BENDING-01"], "BENDING")
 
             # ---- 11. แผนก MIG CO2 ----
             st.write("#### 🔹 เครื่องเชื่อม MIG CO2 (3 เครื่อง)")
