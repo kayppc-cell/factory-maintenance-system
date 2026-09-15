@@ -89,7 +89,7 @@ MACHINES = {
     "CAR-2ฒข-5050": "รถยนต์ทะเบียน 2ฒข-5050",
     "CAR-2ฒข-5353": "รถยนต์ทะเบียน 2ฒข-5353",
     "CAR-2ฒฆ-5151": "รถยนต์ทะเบียน 2ฒฆ-5151",
-    "CAR-2ฒถ-5252": "รถยนต์ทะเบียน 2ฒถ-5252",
+    "CAR-1ฒถ-5252": "รถยนต์ทะเบียน 1ฒถ-5252",
     "Truck-83-2329": "รถบรรทุกทะเบียน 83-2329",
 }
 
@@ -394,6 +394,21 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None):
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
+        if m_type == "VEHICLE":
+            # ปรับหัวแบบฟอร์มและหน้ากระดาษให้ตรงกับรถที่เลือกทุกครั้งที่ดาวน์โหลด
+            vehicle_plate = machine_id.split("-", 1)[1] if "-" in machine_id else machine_id
+            ws["A1"] = f"ใบตรวจสอบสภาพรถยนต์ {vehicle_plate}"
+            ws["AB1"] = machine_id
+            ws.print_area = "A1:AG28"
+            ws.page_setup.orientation = "landscape"
+            ws.page_setup.paperSize = ws.PAPERSIZE_A4
+            ws.sheet_properties.pageSetUpPr.fitToPage = True
+            ws.page_margins.left = 0
+            ws.page_margins.right = 0
+            ws.page_margins.top = 0
+            ws.page_margins.bottom = 0
+            ws.page_margins.header = 0
+            ws.page_margins.footer = 0
         t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
         center_align = Alignment(horizontal='center', vertical='center')
         
