@@ -1210,12 +1210,16 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
             # ---- 16. รถยนต์และรถบรรทุก ----
             st.write("#### 🚗 รถยนต์และรถบรรทุก (5 คัน)")
             vehicle_cols = st.columns(3)
-            vehicle_idx = 0
-            for m_id, m_name in MACHINES.items():
-                if m_id.upper().startswith("CAR-") or m_id.upper().startswith("TRUCK-"):
-                    with vehicle_cols[vehicle_idx % 3]:
-                        render_machine_card(m_id, m_name, "VEHICLE")
-                    vehicle_idx += 1
+            vehicle_order = [
+                "CAR-2ฒข-5050",
+                "CAR-2ฒฆ-5151",
+                "CAR-1ฒถ-5252",
+                "CAR-2ฒข-5353",
+                "Truck-83-2329",
+            ]
+            for vehicle_idx, m_id in enumerate(vehicle_order):
+                with vehicle_cols[vehicle_idx % 3]:
+                    render_machine_card(m_id, MACHINES[m_id], "VEHICLE")
         else:
             st.error("❌ รหัสผ่านไม่ถูกต้อง ไม่พบสิทธิ์เข้าใช้งานระบบตามรหัสนี้ครับ")
 
