@@ -185,8 +185,8 @@ PHOTO_RULES = {
     "QC-07": [2, 4], "QC-08": [2, 4], "QC-09": [2, 4], "QC-10": [2, 3], "QC-11": [2, 3], "QC-12": [2, 3],
     "QC-13": [2, 3], "QC-14": [2, 3], "QC-15": [6], "QC-16": [3], "QC-17": [2], "QC-18": [3], "QC-19": [3],
     "QC-20": [3], "QC-21": [3], "COMP-01": [1, 2, 3], "COMP-02": [1, 2, 3], "GRINDING-01": [2, 4, 7], "GRINDING-02": [4, 7],
-    "CUTTER GRINDING-01": [], "MILLING": [6, 7], "LATHE": [2, 5, 6], "CUTTING": [3, 5, 7], "BENDING": [3, 5, 6], "MIG CO2": [3, 4, 5],
-    "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [2, 3, 5], "FORKLIFT": [1, 2, 5]
+    "CUTTER GRINDING-01": [], "MILLING": [6, 7], "LATHE": [2, 5], "CUTTING": [3, 5, 7], "BENDING": [3, 5, 6], "MIG CO2": [3, 4, 5],
+    "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [3, 5], "FORKLIFT": [1, 2, 5]
 }
 
 def get_machine_type_by_id(machine_id):
