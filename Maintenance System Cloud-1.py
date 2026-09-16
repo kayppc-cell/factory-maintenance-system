@@ -9,9 +9,7 @@ import time
 import zipfile
 import gc
 import html
-from urllib.parse import quote, urlparse
-import pandas as pd
-import requests
+from urllib.parse import quote
 import streamlit as st
 import streamlit.components.v1 as components
 from supabase import create_client, Client
@@ -506,6 +504,7 @@ def zip_all_factory_excel(year_month_key, target_day=None):
 
 # --- PHOTO & DUAL STORAGE (LOCAL + SUPABASE CLOUD) ---
 def send_line_alert(msg_text):
+    import requests
     if not LINE_ACCESS_TOKEN or not LINE_TARGET_ID:
         print("LINE alert skipped: missing LINE_ACCESS_TOKEN or LINE_TARGET_ID")
         return
@@ -796,8 +795,12 @@ machine_id = MACHINE_ID_ALIASES.get(machine_id, machine_id)
 
 m_type_selected = get_machine_type_by_id(machine_id)
 
-def enable_rear_camera_for_image_uploads():
-    """ขอใช้กล้องหลังเป็นลำดับแรกสำหรับช่องรับรูปบนโทรศัพท์"""
+# หน้า Engineer/ผู้บริหารต้องใช้ pandas แต่หน้าช่างไม่ต้องโหลดไลบรารีขนาดใหญ่นี้
+if user_role != "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
+    import pandas as pd
+
+def enable_vehicle_rear_camera_uploads():
+    """ขอให้ช่อง Upload รูปบนมือถือเปิดกล้องหลังเป็นลำดับแรก"""
     components.html(
         """
         <script>
@@ -827,27 +830,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
 
     if m_type_selected == "VEHICLE":
-        current_vehicle_url = f"{DEFAULT_APP_URL.rstrip('/')}/?id={quote(machine_id, safe='')}"
-        parsed_vehicle_url = urlparse(current_vehicle_url)
-        chrome_intent_url = (
-            f"intent://{parsed_vehicle_url.netloc}{parsed_vehicle_url.path}"
-            f"?{parsed_vehicle_url.query}#Intent;scheme=https;"
-            "package=com.android.chrome;"
-            f"S.browser_fallback_url={quote(current_vehicle_url, safe='')};end"
-        )
-        st.markdown(
-            f"""
-            <a href="{html.escape(chrome_intent_url, quote=True)}"
-               style="display:block;text-align:center;padding:14px 18px;margin:4px 0 14px 0;
-                      border-radius:10px;background:#0b57d0;color:white;font-size:18px;
-                      font-weight:700;text-decoration:none;">
-                🌐 เปิดหน้านี้ด้วย Chrome
-            </a>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.caption("สำหรับโทรศัพท์ Android: กดปุ่มครั้งเดียวเพื่อเปิดหน้ารถคันนี้ใน Chrome")
-        enable_rear_camera_for_image_uploads()
+        enable_vehicle_rear_camera_uploads()
 
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
     st.info("📄 มาตรฐานระบบคุณภาพโรงงาน: **FM-MN-07 Rev.00**")
@@ -867,7 +850,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         required_photo_indexes = PHOTO_RULES.get(m_type_selected, [])
 
         if m_type_selected == "VEHICLE":
-            st.info("📷 กดปุ่มถ่ายรูปในแต่ละข้อ ระบบจะขอเปิดกล้องหลังเป็นลำดับแรก และยังบังคับให้มีรูปครบทุกข้อก่อนส่งรายงาน")
+            st.info("📷 กด Upload เพื่อเปิดกล้องถ่ายรูป สามารถถ่าย/แนบมากกว่า 1 รูปต่อหัวข้อได้ และต้องมีอย่างน้อย 1 รูปครบทุกข้อก่อนส่งรายงาน")
         
         for i, item in enumerate(current_checklist, 1):
             st.write(f"**{i}. {item}**")
@@ -875,13 +858,12 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             if i in required_photo_indexes:
                 if m_type_selected == "VEHICLE":
                     st.write("📷 *บังคับถ่ายรูปหัวข้อนี้ก่อนส่งรายงาน*")
-                    captured_photo = st.file_uploader(
-                        f"📷 ถ่ายรูปข้อ {i} ด้วยกล้องหลัง",
+                    uploaded_files = st.file_uploader(
+                        f"📷 ถ่ายรูปข้อ {i} (เลือกได้มากกว่า 1 รูป)",
                         type=["jpg", "jpeg", "png"],
                         key=f"vehicle_rear_camera_{i}",
-                        accept_multiple_files=False,
+                        accept_multiple_files=True,
                     )
-                    uploaded_files = [captured_photo] if captured_photo is not None else []
                 else:
                     st.write("📷 *หัวข้อบังคับถ่ายรูปหลักฐานยืนยันหน้างานจริง (เลือกได้มากกว่า 1 รูป)*")
                     uploaded_files = st.file_uploader(f"แนบรูปข้อ {i}", type=["jpg", "jpeg", "png"], key=f"photo_{i}", accept_multiple_files=True)
