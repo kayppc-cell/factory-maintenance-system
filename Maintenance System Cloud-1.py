@@ -9,7 +9,7 @@ import time
 import zipfile
 import gc
 import html
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 import pandas as pd
 import requests
 import streamlit as st
@@ -796,6 +796,29 @@ machine_id = MACHINE_ID_ALIASES.get(machine_id, machine_id)
 
 m_type_selected = get_machine_type_by_id(machine_id)
 
+def enable_rear_camera_for_image_uploads():
+    """ขอใช้กล้องหลังเป็นลำดับแรกสำหรับช่องรับรูปบนโทรศัพท์"""
+    components.html(
+        """
+        <script>
+        (() => {
+          const parentDoc = window.parent.document;
+          const patchCameraInputs = () => {
+            parentDoc.querySelectorAll('input[type="file"]').forEach((input) => {
+              input.setAttribute('accept', 'image/*');
+              input.setAttribute('capture', 'environment');
+            });
+          };
+          patchCameraInputs();
+          const observer = new MutationObserver(patchCameraInputs);
+          observer.observe(parentDoc.body, {childList: true, subtree: true});
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
 # ==========================================
 # 🔧 [โหมดที่ 1: ฝั่งช่างเทคนิคส่งฟอร์มประจำวัน]
 # ==========================================
@@ -804,7 +827,27 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
 
     if m_type_selected == "VEHICLE":
-        st.warning("📱 หลังสแกน QR กรุณากดเมนู ⋮ มุมล่างขวาของโทรศัพท์ แล้วเลือก 'เปิดใน Chrome' เพื่อให้ระบบใช้กล้องได้")
+        current_vehicle_url = f"{DEFAULT_APP_URL.rstrip('/')}/?id={quote(machine_id, safe='')}"
+        parsed_vehicle_url = urlparse(current_vehicle_url)
+        chrome_intent_url = (
+            f"intent://{parsed_vehicle_url.netloc}{parsed_vehicle_url.path}"
+            f"?{parsed_vehicle_url.query}#Intent;scheme=https;"
+            "package=com.android.chrome;"
+            f"S.browser_fallback_url={quote(current_vehicle_url, safe='')};end"
+        )
+        st.markdown(
+            f"""
+            <a href="{html.escape(chrome_intent_url, quote=True)}"
+               style="display:block;text-align:center;padding:14px 18px;margin:4px 0 14px 0;
+                      border-radius:10px;background:#0b57d0;color:white;font-size:18px;
+                      font-weight:700;text-decoration:none;">
+                🌐 เปิดหน้านี้ด้วย Chrome
+            </a>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.caption("สำหรับโทรศัพท์ Android: กดปุ่มครั้งเดียวเพื่อเปิดหน้ารถคันนี้ใน Chrome")
+        enable_rear_camera_for_image_uploads()
 
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
     st.info("📄 มาตรฐานระบบคุณภาพโรงงาน: **FM-MN-07 Rev.00**")
@@ -824,7 +867,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         required_photo_indexes = PHOTO_RULES.get(m_type_selected, [])
 
         if m_type_selected == "VEHICLE":
-            st.info("📷 ต้องเปิดหน้านี้ใน Chrome และอนุญาตสิทธิ์กล้อง ระบบยังบังคับให้ถ่ายรูปสดครบทุกข้อก่อนส่งรายงาน")
+            st.info("📷 กดปุ่มถ่ายรูปในแต่ละข้อ ระบบจะขอเปิดกล้องหลังเป็นลำดับแรก และยังบังคับให้มีรูปครบทุกข้อก่อนส่งรายงาน")
         
         for i, item in enumerate(current_checklist, 1):
             st.write(f"**{i}. {item}**")
@@ -832,7 +875,12 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             if i in required_photo_indexes:
                 if m_type_selected == "VEHICLE":
                     st.write("📷 *บังคับถ่ายรูปหัวข้อนี้ก่อนส่งรายงาน*")
-                    captured_photo = st.camera_input(f"ถ่ายรูปข้อ {i}", key=f"camera_{i}")
+                    captured_photo = st.file_uploader(
+                        f"📷 ถ่ายรูปข้อ {i} ด้วยกล้องหลัง",
+                        type=["jpg", "jpeg", "png"],
+                        key=f"vehicle_rear_camera_{i}",
+                        accept_multiple_files=False,
+                    )
                     uploaded_files = [captured_photo] if captured_photo is not None else []
                 else:
                     st.write("📷 *หัวข้อบังคับถ่ายรูปหลักฐานยืนยันหน้างานจริง (เลือกได้มากกว่า 1 รูป)*")
