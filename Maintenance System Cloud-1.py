@@ -788,6 +788,12 @@ if isinstance(raw_machine_id, list): machine_id = str(raw_machine_id[0]).strip()
 else: machine_id = str(raw_machine_id).strip()
 machine_id = machine_id.replace("%20", " ")
 
+# รองรับ QR Code เดิมหลังเปลี่ยนทะเบียนรถ โดยแปลงเป็นรหัสปัจจุบันก่อนแสดงผลและบันทึก
+MACHINE_ID_ALIASES = {
+    "CAR-2ฒถ-5252": "CAR-1ฒถ-5252",
+}
+machine_id = MACHINE_ID_ALIASES.get(machine_id, machine_id)
+
 m_type_selected = get_machine_type_by_id(machine_id)
 
 # ==========================================
@@ -812,6 +818,9 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         results, uploaded_photos = {}, {}
         current_checklist = CHECKLISTS.get(m_type_selected, CHECKLISTS["CNC"])
         required_photo_indexes = PHOTO_RULES.get(m_type_selected, [])
+
+        if m_type_selected == "VEHICLE":
+            st.info("📱 หากปุ่ม Take Photo ใช้งานไม่ได้ ให้กดช่อง 'กล้องสำรอง' แล้วเลือกถ่ายภาพจากกล้องโทรศัพท์ โดยระบบยังบังคับให้มีรูปครบทุกข้อก่อนส่งรายงาน")
         
         for i, item in enumerate(current_checklist, 1):
             st.write(f"**{i}. {item}**")
@@ -820,7 +829,14 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 if m_type_selected == "VEHICLE":
                     st.write("📷 *บังคับถ่ายรูปหัวข้อนี้ก่อนส่งรายงาน*")
                     captured_photo = st.camera_input(f"ถ่ายรูปข้อ {i}", key=f"camera_{i}")
-                    uploaded_files = [captured_photo] if captured_photo is not None else []
+                    fallback_photo = st.file_uploader(
+                        f"📱 กล้องสำรองข้อ {i} — กดแล้วเลือกกล้อง/ถ่ายภาพ",
+                        type=["jpg", "jpeg", "png"],
+                        key=f"vehicle_fallback_photo_{i}",
+                        accept_multiple_files=False,
+                    )
+                    selected_photo = captured_photo if captured_photo is not None else fallback_photo
+                    uploaded_files = [selected_photo] if selected_photo is not None else []
                 else:
                     st.write("📷 *หัวข้อบังคับถ่ายรูปหลักฐานยืนยันหน้างานจริง (เลือกได้มากกว่า 1 รูป)*")
                     uploaded_files = st.file_uploader(f"แนบรูปข้อ {i}", type=["jpg", "jpeg", "png"], key=f"photo_{i}", accept_multiple_files=True)
