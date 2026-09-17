@@ -799,8 +799,8 @@ m_type_selected = get_machine_type_by_id(machine_id)
 if user_role != "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
     import pandas as pd
 
-def enable_vehicle_rear_camera_uploads():
-    """ขอให้ช่อง Upload รูปบนมือถือเปิดกล้องหลังเป็นลำดับแรก"""
+def enable_required_photo_camera_uploads():
+    """ขอให้ทุกช่องบังคับถ่ายรูปบนมือถือเปิดกล้องหลังเป็นลำดับแรก"""
     components.html(
         """
         <script>
@@ -829,8 +829,8 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     if os.path.exists("Logo_Pes.png"): st.image("Logo_Pes.png", width=240)
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
 
-    if m_type_selected == "VEHICLE":
-        enable_vehicle_rear_camera_uploads()
+    if PHOTO_RULES.get(m_type_selected, []):
+        enable_required_photo_camera_uploads()
 
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
     st.info("📄 มาตรฐานระบบคุณภาพโรงงาน: **FM-MN-07 Rev.00**")
@@ -849,24 +849,20 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         current_checklist = CHECKLISTS.get(m_type_selected, CHECKLISTS["CNC"])
         required_photo_indexes = PHOTO_RULES.get(m_type_selected, [])
 
-        if m_type_selected == "VEHICLE":
-            st.info("📷 กด Upload เพื่อเปิดกล้องถ่ายรูป สามารถถ่าย/แนบมากกว่า 1 รูปต่อหัวข้อได้ และต้องมีอย่างน้อย 1 รูปครบทุกข้อก่อนส่งรายงาน")
+        if required_photo_indexes:
+            st.info("📷 หัวข้อที่มีสัญลักษณ์กล้องต้องถ่ายรูปปัจจุบันอย่างน้อย 1 รูปก่อนส่ง สามารถถ่ายมากกว่า 1 รูปต่อหัวข้อได้")
         
         for i, item in enumerate(current_checklist, 1):
             st.write(f"**{i}. {item}**")
             status = st.radio(f"ผลการตรวจข้อ {i}", ["ใช้งานได้ปกติ", "ทำการแก้ไขใช้งานได้ปกติ", "ใช้งานไม่ได้ต้องแก้ไข", "ไม่ได้ทำงาน"], horizontal=True, key=f"check_{i}", label_visibility="collapsed", index=None)
             if i in required_photo_indexes:
-                if m_type_selected == "VEHICLE":
-                    st.write("📷 *บังคับถ่ายรูปหัวข้อนี้ก่อนส่งรายงาน*")
-                    uploaded_files = st.file_uploader(
-                        f"📷 ถ่ายรูปข้อ {i} (เลือกได้มากกว่า 1 รูป)",
-                        type=["jpg", "jpeg", "png"],
-                        key=f"vehicle_rear_camera_{i}",
-                        accept_multiple_files=True,
-                    )
-                else:
-                    st.write("📷 *หัวข้อบังคับถ่ายรูปหลักฐานยืนยันหน้างานจริง (เลือกได้มากกว่า 1 รูป)*")
-                    uploaded_files = st.file_uploader(f"แนบรูปข้อ {i}", type=["jpg", "jpeg", "png"], key=f"photo_{i}", accept_multiple_files=True)
+                st.write("📷 *บังคับถ่ายรูปปัจจุบันหัวข้อนี้ก่อนส่งรายงาน*")
+                uploaded_files = st.file_uploader(
+                    f"📷 ถ่ายรูปข้อ {i} (เลือกได้มากกว่า 1 รูป)",
+                    type=["jpg", "jpeg", "png"],
+                    key=f"required_camera_{m_type_selected}_{i}",
+                    accept_multiple_files=True,
+                )
                 uploaded_photos[i] = {"files": uploaded_files, "index": i}
             note = st.text_input(f"หมายเหตุ/อาการเสีย (ข้อ {i})", key=f"note_{i}", placeholder="ระบุรายละเอียดหากพบจุดพังหรือบันทึกงานซ่อมแก้ไข")
             results[item] = {"status": status, "note": note}
