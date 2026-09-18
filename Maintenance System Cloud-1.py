@@ -514,36 +514,66 @@ def send_line_alert(msg_text):
     try: requests.post(url, headers=headers, data=json.dumps(payload), timeout=5)
     except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
 
+def normalize_uploaded_image(uploaded_file):
+    """คืนค่า (bytes, นามสกุล, content-type) และแปลง HEIC/HEIF เป็น JPG"""
+    original_ext = os.path.splitext(uploaded_file.name)[1].lower()
+    file_bytes = uploaded_file.getvalue()
+
+    if original_ext in (".heic", ".heif"):
+        try:
+            from PIL import Image, ImageOps
+            from pillow_heif import register_heif_opener
+
+            register_heif_opener()
+            with Image.open(BytesIO(file_bytes)) as image:
+                image = ImageOps.exif_transpose(image).convert("RGB")
+                jpeg_buffer = BytesIO()
+                image.save(jpeg_buffer, format="JPEG", quality=90, optimize=True)
+                file_bytes = jpeg_buffer.getvalue()
+            return file_bytes, ".jpg", "image/jpeg"
+        except ImportError:
+            raise RuntimeError("ระบบยังไม่มี pillow-heif กรุณาเพิ่ม pillow-heif ใน requirements.txt แล้ว Deploy ใหม่")
+        except Exception as exc:
+            raise RuntimeError(f"แปลงไฟล์ HEIC/HEIF ไม่สำเร็จ: {exc}")
+
+    content_type = mimetypes.guess_type(f"photo{original_ext}")[0] or "application/octet-stream"
+    return file_bytes, original_ext, content_type
+
+
 def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current_date_obj=None):
     if current_date_obj is None: current_date_obj = datetime.date.today()
     current_year_month = current_date_obj.strftime("%Y_%B")
-    
+
+    # เตรียมและตรวจทุกไฟล์ก่อน เพื่อไม่ให้เกิดการบันทึกเพียงบางรูป
+    prepared_photos = []
+    try:
+        for item_idx, photo_data in uploaded_photos_dict.items():
+            for f_order, uploaded_file in enumerate(photo_data.get("files", []), 1):
+                file_bytes, file_ext, content_type = normalize_uploaded_image(uploaded_file)
+                file_name = f"photo_item_{item_idx}_{f_order}{file_ext}"
+                prepared_photos.append((file_name, file_bytes, content_type))
+    except RuntimeError as exc:
+        return False, str(exc)
+
     local_day_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), current_year_month, f"Day_{day_num}")
     os.makedirs(local_day_dir, exist_ok=True)
-    
-    for item_idx, photo_data in uploaded_photos_dict.items():
-        files_list = photo_data.get("files", [])
-        if files_list:
-            for f_order, uploaded_file in enumerate(files_list, 1):
-                file_ext = os.path.splitext(uploaded_file.name)[1]
-                file_name = f"photo_item_{item_idx}_{f_order}{file_ext}"
-                file_bytes = uploaded_file.getvalue()
-                content_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
-                
-                full_local_path = os.path.join(local_day_dir, file_name)
-                with open(full_local_path, "wb") as f_out:
-                    f_out.write(file_bytes)
-                
-                if supabase:
-                    try:
-                        storage_path = f"{machine_id}/{current_year_month}/Day_{day_num}/{file_name}"
-                        supabase.storage.from_("maintenance-photos").upload(
-                            storage_path, file_bytes,
-                            {"content-type": content_type, "upsert": "true"}
-                        )
-                    except Exception as e_up:
-                        print(f"Photo Supabase Upload Error: {e_up}")
+
+    for file_name, file_bytes, content_type in prepared_photos:
+        full_local_path = os.path.join(local_day_dir, file_name)
+        with open(full_local_path, "wb") as f_out:
+            f_out.write(file_bytes)
+
+        if supabase:
+            try:
+                storage_path = f"{machine_id}/{current_year_month}/Day_{day_num}/{file_name}"
+                supabase.storage.from_("maintenance-photos").upload(
+                    storage_path, file_bytes,
+                    {"content-type": content_type, "upsert": "true"}
+                )
+            except Exception as e_up:
+                print(f"Photo Supabase Upload Error: {e_up}")
     gc.collect()
+    return True, ""
 
 def get_machine_photos(machine_id, year_month, day_num):
     photos = []
@@ -867,7 +897,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                 st.write("📷 *บังคับมีรูปหลักฐานหัวข้อนี้ก่อนส่งรายงาน*")
                 uploaded_files = st.file_uploader(
                     f"📷 ถ่าย/เพิ่มรูปข้อ {i}",
-                    type=["jpg", "jpeg", "png"],
+                    type=["jpg", "jpeg", "png", "heic", "heif"],
                     key=f"required_multi_photos_{m_type_selected}_{i}",
                     accept_multiple_files=True,
                 )
@@ -889,7 +919,12 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
         elif any(not uploaded_photos[idx].get("evidence_present", False) for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาเพิ่มรูปหลักฐานประจำข้อ {required_photo_indexes} ให้ครบก่อนกดส่งครับ")
         else:
-            save_uploaded_photos_dict(machine_id, current_day, uploaded_photos, current_date_obj=report_date)
+            photo_saved, photo_error = save_uploaded_photos_dict(
+                machine_id, current_day, uploaded_photos, current_date_obj=report_date
+            )
+            if not photo_saved:
+                st.error(f"❌ บันทึกรูปภาพไม่สำเร็จ: {photo_error}")
+                st.stop()
 
             logs_to_save = []
             for i, item in enumerate(current_checklist, 1):
