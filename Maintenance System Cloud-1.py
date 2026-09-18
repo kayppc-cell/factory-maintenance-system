@@ -799,17 +799,21 @@ m_type_selected = get_machine_type_by_id(machine_id)
 if user_role != "🔧 ช่างเทคนิค (ส่งฟอร์ม)":
     import pandas as pd
 
-def enable_required_photo_camera_uploads():
-    """ขอให้ช่อง Upload รูปบนมือถือเปิดกล้องหลังเป็นลำดับแรกเมื่ออุปกรณ์รองรับ"""
-    components.html(
-        """
+def enable_required_photo_camera_uploads(allow_gallery=False):
+    """ตั้งค่าช่องรูป: CNC No.1 เปิดคลังได้ ส่วนเครื่องอื่นขอกล้องหลังเมื่อรองรับ"""
+    capture_action = (
+        "input.removeAttribute('capture');"
+        if allow_gallery
+        else "input.setAttribute('capture', 'environment');"
+    )
+    camera_script = """
         <script>
         (() => {
           const parentDoc = window.parent.document;
           const patchCameraInputs = () => {
             parentDoc.querySelectorAll('input[type="file"]').forEach((input) => {
               input.setAttribute('accept', 'image/*');
-              input.setAttribute('capture', 'environment');
+              __CAPTURE_ACTION__
             });
           };
           patchCameraInputs();
@@ -817,7 +821,9 @@ def enable_required_photo_camera_uploads():
           observer.observe(parentDoc.body, {childList: true, subtree: true});
         })();
         </script>
-        """,
+        """.replace("__CAPTURE_ACTION__", capture_action)
+    components.html(
+        camera_script,
         height=0,
         width=0,
     )
@@ -830,7 +836,9 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
 
     if PHOTO_RULES.get(m_type_selected, []):
-        enable_required_photo_camera_uploads()
+        # Samsung A23 ที่ใช้ตรวจ CNC No.1 ต้องเปิดตัวเลือกไฟล์/คลังภาพได้
+        # จึงไม่ใส่ capture เฉพาะเครื่องนี้ ส่วนเครื่องอื่นยังคงขอกล้องหลัง
+        enable_required_photo_camera_uploads(allow_gallery=(machine_id == "CNC3X-01"))
 
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
     st.info("📄 มาตรฐานระบบคุณภาพโรงงาน: **FM-MN-07 Rev.00**")
