@@ -800,7 +800,7 @@ if user_role != "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     import pandas as pd
 
 def enable_required_photo_camera_uploads():
-    """ขอให้ทุกช่องบังคับถ่ายรูปบนมือถือเปิดกล้องหลังเป็นลำดับแรก"""
+    """ขอให้ช่อง Upload รูปบนมือถือเปิดกล้องหลังเป็นลำดับแรกเมื่ออุปกรณ์รองรับ"""
     components.html(
         """
         <script>
@@ -850,29 +850,23 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         required_photo_indexes = PHOTO_RULES.get(m_type_selected, [])
 
         if required_photo_indexes:
-            st.info("📷 หัวข้อที่มีสัญลักษณ์กล้องต้องถ่ายรูปหลักปัจจุบัน 1 รูปก่อนส่ง และสามารถแนบรูปมุมอื่นเพิ่มเติมได้")
+            st.info("📷 หัวข้อบังคับรูปต้องมีอย่างน้อย 1 รูปก่อนส่ง และสามารถกดเครื่องหมาย + เพื่อเพิ่มรูปในหัวข้อเดิมได้ไม่จำกัด")
         
         for i, item in enumerate(current_checklist, 1):
             st.write(f"**{i}. {item}**")
             status = st.radio(f"ผลการตรวจข้อ {i}", ["ใช้งานได้ปกติ", "ทำการแก้ไขใช้งานได้ปกติ", "ใช้งานไม่ได้ต้องแก้ไข", "ไม่ได้ทำงาน"], horizontal=True, key=f"check_{i}", label_visibility="collapsed", index=None)
             if i in required_photo_indexes:
-                st.write("📷 *บังคับถ่ายรูปหลักปัจจุบันหัวข้อนี้ก่อนส่งรายงาน*")
-                primary_photo = st.file_uploader(
-                    f"📷 ถ่ายรูปหลักข้อ {i} (กล้อง — ครั้งละ 1 รูป)",
+                st.write("📷 *บังคับมีรูปหลักฐานหัวข้อนี้ก่อนส่งรายงาน*")
+                uploaded_files = st.file_uploader(
+                    f"📷 ถ่าย/เพิ่มรูปข้อ {i}",
                     type=["jpg", "jpeg", "png"],
-                    key=f"required_primary_camera_{m_type_selected}_{i}",
-                    accept_multiple_files=False,
-                )
-                extra_photos = st.file_uploader(
-                    f"➕ รูปเพิ่มเติมข้อ {i} (ไม่บังคับ — เลือกได้หลายรูป)",
-                    type=["jpg", "jpeg", "png"],
-                    key=f"required_extra_photos_{m_type_selected}_{i}",
+                    key=f"required_multi_photos_{m_type_selected}_{i}",
                     accept_multiple_files=True,
                 )
-                uploaded_files = ([primary_photo] if primary_photo is not None else []) + list(extra_photos or [])
+                evidence_present = bool(uploaded_files)
                 uploaded_photos[i] = {
                     "files": uploaded_files,
-                    "primary_photo": primary_photo,
+                    "evidence_present": evidence_present,
                     "index": i,
                 }
             note = st.text_input(f"หมายเหตุ/อาการเสีย (ข้อ {i})", key=f"note_{i}", placeholder="ระบุรายละเอียดหากพบจุดพังหรือบันทึกงานซ่อมแก้ไข")
@@ -885,7 +879,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         if machine_id not in MACHINES: st.error("❌ รหัสเครื่องจักรไม่ถูกต้อง")
         elif not tech_name: st.error("❌ กรุณาระบุชื่อผู้ตรวจสอบก่อนส่งรายงานครับ!")
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
-        elif any(uploaded_photos[idx].get("primary_photo") is None for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาถ่ายรูปหลักปัจจุบันประจำข้อ {required_photo_indexes} ให้ครบก่อนกดส่งครับ")
+        elif any(not uploaded_photos[idx].get("evidence_present", False) for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาเพิ่มรูปหลักฐานประจำข้อ {required_photo_indexes} ให้ครบก่อนกดส่งครับ")
         else:
             save_uploaded_photos_dict(machine_id, current_day, uploaded_photos, current_date_obj=report_date)
 
