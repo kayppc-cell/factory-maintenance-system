@@ -270,37 +270,66 @@ def set_cell_value_safe(ws, coordinate_str, value, alignment=None):
         print(f"Cell write error at {coordinate_str}: {e}")
 
 # --- 2. REALTIME SUPABASE ENGINE WITH PAGINATION ---
+def database_error_hint(error):
+    """Return a short diagnostic without printing credentials or request headers."""
+    code = str(getattr(error, "code", "") or "").strip()
+    raw = str(error).lower()
+    if code == "23505" or "duplicate key" in raw:
+        return "ข้อมูลซ้ำ (23505): ฐานข้อมูลไม่รับรายการตรวจที่มีอยู่แล้ว"
+    if code == "42501" or "row-level security" in raw or "permission denied" in raw:
+        return "สิทธิ์ฐานข้อมูล/RLS ปฏิเสธการบันทึก (42501)"
+    if code == "23503":
+        return "ข้อมูลอ้างอิงในฐานข้อมูลไม่ครบ (23503)"
+    if "disk quota" in raw or "quota" in raw or "exceed" in raw:
+        return "โควตาหรือพื้นที่ของ Supabase อาจเต็ม กรุณาดู Usage และ Logs ของโปรเจกต์"
+    if "timeout" in raw or "connection" in raw or "network" in raw:
+        return "การเชื่อมต่อฐานข้อมูลขัดข้อง กรุณาตรวจสอบสถานะ Supabase"
+    return f"ฐานข้อมูลปฏิเสธคำขอ (รหัส {code})" if code else "ฐานข้อมูลปฏิเสธคำขอ กรุณาดู Streamlit Logs"
+
 def save_log_to_supabase_bulk(list_of_logs):
     if not supabase or not list_of_logs:
+        st.session_state["last_save_error"] = "ยังไม่ได้เชื่อมต่อ Supabase หรือไม่มีรายการให้บันทึก"
         return False
     try:
-        # อ่าน ID ชุดเดิมก่อน แล้วบันทึกชุดใหม่ให้สำเร็จก่อนค่อยลบชุดเก่า
-        # จึงไม่ทำข้อมูลเดิมหายหากการ insert ใหม่ล้มเหลว
-        contexts = {
-            (
-                str(log["machine_id"]), str(log["year_month"]),
-                int(log["day_num"]), str(log["role"])
-            )
-            for log in list_of_logs
-        }
-        old_ids = []
+        # อัปเดตแถวเดิมตาม id แทน insert ซ้ำก่อนลบ ซึ่งชน unique constraint
+        # หากไม่มีข้อมูลของวันนี้ ค่อย insert เป็นชุดเดียว
+        contexts = {(str(log["machine_id"]), str(log["year_month"]),
+                     int(log["day_num"]), str(log["role"])) for log in list_of_logs}
+        old_by_context = {}
         for machine_id, year_month, day_num, role in contexts:
-            old = supabase.table("maintenance_logs").select("id")\
+            old = supabase.table("maintenance_logs").select("id,item_no")\
                 .eq("machine_id", machine_id)\
                 .eq("year_month", year_month)\
                 .eq("day_num", day_num)\
                 .eq("role", role)\
                 .execute()
-            old_ids.extend(row["id"] for row in (old.data or []) if row.get("id") is not None)
+            old_by_context[(machine_id, year_month, day_num, role)] = old.data or []
 
-        supabase.table("maintenance_logs").insert(list_of_logs).execute()
-        if old_ids:
-            for start in range(0, len(old_ids), 200):
-                supabase.table("maintenance_logs").delete().in_("id", old_ids[start:start + 200]).execute()
+        pending_inserts = []
+        for log in list_of_logs:
+            context = (str(log["machine_id"]), str(log["year_month"]),
+                       int(log["day_num"]), str(log["role"]))
+            existing = next((row for row in old_by_context[context]
+                             if int(row["item_no"]) == int(log["item_no"])), None)
+            if existing:
+                updated = supabase.table("maintenance_logs")\
+                    .update(log).eq("id", existing["id"]).select("id").execute()
+                if not updated.data:
+                    raise RuntimeError("ไม่มีสิทธิ์แก้ไขรายการเดิมหรือรายการถูกลบระหว่างบันทึก")
+            else:
+                pending_inserts.append(log)
+        if pending_inserts:
+            inserted = supabase.table("maintenance_logs").insert(pending_inserts).execute()
+            if len(inserted.data or []) != len(pending_inserts):
+                raise RuntimeError("ฐานข้อมูลไม่ยืนยันการบันทึกรายการใหม่ครบทุกข้อ")
+
+        # ไม่ลบแถวประวัติอัตโนมัติ; ถ้ามีข้อมูลเก่าซ้ำให้ตรวจแยกก่อน
         st.cache_data.clear()
+        st.session_state.pop("last_save_error", None)
         return True
     except Exception as e:
         print(f"Supabase Safe Replace Error: {e}")
+        st.session_state["last_save_error"] = database_error_hint(e)
         return False
 
 LOG_COLUMNS = "id,timestamp,machine_id,day_num,year_month,tech_name,item_no,checklist_item,status,note,role"
@@ -346,8 +375,11 @@ def fetch_day_logs(year_month, day_num):
         return pd.DataFrame()
 
 @st.cache_data(ttl=60, show_spinner=False)
-def fetch_month_logs(year_month):
-    if not supabase: return pd.DataFrame()
+def fetch_month_logs(year_month, strict=False):
+    if not supabase:
+        if strict:
+            raise RuntimeError("ไม่สามารถเชื่อมต่อ Supabase เพื่อสร้างไฟล์ Excel")
+        return pd.DataFrame()
     try:
         all_data = []
         page_size = 1000
@@ -368,17 +400,51 @@ def fetch_month_logs(year_month):
         return logs_to_dataframe(all_data)
     except Exception as e:
         print(f"Fetch Month Log Error: {e}")
+        if strict:
+            raise RuntimeError("อ่านรายการตรวจจาก Supabase ไม่สำเร็จ") from e
         return pd.DataFrame()
 
-def fetch_machine_all_month_logs(machine_id, year_month, month_logs=None):
-    df = fetch_month_logs(year_month) if month_logs is None else month_logs
+@st.cache_data(ttl=60, show_spinner=False)
+def fetch_machine_month_logs_for_excel(machine_id, year_month, target_day=None):
+    """Read only this machine's rows; never treat a failed query as an empty month."""
+    if not supabase:
+        raise RuntimeError("ไม่สามารถเชื่อมต่อ Supabase เพื่อสร้างไฟล์ Excel")
+    # รวมรหัสเก่าที่เคยใช้ก่อนเปลี่ยนทะเบียนรถ เพื่อให้ประวัติยังแสดงในแบบฟอร์มใหม่
+    historical_ids = [machine_id]
+    if machine_id == "CAR-1ฒถ-5252":
+        historical_ids.append("CAR-2ฒถ-5252")
+    all_data = []
+    page_size = 500
+    offset = 0
+    try:
+        while True:
+            query = supabase.table("maintenance_logs").select(LOG_COLUMNS)\
+                .eq("year_month", year_month)\
+                .in_("machine_id", historical_ids)
+            if target_day is not None:
+                query = query.eq("day_num", int(target_day))
+            res = query.order("id").range(offset, offset + page_size - 1).execute()
+            batch = res.data or []
+            all_data.extend(batch)
+            if len(batch) < page_size:
+                break
+            offset += page_size
+    except Exception as exc:
+        print(f"Excel fetch machine logs error: {exc}")
+        raise RuntimeError("อ่านรายการตรวจของเครื่องจาก Supabase ไม่สำเร็จ") from exc
+    return logs_to_dataframe(all_data)
+
+def fetch_machine_all_month_logs(machine_id, year_month, month_logs=None, strict=False, target_day=None):
+    if strict and month_logs is None:
+        return fetch_machine_month_logs_for_excel(machine_id, year_month, target_day=target_day)
+    df = fetch_month_logs(year_month, strict=strict) if month_logs is None else month_logs
     if df.empty or "Machine_ID" not in df.columns:
         return pd.DataFrame()
     target = str(machine_id).strip().upper()
     normalized_ids = df["Machine_ID"].astype(str).str.strip().str.upper()
     return df[normalized_ids.eq(target)].copy()
 
-def generate_excel_bytes(machine_id, year_month, m_type, target_day=None):
+def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_on_data_error=False):
     import openpyxl
     from openpyxl.styles import Alignment
     from openpyxl.utils import get_column_letter
@@ -386,7 +452,14 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None):
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
     if not os.path.isfile(target_excel_path): return None
     
-    df_logs = fetch_machine_all_month_logs(machine_id, year_month)
+    try:
+        df_logs = fetch_machine_all_month_logs(machine_id, year_month,
+                                               strict=True, target_day=target_day)
+    except RuntimeError as exc:
+        if raise_on_data_error:
+            raise
+        st.error(f"❌ ยังสร้าง Excel ไม่ได้: {exc} กรุณาลองใหม่หลังฐานข้อมูลกลับมาทำงาน")
+        return None
     if target_day is not None and not df_logs.empty:
         df_logs = df_logs[df_logs["Day_Num"].eq(int(target_day))].copy()
     try:
@@ -489,7 +562,8 @@ def zip_all_factory_excel(year_month_key, target_day=None):
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             for m_id in MACHINES.keys():
                 m_type = get_machine_type_by_id(m_id)
-                excel_bytes = generate_excel_bytes(m_id, year_month_key, m_type, target_day=target_day)
+                excel_bytes = generate_excel_bytes(m_id, year_month_key, m_type,
+                                                    target_day=target_day, raise_on_data_error=True)
                 if excel_bytes:
                     period_tag = f"Day_{target_day}" if target_day is not None else year_month_key
                     zip_file.writestr(f"FM-MN-07_{m_id}_{period_tag}.xlsx", excel_bytes)
@@ -500,6 +574,8 @@ def zip_all_factory_excel(year_month_key, target_day=None):
         return zip_buffer
     except Exception as e:
         print(f"Zip All Excel Error: {e}")
+        if isinstance(e, RuntimeError):
+            st.error("❌ อ่านฐานข้อมูลไม่สำเร็จ จึงยังไม่สร้าง ZIP ของ Excel กรุณาลองใหม่หลังตรวจ Supabase")
         return None
 
 # --- PHOTO & DUAL STORAGE (LOCAL + SUPABASE CLOUD) ---
@@ -515,29 +591,48 @@ def send_line_alert(msg_text):
     except Exception as e: print(f"ส่งไลน์ไม่สำเร็จ: {e}")
 
 def normalize_uploaded_image(uploaded_file):
-    """คืนค่า (bytes, นามสกุล, content-type) และแปลง HEIC/HEIF เป็น JPG"""
+    """หมุน ย่อ และบีบอัดภาพทุกชนิดเป็น JPEG ก่อนบันทึก/อัปโหลด"""
     original_ext = os.path.splitext(uploaded_file.name)[1].lower()
     file_bytes = uploaded_file.getvalue()
 
-    if original_ext in (".heic", ".heif"):
-        try:
-            from PIL import Image, ImageOps
+    try:
+        from PIL import Image, ImageOps
+
+        if original_ext in (".heic", ".heif"):
             from pillow_heif import register_heif_opener
-
             register_heif_opener()
-            with Image.open(BytesIO(file_bytes)) as image:
-                image = ImageOps.exif_transpose(image).convert("RGB")
-                jpeg_buffer = BytesIO()
-                image.save(jpeg_buffer, format="JPEG", quality=90, optimize=True)
-                file_bytes = jpeg_buffer.getvalue()
-            return file_bytes, ".jpg", "image/jpeg"
-        except ImportError:
-            raise RuntimeError("ระบบยังไม่มี pillow-heif กรุณาเพิ่ม pillow-heif ใน requirements.txt แล้ว Deploy ใหม่")
-        except Exception as exc:
-            raise RuntimeError(f"แปลงไฟล์ HEIC/HEIF ไม่สำเร็จ: {exc}")
 
-    content_type = mimetypes.guess_type(f"photo{original_ext}")[0] or "application/octet-stream"
-    return file_bytes, original_ext, content_type
+        with Image.open(BytesIO(file_bytes)) as image:
+            # แก้ภาพหมุนจากโทรศัพท์ และลดความละเอียดโดยรักษาสัดส่วนเดิม
+            image = ImageOps.exif_transpose(image)
+
+            # JPEG ไม่มี alpha: วางภาพโปร่งใสบนพื้นสีขาวก่อนแปลง
+            if image.mode in ("RGBA", "LA") or (image.mode == "P" and "transparency" in image.info):
+                rgba_image = image.convert("RGBA")
+                rgb_image = Image.new("RGB", rgba_image.size, "white")
+                rgb_image.paste(rgba_image, mask=rgba_image.getchannel("A"))
+                image = rgb_image
+            else:
+                image = image.convert("RGB")
+
+            max_image_side = 1920
+            image.thumbnail((max_image_side, max_image_side), Image.Resampling.LANCZOS)
+
+            jpeg_buffer = BytesIO()
+            image.save(
+                jpeg_buffer,
+                format="JPEG",
+                quality=82,
+                optimize=True,
+                progressive=True,
+            )
+            return jpeg_buffer.getvalue(), ".jpg", "image/jpeg"
+    except ImportError:
+        if original_ext in (".heic", ".heif"):
+            raise RuntimeError("ระบบยังไม่มี pillow-heif กรุณาเพิ่ม pillow-heif ใน requirements.txt แล้ว Deploy ใหม่")
+        raise RuntimeError("ระบบยังไม่มี Pillow กรุณาเพิ่ม pillow ใน requirements.txt แล้ว Deploy ใหม่")
+    except Exception as exc:
+        raise RuntimeError(f"ย่อหรือบีบอัดรูปภาพไม่สำเร็จ ({uploaded_file.name}): {exc}")
 
 
 def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current_date_obj=None):
@@ -940,7 +1035,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                     "role": "tech"
                 })
             if not save_log_to_supabase_bulk(logs_to_save):
-                st.error("❌ บันทึกฐานข้อมูลไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่")
+                st.error("❌ บันทึกฐานข้อมูลไม่สำเร็จ: " + st.session_state.get("last_save_error", "โปรดดู Streamlit Logs"))
                 st.stop()
 
             fails, fixed_items = [], []
@@ -1433,11 +1528,46 @@ else:
                         ["เฉพาะวันที่เลือก", "ทั้งเดือนที่เลือก", "ทั้งหมดของแผนก"],
                         key="reset_photo_period"
                     )
+
+                    # ตัวเลือกวัน/เดือนสำหรับการลบ แยกจากวันที่ของเมนูดาวน์โหลดด้านบน
                     if reset_photo_period == "เฉพาะวันที่เลือก":
-                        reset_scope_label = selected_date.strftime("วันที่ %d/%m/%Y")
+                        reset_target_date = st.date_input(
+                            "เลือกวันที่ที่จะลบรูป:",
+                            value=selected_date,
+                            key="reset_photo_target_date"
+                        )
+                        reset_scope_label = reset_target_date.strftime("วันที่ %d/%m/%Y")
                     elif reset_photo_period == "ทั้งเดือนที่เลือก":
-                        reset_scope_label = f"เดือน {current_boss_month}"
+                        thai_month_names = {
+                            1: "มกราคม", 2: "กุมภาพันธ์", 3: "มีนาคม", 4: "เมษายน",
+                            5: "พฤษภาคม", 6: "มิถุนายน", 7: "กรกฎาคม", 8: "สิงหาคม",
+                            9: "กันยายน", 10: "ตุลาคม", 11: "พฤศจิกายน", 12: "ธันวาคม"
+                        }
+                        reset_month_col, reset_year_col = st.columns(2)
+                        with reset_month_col:
+                            reset_month_num = st.selectbox(
+                                "เลือกเดือนที่จะลบ:",
+                                options=list(range(1, 13)),
+                                index=selected_date.month - 1,
+                                format_func=lambda month_num: thai_month_names[month_num],
+                                key="reset_photo_target_month"
+                            )
+                        with reset_year_col:
+                            reset_year_num = st.number_input(
+                                "เลือกปี ค.ศ.:",
+                                min_value=2020,
+                                max_value=datetime.date.today().year + 1,
+                                value=selected_date.year,
+                                step=1,
+                                key="reset_photo_target_year"
+                            )
+                        reset_target_date = datetime.date(int(reset_year_num), int(reset_month_num), 1)
+                        reset_scope_label = (
+                            f"เดือน {thai_month_names[int(reset_month_num)]} "
+                            f"{int(reset_year_num)}"
+                        )
                     else:
+                        reset_target_date = selected_date
                         reset_scope_label = "ทุกวันและทุกเดือน"
 
                     st.warning(f"กำลังเลือก: แผนก [{reset_photo_dept}] | {reset_scope_label}")
@@ -1453,7 +1583,7 @@ else:
                     ):
                         try:
                             deleted_count, affected_machines = delete_photos_by_department_and_period(
-                                reset_photo_dept, selected_date, reset_photo_period
+                                reset_photo_dept, reset_target_date, reset_photo_period
                             )
                             gc.collect()
                             st.success(
