@@ -183,7 +183,8 @@ CHECKLISTS = {
         "เช็คระดับหม้อพักน้ำ ต้องอยู่ในระดับปกติ",
         "เช็คระดับหม้อพักน้ำฉีดกระจก ต้องอยู่ในระดับปกติ",
         "เช็คระบบสายพานต่าง ๆ ต้องไม่เปื่อยหรือมีรอยฉีกขาด",
-        "ตรวจสอบเอกสาร ประกัน / พ.ร.บ. / ภาษี"
+        "ตรวจสอบเอกสาร ประกัน / พ.ร.บ. / ภาษี",
+        "ตรวจสอบแบตเตอรี่ น้ำกลั่น ขั้วแบต และการยึดแน่น หากมีช่องตาแมว ให้สีแสดงสถานะอยู่ในเกณฑ์ปกติ"
     ]
 }
 
@@ -195,7 +196,7 @@ PHOTO_RULES = {
     "QC-20": [3], "QC-21": [3], "COMP-01": [1, 2, 3], "COMP-02": [1, 2, 3], "GRINDING-01": [2, 4, 7], "GRINDING-02": [4, 7],
     "CUTTER GRINDING-01": [], "MILLING": [6, 7], "LATHE": [2, 5], "CUTTING": [3, 5, 7], "MIG CO2": [3, 4, 5],
     "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [3, 5], "FORKLIFT": [1, 2, 5],
-    "VEHICLE": list(range(1, 12))
+    "VEHICLE": list(range(1, 13))
 }
 
 def get_machine_type_by_id(machine_id):
@@ -224,9 +225,9 @@ def get_machine_type_by_id(machine_id):
 def get_coordinates_by_machine(m_id, m_type):
     u_id = str(m_id).upper().strip()
 
-    # แบบฟอร์มรถ: รายการตรวจแถว 6-16, ผู้ตรวจแถว 17, ผู้อนุมัติแถว 19, หมายเหตุ B22
+    # แบบฟอร์มรถ: รายการตรวจแถว 6-17, ผู้ตรวจแถว 18, ผู้อนุมัติแถว 20, หมายเหตุ B23
     if m_type == "VEHICLE" or u_id.startswith("CAR-") or u_id.startswith("TRUCK-"):
-        return 17, 19, "B22"
+        return 18, 20, "B23"
     
     # ⚡ 1. ล็อกเฉพาะ MILLING-04 (ช่างแถว 17, หัวหน้าแถว 19, บันทึกเพิ่มเติม B22)
     if "MILLING-04" in u_id or "MILLING NO. 4" in u_id or "MILLING NO.4" in u_id or "MILLING_04" in u_id:
@@ -446,8 +447,57 @@ def fetch_machine_all_month_logs(machine_id, year_month, month_logs=None, strict
 
 def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_on_data_error=False):
     import openpyxl
+    from copy import copy
     from openpyxl.styles import Alignment
-    from openpyxl.utils import get_column_letter
+    from openpyxl.utils import get_column_letter, range_boundaries
+
+    def ensure_vehicle_checklist_layout(ws):
+        """เพิ่มข้อ 12 ลงในแบบฟอร์มรถรุ่นเก่า โดยรักษารูปแบบและช่องลงชื่อเดิม"""
+        battery_item = (
+            "ตรวจสอบแบตเตอรี่ น้ำกลั่น ขั้วแบต และการยึดแน่น "
+            "หากมีช่องตาแมว ให้สีแสดงสถานะอยู่ในเกณฑ์ปกติ"
+        )
+        current_item = str(ws["B17"].value or "").strip()
+
+        # เทมเพลตรุ่นเดิมใช้แถว 17-22 เป็นผู้ตรวจ/ผู้อนุมัติ/หมายเหตุ
+        # จึงแทรกหนึ่งแถวก่อน แล้วขยับ merged cells ช่วงล่างลงอย่างปลอดภัย
+        if "แบตเตอรี่" not in current_item:
+            old_merges = [str(cell_range) for cell_range in ws.merged_cells.ranges]
+            for cell_range in old_merges:
+                ws.unmerge_cells(cell_range)
+
+            ws.insert_rows(17, 1)
+
+            for cell_range in old_merges:
+                min_col, min_row, max_col, max_row = range_boundaries(cell_range)
+                if min_row >= 17:
+                    min_row += 1
+                    max_row += 1
+                elif max_row >= 17:
+                    max_row += 1
+                ws.merge_cells(
+                    start_row=min_row,
+                    start_column=min_col,
+                    end_row=max_row,
+                    end_column=max_col,
+                )
+
+            # ใช้รูปแบบของข้อ 11 กับข้อใหม่ เพื่อให้เส้นตาราง/ฟอนต์เหมือนต้นฉบับ
+            ws.row_dimensions[17].height = ws.row_dimensions[16].height
+            for col_idx in range(1, ws.max_column + 1):
+                source = ws.cell(row=16, column=col_idx)
+                target = ws.cell(row=17, column=col_idx)
+                if source.has_style:
+                    target._style = copy(source._style)
+                target.number_format = source.number_format
+                target.protection = copy(source.protection)
+                target.alignment = copy(source.alignment)
+
+        ws["A17"] = 12
+        ws["B17"] = battery_item
+        for col_idx in range(3, ws.max_column + 1):
+            ws.cell(row=17, column=col_idx).value = None
+
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
     if not os.path.isfile(target_excel_path): return None
@@ -466,11 +516,12 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
         if m_type == "VEHICLE":
+            ensure_vehicle_checklist_layout(ws)
             # ปรับหัวแบบฟอร์มและหน้ากระดาษให้ตรงกับรถที่เลือกทุกครั้งที่ดาวน์โหลด
             vehicle_plate = machine_id.split("-", 1)[1] if "-" in machine_id else machine_id
             ws["A1"] = f"ใบตรวจสอบสภาพรถยนต์ {vehicle_plate}"
             ws["AB1"] = machine_id
-            ws.print_area = "A1:AG28"
+            ws.print_area = "A1:AG29"
             ws.page_setup.orientation = "landscape"
             ws.page_setup.paperSize = ws.PAPERSIZE_A4
             ws.sheet_properties.pageSetUpPr.fitToPage = True
