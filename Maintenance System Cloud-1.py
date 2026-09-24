@@ -454,7 +454,7 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
     def ensure_vehicle_checklist_layout(ws):
         """เพิ่มข้อ 12 ลงในแบบฟอร์มรถรุ่นเก่า โดยรักษารูปแบบและช่องลงชื่อเดิม"""
         battery_item = (
-            "ตรวจสอบแบตเตอรี่ น้ำกลั่น ขั้วแบต และการยึดแน่น "
+            "ตรวจสอบแบตเตอรี่ น้ำกลั่น ขั้วแบต และการยึดแน่น\n"
             "หากมีช่องตาแมว ให้สีแสดงสถานะอยู่ในเกณฑ์ปกติ"
         )
         current_item = str(ws["B17"].value or "").strip()
@@ -495,6 +495,13 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
 
         ws["A17"] = 12
         ws["B17"] = battery_item
+        ws.row_dimensions[17].height = max(ws.row_dimensions[17].height or 0, 36)
+        ws["A17"].alignment = Alignment(horizontal="center", vertical="center")
+        ws["B17"].alignment = Alignment(
+            horizontal="left",
+            vertical="center",
+            wrap_text=True,
+        )
         for col_idx in range(3, ws.max_column + 1):
             ws.cell(row=17, column=col_idx).value = None
 
