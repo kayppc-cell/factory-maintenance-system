@@ -900,9 +900,33 @@ def build_factory_issue_print_html(month_logs, year_month_key):
     if notes.empty:
         return None
 
-    notes = notes.sort_values(["Machine_ID", "Day_Num", "Item_No", "Timestamp"])
+    # เรียงรายงานตามลำดับทะเบียนเครื่องของโรงงาน ไม่ใช้การเรียงตัวอักษร
+    # รถยนต์ใช้ลำดับที่หน้างานกำหนด: 5050, 5151, 5252, 5353 และรถบรรทุก
+    vehicle_print_order = [
+        "CAR-2ฒข-5050",
+        "CAR-2ฒฆ-5151",
+        "CAR-1ฒถ-5252",
+        "CAR-2ฒข-5353",
+        "Truck-83-2329",
+    ]
+    machine_print_order = [
+        machine_code for machine_code in MACHINES
+        if machine_code not in vehicle_print_order
+    ] + vehicle_print_order
+    machine_order_map = {
+        machine_code: order_no
+        for order_no, machine_code in enumerate(machine_print_order)
+    }
+
+    notes["_Machine_Order"] = (
+        notes["Machine_ID"].astype(str).str.strip().map(machine_order_map)
+        .fillna(len(machine_print_order))
+    )
+    notes = notes.sort_values(
+        ["_Machine_Order", "Machine_ID", "Day_Num", "Item_No", "Timestamp"]
+    )
     sections, total_issues = [], 0
-    for machine_code, rows in notes.groupby("Machine_ID", sort=True):
+    for machine_code, rows in notes.groupby("Machine_ID", sort=False):
         machine_code = str(machine_code).strip()
         issue_rows = []
         for _, row in rows.iterrows():
