@@ -52,6 +52,9 @@ supabase = init_supabase()
 now = datetime.datetime.now()
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
+ADDITIONAL_ISSUE_ITEM_NO = -1
+ADDITIONAL_ISSUE_LABEL = "รายงานปัญหาเพิ่มเติม (นอกเหนือจาก Checklist)"
+
 MACHINES = {
     "CNC3X-01": "CNC 3 แกน #01", "CNC3X-02": "CNC 3 แกน #02",
     "CNC3X-03": "CNC 3 แกน #03", "CNC3X-04": "CNC 3 แกน #04",
@@ -590,6 +593,9 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
                         
                         if note_val and note_val.lower() != "nan":
                             notes_accumulator.append(f"[วันที่ {day_val}]: ข้อ {item_idx} {note_val}")
+                    elif item_idx == ADDITIONAL_ISSUE_ITEM_NO:
+                        if note_val and note_val.lower() != "nan":
+                            notes_accumulator.append(f"[วันที่ {day_val}]: ปัญหาเพิ่มเติม {note_val}")
                         
                     if tech_boss_name and tech_boss_name.lower() != "nan":
                         set_cell_value_safe(ws, f"{col_letter}{t_row}", tech_boss_name, Alignment(text_rotation=90, horizontal='center', vertical='center'))
@@ -703,7 +709,8 @@ def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current
         for item_idx, photo_data in uploaded_photos_dict.items():
             for f_order, uploaded_file in enumerate(photo_data.get("files", []), 1):
                 file_bytes, file_ext, content_type = normalize_uploaded_image(uploaded_file)
-                file_name = f"photo_item_{item_idx}_{f_order}{file_ext}"
+                item_file_tag = "additional_issue" if int(item_idx) == ADDITIONAL_ISSUE_ITEM_NO else str(item_idx)
+                file_name = f"photo_item_{item_file_tag}_{f_order}{file_ext}"
                 prepared_photos.append((file_name, file_bytes, content_type))
     except RuntimeError as exc:
         return False, str(exc)
@@ -928,22 +935,46 @@ def build_factory_issue_print_html(month_logs, year_month_key):
     sections, total_issues = [], 0
     for machine_code, rows in notes.groupby("Machine_ID", sort=False):
         machine_code = str(machine_code).strip()
-        issue_rows = []
+        checklist_issue_rows, additional_issue_rows = [], []
         for _, row in rows.iterrows():
             total_issues += 1
             safe = lambda value: html.escape(str(value if pd.notna(value) else ""))
-            issue_rows.append(
-                f"<tr><td>{safe(row.get('Day_Num', ''))}</td><td>{safe(row.get('Item_No', ''))}</td>"
-                f"<td>{safe(row.get('Checklist_Item', ''))}</td><td>{safe(row.get('Status', ''))}</td>"
-                f"<td>{safe(row.get('Note', ''))}</td><td>{safe(row.get('Tech_Name', ''))}</td></tr>"
+            item_no = int(row.get("Item_No", 0))
+            if item_no == ADDITIONAL_ISSUE_ITEM_NO:
+                additional_issue_rows.append(
+                    f"<tr><td>{safe(row.get('Day_Num', ''))}</td>"
+                    f"<td>{safe(row.get('Note', ''))}</td><td>{safe(row.get('Status', ''))}</td>"
+                    f"<td>{safe(row.get('Tech_Name', ''))}</td></tr>"
+                )
+            else:
+                checklist_issue_rows.append(
+                    f"<tr><td>{safe(row.get('Day_Num', ''))}</td><td>{safe(item_no)}</td>"
+                    f"<td>{safe(row.get('Checklist_Item', ''))}</td><td>{safe(row.get('Status', ''))}</td>"
+                    f"<td>{safe(row.get('Note', ''))}</td><td>{safe(row.get('Tech_Name', ''))}</td></tr>"
+                )
+
+        checklist_table = ""
+        if checklist_issue_rows:
+            checklist_table = (
+                "<div class='sub-title'>ปัญหาที่พบตามหัวข้อ Checklist</div>"
+                "<table class='checklist-table'><thead><tr><th>วันที่</th><th>ข้อ</th><th>หัวข้อตรวจ</th><th>ผลตรวจ</th>"
+                "<th>รายละเอียดปัญหา/การแก้ไข</th><th>ผู้ตรวจ</th></tr></thead>"
+                f"<tbody>{''.join(checklist_issue_rows)}</tbody></table>"
             )
+        additional_table = ""
+        if additional_issue_rows:
+            additional_table = (
+                "<div class='additional-title'>รายงานปัญหาเพิ่มเติม (นอกเหนือจาก Checklist)</div>"
+                "<table class='additional-table'><thead><tr><th>วันที่</th><th>รายละเอียดปัญหา/การแก้ไข</th>"
+                "<th>สถานะ</th><th>ผู้ตรวจ</th></tr></thead>"
+                f"<tbody>{''.join(additional_issue_rows)}</tbody></table>"
+            )
+        machine_issue_count = len(checklist_issue_rows) + len(additional_issue_rows)
         sections.append(
             "<section class='machine'>"
             f"<h2>{html.escape(machine_code)} - {html.escape(MACHINES.get(machine_code, machine_code))}</h2>"
-            f"<div class='count'>จำนวนรายการที่บันทึก: {len(issue_rows)} รายการ</div>"
-            "<table><thead><tr><th>วันที่</th><th>ข้อ</th><th>หัวข้อตรวจ</th><th>ผลตรวจ</th>"
-            "<th>รายละเอียดปัญหา/การแก้ไข</th><th>ผู้ตรวจ</th></tr></thead>"
-            f"<tbody>{''.join(issue_rows)}</tbody></table></section>"
+            f"<div class='count'>จำนวนรายการที่บันทึก: {machine_issue_count} รายการ</div>"
+            f"{checklist_table}{additional_table}</section>"
         )
 
     created_at = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
@@ -956,12 +987,21 @@ h1 {{ margin:0 0 4px; color:#8b1e2d; font-size:20pt; }} .meta {{ color:#526070; 
 .machine {{ break-inside:avoid; page-break-inside:avoid; margin:0 0 15px; }}
 h2 {{ color:white; background:#8b1e2d; padding:7px 10px; margin:0; font-size:13pt; }}
 .count {{ border:1px solid #ccd2da; border-bottom:0; padding:5px 8px; font-weight:bold; }}
+.sub-title {{ background:#e9edf2; border:1px solid #aeb7c2; border-bottom:0; padding:5px 8px; font-weight:bold; }}
+.additional-title {{ background:#fff2cc; border:1px solid #d6b656; border-bottom:0; padding:6px 8px; font-weight:bold; color:#7a4b00; margin-top:8px; }}
 table {{ width:100%; border-collapse:collapse; table-layout:fixed; }}
 th,td {{ border:1px solid #aeb7c2; padding:5px; vertical-align:top; overflow-wrap:anywhere; }}
 th {{ background:#e9edf2; text-align:center; }}
-th:nth-child(1),td:nth-child(1) {{ width:6%; text-align:center; }} th:nth-child(2),td:nth-child(2) {{ width:5%; text-align:center; }}
-th:nth-child(3),td:nth-child(3) {{ width:27%; }} th:nth-child(4),td:nth-child(4) {{ width:14%; }}
-th:nth-child(5),td:nth-child(5) {{ width:34%; }} th:nth-child(6),td:nth-child(6) {{ width:14%; }}
+.checklist-table th:nth-child(1),.checklist-table td:nth-child(1) {{ width:6%; text-align:center; }}
+.checklist-table th:nth-child(2),.checklist-table td:nth-child(2) {{ width:5%; text-align:center; }}
+.checklist-table th:nth-child(3),.checklist-table td:nth-child(3) {{ width:27%; }}
+.checklist-table th:nth-child(4),.checklist-table td:nth-child(4) {{ width:14%; }}
+.checklist-table th:nth-child(5),.checklist-table td:nth-child(5) {{ width:34%; }}
+.checklist-table th:nth-child(6),.checklist-table td:nth-child(6) {{ width:14%; }}
+.additional-table th:nth-child(1),.additional-table td:nth-child(1) {{ width:8%; text-align:center; }}
+.additional-table th:nth-child(2),.additional-table td:nth-child(2) {{ width:58%; }}
+.additional-table th:nth-child(3),.additional-table td:nth-child(3) {{ width:17%; }}
+.additional-table th:nth-child(4),.additional-table td:nth-child(4) {{ width:17%; }}
 .footer {{ margin-top:10px; color:#687386; text-align:right; font-size:8pt; }}
 </style></head><body><h1>รายงานรายการปัญหาสะสมของเครื่องจักรทั้งโรงงาน</h1>
 <div class='meta'>PHOLLAWAT ENGINEERING SUPPLY CO., LTD. | เดือนข้อมูล: {html.escape(year_month_key)} | จัดทำเมื่อ: {created_at}</div>
@@ -1042,10 +1082,10 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     if os.path.exists("Logo_Pes.png"): st.image("Logo_Pes.png", width=240)
     st.caption("PHOLLAWAT ENGINEERING SUPPLY CO., LTD.")
 
-    if PHOTO_RULES.get(m_type_selected, []):
-        # Samsung A23 ที่ใช้ตรวจ CNC No.1 ต้องเปิดตัวเลือกไฟล์/คลังภาพได้
-        # จึงไม่ใส่ capture เฉพาะเครื่องนี้ ส่วนเครื่องอื่นยังคงขอกล้องหลัง
-        enable_required_photo_camera_uploads(allow_gallery=(machine_id == "CNC3X-01"))
+    # Samsung A23 ที่ใช้ตรวจ CNC No.1 ต้องเปิดตัวเลือกไฟล์/คลังภาพได้
+    # จึงไม่ใส่ capture เฉพาะเครื่องนี้ ส่วนเครื่องอื่นยังคงขอกล้องหลัง
+    # เปิดใช้กับทุกเครื่องเพื่อรองรับรูปของปัญหาเพิ่มเติมนอก Checklist
+    enable_required_photo_camera_uploads(allow_gallery=(machine_id == "CNC3X-01"))
 
     st.title(f"📋 ใบตรวจสอบเครื่อง {machine_id} ประจำวัน")
     st.info("📄 มาตรฐานระบบคุณภาพโรงงาน: **FM-MN-07 Rev.00**")
@@ -1088,6 +1128,35 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             results[item] = {"status": status, "note": note}
             st.divider()
 
+        st.write("### ⚠️ รายงานปัญหาเพิ่มเติม (นอกเหนือจาก Checklist)")
+        additional_issue_found = st.checkbox(
+            "พบปัญหาเพิ่มเติมที่ไม่ตรงกับหัวข้อ Checklist",
+            key="additional_issue_found",
+        )
+        additional_issue_detail = st.text_area(
+            "รายละเอียดปัญหาเพิ่มเติม",
+            key="additional_issue_detail",
+            placeholder="ระบุอาการ จุดที่พบ และรายละเอียดของปัญหา",
+        )
+        additional_issue_action = st.text_area(
+            "การแก้ไขเบื้องต้น (ถ้ามี)",
+            key="additional_issue_action",
+            placeholder="ระบุสิ่งที่ดำเนินการแล้ว หรือสิ่งที่ต้องติดตามแก้ไข",
+        )
+        additional_issue_files = st.file_uploader(
+            "📷 ถ่าย/เพิ่มรูปปัญหาเพิ่มเติม",
+            type=["jpg", "jpeg", "png", "heic", "heif"],
+            key=f"additional_issue_photos_{m_type_selected}",
+            accept_multiple_files=True,
+        )
+        if additional_issue_found:
+            uploaded_photos[ADDITIONAL_ISSUE_ITEM_NO] = {
+                "files": additional_issue_files,
+                "evidence_present": bool(additional_issue_files),
+                "index": ADDITIONAL_ISSUE_ITEM_NO,
+            }
+            st.caption("เมื่อเลือกว่าพบปัญหา ระบบจะบังคับกรอกรายละเอียดและแนบอย่างน้อย 1 รูป")
+
         submitted = st.form_submit_button("💾 ส่งรายงานการตรวจเช็คประจำวัน (SUBMIT)")
 
     if submitted:
@@ -1095,6 +1164,8 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
         elif not tech_name: st.error("❌ กรุณาระบุชื่อผู้ตรวจสอบก่อนส่งรายงานครับ!")
         elif any(results[item]["status"] is None for item in current_checklist): st.error("❌ ปฏิเสธการบันทึก! ช่างยังเลือกผลการตรวจสอบไม่ครบทุกหัวข้อ")
         elif any(not uploaded_photos[idx].get("evidence_present", False) for idx in required_photo_indexes): st.error(f"❌ ปฏิเสธการบันทึกฟอร์ม! กรุณาเพิ่มรูปหลักฐานประจำข้อ {required_photo_indexes} ให้ครบก่อนกดส่งครับ")
+        elif additional_issue_found and not additional_issue_detail.strip(): st.error("❌ กรุณาระบุรายละเอียดปัญหาเพิ่มเติมก่อนส่งรายงาน")
+        elif additional_issue_found and not additional_issue_files: st.error("❌ กรุณาแนบรูปปัญหาเพิ่มเติมอย่างน้อย 1 รูปก่อนส่งรายงาน")
         else:
             photo_saved, photo_error = save_uploaded_photos_dict(
                 machine_id, current_day, uploaded_photos, current_date_obj=report_date
@@ -1116,6 +1187,22 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
                     "note": str(results[item]["note"]).strip(),
                     "role": "tech"
                 })
+            additional_issue_note = ""
+            if additional_issue_found:
+                additional_issue_note = f"รายละเอียดปัญหา: {additional_issue_detail.strip()}"
+                if additional_issue_action.strip():
+                    additional_issue_note += f" | การแก้ไขเบื้องต้น: {additional_issue_action.strip()}"
+                logs_to_save.append({
+                    "machine_id": machine_id,
+                    "day_num": int(current_day),
+                    "year_month": year_month_key,
+                    "tech_name": tech_name,
+                    "item_no": ADDITIONAL_ISSUE_ITEM_NO,
+                    "checklist_item": ADDITIONAL_ISSUE_LABEL,
+                    "status": "พบปัญหาเพิ่มเติม",
+                    "note": additional_issue_note,
+                    "role": "tech",
+                })
             if not save_log_to_supabase_bulk(logs_to_save):
                 st.error("❌ บันทึกฐานข้อมูลไม่สำเร็จ: " + st.session_state.get("last_save_error", "โปรดดู Streamlit Logs"))
                 st.stop()
@@ -1130,9 +1217,13 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
             boss_review_url = f"{DEFAULT_APP_URL}/?role=boss&id={quote(machine_id, safe='')}"
             audit_tag = f"\n\n📂 [คลิกเปิดตรวจรายงานและดูภาพหลักฐานคลาวด์]:\n👉 {boss_review_url}"
             
-            if fails:
-                summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}\n\n❌ รายการที่ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
+            if fails or additional_issue_found:
+                summary_msg = f"\n🚨 [แจ้งซ่อมด่วนจากใบตรวจเช็ค ISO]\n🔧 เครื่อง: {MACHINES[machine_id]}\n📅 วันที่: {current_time_str}\n👤 ผู้ตรวจ: {tech_name}"
+                if fails:
+                    summary_msg += "\n\n❌ รายการที่ไม่ผ่านมาตรฐาน:\n" + "\n".join(fails)
                 if fixed_items: summary_msg += "\n\n🛠️ รายการที่ช่างแก้ไขเสร็จทันที:\n" + "\n".join(fixed_items)
+                if additional_issue_found:
+                    summary_msg += f"\n\n⚠️ ปัญหาเพิ่มเติมนอก Checklist:\n- {additional_issue_note}"
                 send_line_alert(summary_msg + audit_tag)
                 st.warning("พบจุดบกพร่อง! ส่งการแจ้งเตือนเตือนเข้าไลน์กลุ่มช่างแล้ว")
             else:
@@ -1274,6 +1365,8 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                                 try:
                                     img_obj = Image.open(BytesIO(f_bytes))
                                     caption_title = f_name
+                                    if "item_additional_issue_" in f_name:
+                                        caption_title = "⚠️ รูปปัญหาเพิ่มเติม (นอกเหนือจาก Checklist)"
                                     if "item_" in f_name:
                                         try:
                                             item_num = int(f_name.split("item_")[1].split("_")[0])
@@ -1292,14 +1385,25 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
 
                 # ดึง Note อาการเสียสะสมของเครื่องนี้
                 df_machine_logs = month_logs_by_machine.get(target_mid_clean, pd.DataFrame())
-                current_notes_list = []
+                current_notes_list, additional_notes_list = [], []
                 if not df_machine_logs.empty:
                     notes_rows = df_machine_logs[(df_machine_logs["Note"].notnull()) & (df_machine_logs["Note"] != "") & (df_machine_logs["Note"] != "nan")]
                     for _, n_row in notes_rows.iterrows():
-                        current_notes_list.append(f"[วันที่ {n_row['Day_Num']}]: ข้อ {n_row['Item_No']} {n_row['Note']}")
+                        if int(n_row["Item_No"]) == ADDITIONAL_ISSUE_ITEM_NO:
+                            additional_notes_list.append(f"[วันที่ {n_row['Day_Num']}]: {n_row['Note']}")
+                        elif int(n_row["Item_No"]) > 0:
+                            current_notes_list.append(f"[วันที่ {n_row['Day_Num']}]: ข้อ {n_row['Item_No']} {n_row['Note']}")
                 
                 current_notes = ", ".join(current_notes_list) if current_notes_list else ""
                 st.text_area(f"📝 รายการอาการเสียสะสม ({m_id})", value=current_notes, key=f"note_area_{m_id}", height=100, disabled=True)
+                additional_notes = ", ".join(additional_notes_list) if additional_notes_list else ""
+                st.text_area(
+                    f"⚠️ ปัญหาเพิ่มเติมนอก Checklist ({m_id})",
+                    value=additional_notes,
+                    key=f"additional_note_area_{m_id}",
+                    height=90,
+                    disabled=True,
+                )
 
                 st.write("---")
                 excel_col, zip_day_col, zip_month_col = st.columns(3)
