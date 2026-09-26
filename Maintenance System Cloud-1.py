@@ -115,7 +115,7 @@ CHECKLISTS = {
         "ตรวจเช็คสายบังคับเครนต้องไม่ชำรุดสายไฟไม่ขาดรุ่งริ่ง\nไม่เรียบร้อย", "ตรวจเช็คสัญญานเสียงเมื่อเริ่มเดินเครนต้องมีเสียงเตือนการทำงาน"
     ],
     "QC-01": ["ตรวจสอบความสะอาด", "ตรวจดู BATTERRY อ่อนหรือไม่", "ตรวจสอบปุ่มกดต่างๆๆ", "ตรวจสอบอุปกรณ์การชาร์จ"],
-    "QC-02": ["ตรวจดูสภาพของเวอร์เนียพร้อมใช้งานหรือไม่", "ตรวจดู BATTERRY อ่อนหรือไม่", "ตรวจสอบการสไลด์ต้องไม่ติดขัด", "ตรวจสอบที่คีบตรงปลายที่ใช้วัดชิ้นงาน เช็คว่ามีรอยบิ่น หรือสึกหล่อหรือไม่", "หลังเลิกงานต้องปิดสวิตส์ทุกครั้ง"],
+    "QC-02": ["ตรวจดูสภาพของเวอร์เนียพร้อมใช้งานหรือไม่", "ตรวจสอบการสไลด์ต้องไม่ติดขัด", "ตรวจสอบที่คีบตรงปลายที่ใช้วัดชิ้นงาน เช็คว่ามีรอยบิ่น หรือสึกหล่อหรือไม่"],
     "QC-03": ["ตรวจดูสภาพของเวอร์เนียพร้อมใช้งานหรือไม่", "ตรวจดู BATTERRY อ่อนหรือไม่", "ตรวจสอบการสไลด์ต้องไม่ติดขัด", "ตรวจสอบที่คีบตรงปลายที่ใช้วัดชิ้นงาน เช็คว่ามีรอยบิ่น หรือสึกหล่อหรือไม่", "หลังเลิกงานต้องปิดสวิตส์ทุกครั้ง"],
     "QC-04": ["ตรวจดูสภาพของเวอร์เนียพร้อมใช้งานหรือไม่", "ตรวจดู BATTERRY อ่อนหรือไม่", "ตรวจสอบการสไลด์ต้องไม่ติดขัด", "ตรวจสอบที่คีบตรงปลายที่ใช้วัดชิ้นงาน เช็คว่ามีรอยบิ่น หรือสึกหล่อหรือไม่", "หลังเลิกงานต้องปิดสวิตส์ทุกครั้ง"],
     "QC-05": ["ตรวจดูสภาพของเวอร์เนียพร้อมใช้งานหรือไม่", "ตรวจดู BATTERRY อ่อนหรือไม่", "ตรวจสอบการสไลด์ต้องไม่ติดขัด", "ตรวจสอบที่คีบตรงปลายที่ใช้วัดชิ้นงาน เช็คว่ามีรอยบิ่น หรือสึกหล่อหรือไม่", "หลังเลิกงานต้องปิดสวิตส์ทุกครั้ง"],
@@ -137,15 +137,14 @@ CHECKLISTS = {
     "QC-21": ["ตรวจดูสภาพของสายไฟ", "ตรวจดูสภาพ ARM ของเครื่อง", "ตรวจดูสภาพของหัว PROBE คตงอหรือไม่", "ตรวจสอบ STICKER", "ตรวจสอบ NOTEBOOK COMPUTER"],
     "COMP-01": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
     "COMP-02": ["เช็คแรงดัน (Pressure) ต้องไม่ต่ำกว่า 7 bar", "ตรวจสอบระดับน้ำมันไฮดรอลิก ต้องไม่ต่ำกว่าระดับต่ำสุด", "เช็คอุณหภูมิความร้อนต้องไม่เกิน 80 องศา", "เช็คการรั่วซีมของระบบน้ำมัน", "เช็คระบบเดรนน้ำ (Water Draen)"],
-    "GRINDING-01": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMPน้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
-    "GRINDING-02": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMPน้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
+    "GRINDING-01": ["การ Worm spindle และ TABLE SLIDE", "เช็คระดับนำมันไฮดรอลิก และ การทำงานของ PUMP", "เช็คระดับของน้ำยา COOLANNT PUMP", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMPน้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง"],
+    "GRINDING-02": ["การ Worm spindle และ TABLE SLIDE", "ตรวจสอบการทำงานของแม่เหล็ก", "ตรวจสอบการทำงานของ SLIDE X,Y", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร", "ตรวจสอบระดับน้ำมันของ PUMPน้ำมันหล่อลื่น", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของตัวดูดอากศ"],
     "CUTTER GRINDING-01": ["การ WORM UP แกน Y พร้อมใช้งาน", "การ WORM UP แกน Z พร้อมใช้งาน", "ตรวจสอบการทำงานของไฟฟ้าและแสงสว่าง", "ตรวจสอบการทำงานของมอเตอร์ มีการหมุนปกติ", "ตรวจสอบการจับหัวคอเรต"],
     "MILLING": [
         "Worm Spindle ก่อนเริมงาน ตรวจสอบความ ผิดปกติของชุด  Back gauge  และ Motor", 
         "เช็ค Auto  Up-Down back gauge  และ Manual ( ความคร่องตัวในการเคลื่อนที่ของ Spindle )", 
         "ตรวจสอบการ SLIDE  ของแกน X", "ตรวจสอบการ SLIDE  ของแกน Y", "ตรวจสอบการ SLIDE  ของแกน Z", 
         "ระดับน้ำมันไฮดรอลิค ตรวจสอบน้ำมันในปั้มน้ำมันหล่อ ลื่นแกน  X,Y,Z", 
-        "ตรวจน้ำมันหล่อลื่นเย็น ตรวจสอบการทำงานของปั้ม COOLANT และสภาพของน้ำ  COOLANT", 
         "ตรวจสอบหน้าจอ  DIGITAL READ OUT และการทำ งานของ LINEAR SCALE", "หยอดน้ำมันหล่อลื่นทุกวันจันทร์", 
         "ตรวจสอบการทำงานของไฟฟ้าแสงสว่างของเครื่อง", "ตรวจสอบสภาพความพร้อมโดยรวมของเครื่องจักร  และอุกรณ์เสริมต่าง ๆ"
     ],
@@ -193,11 +192,11 @@ CHECKLISTS = {
 
 PHOTO_RULES = {
     "CNC": [2, 3, 4, 5, 8, 13], "Crane no.1": [3, 4], "Crane no.2": [3, 4], "QC-01": [4],
-    "QC-02": [2, 4], "QC-03": [2, 4], "QC-04": [2, 4], "QC-05": [2, 4], "QC-06": [2, 4],
+    "QC-02": [3], "QC-03": [2, 4], "QC-04": [2, 4], "QC-05": [2, 4], "QC-06": [2, 4],
     "QC-07": [2, 4], "QC-08": [2, 4], "QC-09": [2, 4], "QC-10": [2, 3], "QC-11": [2, 3], "QC-12": [2, 3],
     "QC-13": [2, 3], "QC-14": [2, 3], "QC-15": [6], "QC-16": [3], "QC-17": [2], "QC-18": [3], "QC-19": [3],
-    "QC-20": [3], "QC-21": [3], "COMP-01": [1, 2, 3], "COMP-02": [1, 2, 3], "GRINDING-01": [2, 4, 7], "GRINDING-02": [4, 7],
-    "CUTTER GRINDING-01": [], "MILLING": [6, 7], "LATHE": [2, 5], "CUTTING": [3, 5, 7], "MIG CO2": [3, 4, 5],
+    "QC-20": [3], "QC-21": [3], "COMP-01": [1, 2, 3], "COMP-02": [1, 2, 3], "GRINDING-01": [2, 4, 7], "GRINDING-02": [2, 5],
+    "CUTTER GRINDING-01": [], "MILLING": [6], "LATHE": [2, 5], "CUTTING": [3, 5, 7], "MIG CO2": [3, 4, 5],
     "ARGON": [3, 4, 6], "WELDING_ALUMINUM": [5, 6], "BAND SAW": [3, 5], "FORKLIFT": [1, 2, 5],
     "VEHICLE": list(range(1, 13))
 }
@@ -508,6 +507,35 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
         for col_idx in range(3, ws.max_column + 1):
             ws.cell(row=17, column=col_idx).value = None
 
+    def sync_revised_checklist_layout(ws, machine_id, machine_type):
+        """ปรับข้อความหัวข้อใน Excel เฉพาะเครื่องที่มีการยกเลิกหัวข้อตรวจ"""
+        machine_code = str(machine_id).upper().strip()
+        original_slot_count = None
+        checklist_key = None
+
+        if machine_type == "MILLING" or machine_code.startswith("MILLING-"):
+            original_slot_count, checklist_key = 11, "MILLING"
+        elif machine_code == "GRINDING-01":
+            original_slot_count, checklist_key = 9, "GRINDING-01"
+        elif machine_code == "GRINDING-02":
+            original_slot_count, checklist_key = 9, "GRINDING-02"
+        elif machine_code == "QC-02":
+            original_slot_count, checklist_key = 5, "QC-02"
+
+        if not checklist_key:
+            return None
+
+        revised_items = CHECKLISTS[checklist_key]
+        for slot_idx in range(original_slot_count):
+            row_no = 6 + slot_idx
+            if slot_idx < len(revised_items):
+                set_cell_value_safe(ws, f"A{row_no}", slot_idx + 1)
+                set_cell_value_safe(ws, f"B{row_no}", revised_items[slot_idx])
+            else:
+                set_cell_value_safe(ws, f"A{row_no}", None)
+                set_cell_value_safe(ws, f"B{row_no}", None)
+        return revised_items
+
     excel_file_name = f"FM-MN-07_{machine_id}.xlsx"
     target_excel_path = os.path.join(BASE_FOLDER, excel_file_name)
     if not os.path.isfile(target_excel_path): return None
@@ -541,6 +569,7 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
             ws.page_margins.bottom = 0
             ws.page_margins.header = 0
             ws.page_margins.footer = 0
+        revised_excel_items = sync_revised_checklist_layout(ws, machine_id, m_type)
         t_row, boss_row, n_cell = get_coordinates_by_machine(machine_id, m_type)
         center_align = Alignment(horizontal='center', vertical='center')
         
@@ -573,7 +602,17 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
                 if role_val == "tech":
                     status_val = str(row["Status"]).strip()
                     item_idx = int(row["Item_No"])
+                    original_item_idx = item_idx
+                    checklist_text = str(row.get("Checklist_Item", "")).strip()
                     note_val = str(row["Note"]).strip()
+
+                    # ประวัติเดิมอาจยังใช้หมายเลขก่อนยกเลิกหัวข้อ จึงจับคู่ด้วยข้อความ
+                    # เพื่อให้รอยติ๊กของหัวข้อที่ยังใช้อยู่เลื่อนไปยังแถวใหม่อย่างถูกต้อง
+                    if revised_excel_items is not None and item_idx > 0:
+                        try:
+                            item_idx = revised_excel_items.index(checklist_text) + 1
+                        except ValueError:
+                            item_idx = 0
                     
                     if item_idx > 0:
                         cell_coord = f"{col_letter}{5 + item_idx}"
@@ -596,6 +635,10 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
                     elif item_idx == ADDITIONAL_ISSUE_ITEM_NO:
                         if note_val and note_val.lower() != "nan":
                             notes_accumulator.append(f"[วันที่ {day_val}]: ปัญหาเพิ่มเติม {note_val}")
+                    elif original_item_idx > 0 and note_val and note_val.lower() != "nan":
+                        notes_accumulator.append(
+                            f"[วันที่ {day_val}]: หัวข้อเดิมที่ยกเลิกแล้ว {checklist_text} - {note_val}"
+                        )
                         
                     if tech_boss_name and tech_boss_name.lower() != "nan":
                         set_cell_value_safe(ws, f"{col_letter}{t_row}", tech_boss_name, Alignment(text_rotation=90, horizontal='center', vertical='center'))
@@ -1361,6 +1404,15 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                         photos_list = get_machine_photos(m_id, year_month_key, target_day_check)
                         if photos_list:
                             machine_checklist = CHECKLISTS.get(m_type_flag, CHECKLISTS["CNC"])
+                            saved_item_descriptions = {}
+                            if not df_day.empty:
+                                saved_tech_rows = df_day[
+                                    df_day["Role"].astype(str).str.strip().str.lower().eq("tech")
+                                ]
+                                for _, saved_row in saved_tech_rows.iterrows():
+                                    saved_item_no = int(saved_row["Item_No"])
+                                    if saved_item_no > 0:
+                                        saved_item_descriptions[saved_item_no] = str(saved_row["Checklist_Item"])
                             for f_name, f_bytes in photos_list:
                                 try:
                                     img_obj = Image.open(BytesIO(f_bytes))
@@ -1370,8 +1422,10 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
                                     if "item_" in f_name:
                                         try:
                                             item_num = int(f_name.split("item_")[1].split("_")[0])
-                                            if 1 <= item_num <= len(machine_checklist):
+                                            item_desc = saved_item_descriptions.get(item_num)
+                                            if not item_desc and 1 <= item_num <= len(machine_checklist):
                                                 item_desc = machine_checklist[item_num - 1]
+                                            if item_desc:
                                                 caption_title = f"📌 [ข้อ {item_num}] {item_desc}"
                                         except Exception:
                                             pass
