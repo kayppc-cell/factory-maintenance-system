@@ -9,6 +9,7 @@ import time
 import zipfile
 import gc
 import html
+from zoneinfo import ZoneInfo
 from urllib.parse import quote
 import streamlit as st
 import streamlit.components.v1 as components
@@ -49,7 +50,17 @@ def init_supabase():
 
 supabase = init_supabase()
 
-now = datetime.datetime.now()
+# Streamlit Cloud ใช้เวลา UTC เป็นค่าเริ่มต้น จึงต้องยึดเวลาไทยโดยตรง
+# เพื่อไม่ให้รายการที่ส่งก่อน 07:00 น. ถูกบันทึกเป็นวันก่อนหน้า
+THAILAND_TZ = ZoneInfo("Asia/Bangkok")
+
+def thailand_now():
+    return datetime.datetime.now(THAILAND_TZ)
+
+def thailand_today():
+    return thailand_now().date()
+
+now = thailand_now()
 current_time_str = now.strftime("%Y-%m-%d %H:%M:%S")
 
 ADDITIONAL_ISSUE_ITEM_NO = -1
@@ -743,7 +754,7 @@ def normalize_uploaded_image(uploaded_file):
 
 
 def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current_date_obj=None):
-    if current_date_obj is None: current_date_obj = datetime.date.today()
+    if current_date_obj is None: current_date_obj = thailand_today()
     current_year_month = current_date_obj.strftime("%Y_%B")
 
     # เตรียมและตรวจทุกไฟล์ก่อน เพื่อไม่ให้เกิดการบันทึกเพียงบางรูป
@@ -884,7 +895,7 @@ def zip_single_machine_photos(machine_id, target_date_obj, target_day=None):
         return None
 
 def zip_all_factory_photos_by_filter(filter_type="ทั้งโรงงาน", target_date_obj=None, target_day=None):
-    if target_date_obj is None: target_date_obj = datetime.date.today()
+    if target_date_obj is None: target_date_obj = thailand_today()
     current_year_month = target_date_obj.strftime("%Y_%B")
     zip_buffer = BytesIO()
     has_file = False
@@ -1020,7 +1031,7 @@ def build_factory_issue_print_html(month_logs, year_month_key):
             f"{checklist_table}{additional_table}</section>"
         )
 
-    created_at = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+    created_at = thailand_now().strftime("%d/%m/%Y %H:%M")
     report_document = f"""<!doctype html><html lang='th'><head><meta charset='utf-8'>
 <title>Factory Issues - {html.escape(year_month_key)}</title><style>
 @page {{ size:A4 landscape; margin:12mm; }} * {{ box-sizing:border-box; }}
@@ -1137,7 +1148,7 @@ if user_role == "🔧 ช่างเทคนิค (ส่งฟอร์ม)"
     else: st.error(f"⚠️ ไม่พบรหัสเครื่อง '{machine_id}' ในทะเบียนกลาง")
     st.divider()
 
-    report_date = st.date_input("📆 เลือกวันที่ตรวจสอบงานฟอร์ม:", value=datetime.date.today())
+    report_date = st.date_input("📆 เลือกวันที่ตรวจสอบงานฟอร์ม:", value=thailand_today())
     current_day = report_date.day
     year_month_key = report_date.strftime("%Y_%B")
 
@@ -1285,7 +1296,7 @@ elif user_role == "🔐 Engineer/ผู้ตรวจสอบ":
     
     col_date, col_refresh = st.columns([3, 1])
     with col_date:
-        selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและดูรูปภาพย้อนหลัง:", value=datetime.date.today())
+        selected_date = st.date_input("📆 เลือกวันที่ต้องการตรวจสอบเอกสารและดูรูปภาพย้อนหลัง:", value=thailand_today())
     with col_refresh:
         st.write("")
         st.write("")
@@ -1663,7 +1674,7 @@ else:
             st.success("🎯 ยืนยันสิทธิ์ผู้บริหารสูงสุด สำเร็จ ปลดล็อกเรียบร้อยแล้วครับ!")
             st.divider()
             
-            selected_date = st.date_input("📆 เลือกวันที่สำหรับอ้างอิงการดาวน์โหลดข้อมูลย้อนหลัง:", value=datetime.date.today())
+            selected_date = st.date_input("📆 เลือกวันที่สำหรับอ้างอิงการดาวน์โหลดข้อมูลย้อนหลัง:", value=thailand_today())
             current_boss_month = selected_date.strftime("%Y_%B")
             
             with st.expander("📊 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดไฟล์ Excel รวมทุกเครื่องจักรทั้งโรงงาน (.zip)"):
@@ -1701,7 +1712,7 @@ else:
                                 st.download_button(
                                     label="💾 ยืนยันดาวน์โหลดไฟล์ CSV",
                                     data=csv_data,
-                                    file_name=f"Backup_Master_Database_{datetime.datetime.now().strftime('%Y_%m_%d')}.csv",
+                                    file_name=f"Backup_Master_Database_{thailand_now().strftime('%Y_%m_%d')}.csv",
                                     mime="text/csv"
                                 )
                                 gc.collect()
@@ -1796,7 +1807,7 @@ else:
                             reset_year_num = st.number_input(
                                 "เลือกปี ค.ศ.:",
                                 min_value=2020,
-                                max_value=datetime.date.today().year + 1,
+                                max_value=thailand_today().year + 1,
                                 value=selected_date.year,
                                 step=1,
                                 key="reset_photo_target_year"
