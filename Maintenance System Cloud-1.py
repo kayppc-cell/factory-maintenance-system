@@ -696,6 +696,34 @@ def zip_all_factory_excel(year_month_key, target_day=None):
             st.error("❌ อ่านฐานข้อมูลไม่สำเร็จ จึงยังไม่สร้าง ZIP ของ Excel กรุณาลองใหม่หลังตรวจ Supabase")
         return None
 
+def zip_all_factory_excel_multi(year_month_keys):
+    """รวม Excel หลายเดือนใน ZIP เดียว และแยกโฟลเดอร์ตามเดือน"""
+    zip_buffer = BytesIO()
+    has_file = False
+    try:
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for year_month_key in year_month_keys:
+                for m_id in MACHINES.keys():
+                    m_type = get_machine_type_by_id(m_id)
+                    excel_bytes = generate_excel_bytes(
+                        m_id, year_month_key, m_type,
+                        target_day=None, raise_on_data_error=True
+                    )
+                    if excel_bytes:
+                        file_name = f"FM-MN-07_{m_id}_{year_month_key}.xlsx"
+                        zip_file.writestr(f"{year_month_key}/{file_name}", excel_bytes)
+                        has_file = True
+        if not has_file:
+            return None
+        zip_buffer.seek(0)
+        gc.collect()
+        return zip_buffer
+    except Exception as e:
+        print(f"Zip Multi Month Excel Error: {e}")
+        if isinstance(e, RuntimeError):
+            st.error("❌ อ่านฐานข้อมูลไม่สำเร็จ จึงยังไม่สร้าง ZIP ของ Excel กรุณาลองใหม่หลังตรวจ Supabase")
+        return None
+
 # --- PHOTO & DUAL STORAGE (LOCAL + SUPABASE CLOUD) ---
 def send_line_alert(msg_text):
     import requests
@@ -1680,16 +1708,65 @@ else:
             with st.expander("📊 [เฉพาะผู้บริหารสูงสุด] ดาวน์โหลดไฟล์ Excel รวมทุกเครื่องจักรทั้งโรงงาน (.zip)"):
                 excel_period = st.radio(
                     "เลือกช่วงข้อมูล Excel:",
-                    ["เฉพาะวันที่เลือก", "ทั้งเดือนที่เลือก"],
+                    ["เฉพาะวันที่เลือก", "เลือกหนึ่งหรือหลายเดือน"],
                     horizontal=True,
                     key="bigboss_excel_period"
                 )
                 excel_target_day = selected_date.day if excel_period == "เฉพาะวันที่เลือก" else None
-                excel_period_label = selected_date.strftime("Day_%d_%Y_%m") if excel_target_day else current_boss_month
+
+                selected_excel_months = [current_boss_month]
+                if excel_period == "เลือกหนึ่งหรือหลายเดือน":
+                    excel_thai_months = {
+                        1: "มกราคม", 2: "กุมภาพันธ์", 3: "มีนาคม", 4: "เมษายน",
+                        5: "พฤษภาคม", 6: "มิถุนายน", 7: "กรกฎาคม", 8: "สิงหาคม",
+                        9: "กันยายน", 10: "ตุลาคม", 11: "พฤศจิกายน", 12: "ธันวาคม"
+                    }
+                    current_thai_date = thailand_today()
+                    latest_excel_month = max(
+                        datetime.date(current_thai_date.year, current_thai_date.month, 1),
+                        datetime.date(selected_date.year, selected_date.month, 1)
+                    )
+                    excel_month_options = [
+                        datetime.date(year_num, month_num, 1).strftime("%Y_%B")
+                        for year_num in range(latest_excel_month.year, 2019, -1)
+                        for month_num in range(12, 0, -1)
+                        if datetime.date(year_num, month_num, 1)
+                           <= latest_excel_month
+                    ]
+
+                    def format_excel_month(year_month_value):
+                        parsed_month = datetime.datetime.strptime(year_month_value, "%Y_%B")
+                        return f"{excel_thai_months[parsed_month.month]} {parsed_month.year}"
+
+                    selected_excel_months = st.multiselect(
+                        "เลือกเดือนที่ต้องการสร้าง Excel (เลือกได้หลายเดือน):",
+                        options=excel_month_options,
+                        default=[current_boss_month],
+                        format_func=format_excel_month,
+                        key="bigboss_excel_selected_months"
+                    )
+
+                if excel_target_day is not None:
+                    excel_period_label = selected_date.strftime("Day_%d_%Y_%m")
+                elif len(selected_excel_months) == 1:
+                    excel_period_label = selected_excel_months[0]
+                else:
+                    excel_period_label = f"{len(selected_excel_months)}_Months"
+
                 st.info(f"📂 ระบบจะรวมแบบฟอร์ม Excel (FM-MN-07) ของทุกเครื่อง สำหรับ **{excel_period_label}** เป็นไฟล์ .zip")
-                if st.button(f"📦 สร้าง Excel ทุกเครื่อง - {excel_period}", type="primary"):
+                create_excel_disabled = excel_period == "เลือกหนึ่งหรือหลายเดือน" and not selected_excel_months
+                if st.button(
+                    f"📦 สร้าง Excel ทุกเครื่อง - {excel_period}",
+                    type="primary",
+                    disabled=create_excel_disabled
+                ):
                     with st.spinner("กำลังประกอบไฟล์ Excel ทุกเครื่องจักร กรุณารอสักครู่..."):
-                        excel_all_zip = zip_all_factory_excel(current_boss_month, target_day=excel_target_day)
+                        if excel_target_day is not None:
+                            excel_all_zip = zip_all_factory_excel(
+                                current_boss_month, target_day=excel_target_day
+                            )
+                        else:
+                            excel_all_zip = zip_all_factory_excel_multi(selected_excel_months)
                         if excel_all_zip:
                             st.download_button(
                                 label=f"💾 ดาวน์โหลด Excel ทั้งโรงงาน - {excel_period_label}",
