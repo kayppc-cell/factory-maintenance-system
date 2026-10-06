@@ -573,7 +573,6 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
-        ensure_maintenance_manager_footer(ws)
         if m_type == "VEHICLE":
             # เอกสารรถชุดที่ผู้ใช้ส่งล่าสุดเป็นแม่แบบหลัก ห้ามโค้ดเปลี่ยนโครงสร้าง
             validate_vehicle_template_layout(ws)
@@ -672,6 +671,10 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
             if notes_accumulator:
                 combined_notes = ", ".join(notes_accumulator)
                 set_cell_value_safe(ws, n_cell, combined_notes)
+
+        # ต้องเติมท้ายสุดหลังขั้นตอนล้างรอยติ๊ก เพราะแม่แบบบางชนิดวางข้อความไว้
+        # ในช่วงคอลัมน์วันที่/แถวลายเซ็น ซึ่งถูกล้างก่อนเขียนข้อมูลประจำเดือน
+        ensure_maintenance_manager_footer(ws)
 
         output_stream = BytesIO()
         wb.save(output_stream)
