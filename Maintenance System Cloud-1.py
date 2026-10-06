@@ -468,6 +468,16 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
         manager_label = "ผู้จัดการแผนกซ่อมบำรุง"
         document_revision = "FM-MN-07 Rev.00"
 
+        # หากต้นฉบับมีข้อความทั้งสองบรรทัดอยู่แล้ว ห้ามเติมซ้ำ เพราะจะซ้อนกับฟอร์มเดิม
+        existing_values = {
+            str(cell.value or "").strip()
+            for row in ws.iter_rows()
+            for cell in row
+            if cell.value not in (None, "")
+        }
+        if manager_label in existing_values and document_revision in existing_values:
+            return
+
         # แม่แบบเก่าบางไฟล์ใช้ Text Box/Shape ซึ่ง openpyxl ไม่เก็บไว้
         # จึงเขียนข้อความลงเซลล์จริงบริเวณท้ายหน้ากระดาษก่อนบันทึก
         print_max_row = ws.max_row
@@ -643,6 +653,10 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
             col_letter = get_column_letter(2 + d)
             # ล้างรอยติ๊กข้อตรวจ (แถว 6 ถึง 21)
             for r in range(6, 22):
+                # BAND SAW ใช้ AB18:AG18 และ AB19:AG19 เป็นส่วนท้ายเอกสาร
+                # ไม่ใช่ช่องข้อมูลรายวัน จึงต้องรักษาข้อความต้นฉบับไว้
+                if m_type == "BAND SAW" and r in (18, 19):
+                    continue
                 set_cell_value_safe(ws, f"{col_letter}{r}", None)
             # ล้างช่องชื่อช่างและชื่อหัวหน้า
             set_cell_value_safe(ws, f"{col_letter}{t_row}", None)
@@ -718,7 +732,10 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
 
         # ต้องเติมท้ายสุดหลังขั้นตอนล้างรอยติ๊ก เพราะแม่แบบบางชนิดวางข้อความไว้
         # ในช่วงคอลัมน์วันที่/แถวลายเซ็น ซึ่งถูกล้างก่อนเขียนข้อมูลประจำเดือน
-        ensure_maintenance_manager_footer(ws)
+        # ใช้การคืนส่วนท้ายเฉพาะ BAND SAW ชุดที่ตรวจโครงสร้างแล้วเท่านั้น
+        # ฟอร์มเครื่องประเภทอื่นอาจวางข้อความต่างตำแหน่ง จึงห้ามเติมข้อความแบบเหมารวม
+        if m_type == "BAND SAW":
+            ensure_maintenance_manager_footer(ws)
 
         output_stream = BytesIO()
         wb.save(output_stream)
