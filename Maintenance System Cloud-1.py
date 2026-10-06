@@ -542,6 +542,22 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
 
         revision_cell.value = document_revision
 
+    def capture_template_footer(ws):
+        """จำข้อความส่วนท้ายจากแม่แบบจริงของแต่ละเครื่องก่อนล้างข้อมูลรายวัน"""
+        footer_tokens = ("ผู้จัดการแผนกซ่อมบำรุง", "FM-MN-07", "Rev.")
+        captured = []
+        for row in ws.iter_rows():
+            for cell in row:
+                value_text = str(cell.value or "").strip()
+                if value_text and any(token in value_text for token in footer_tokens):
+                    captured.append((cell.coordinate, cell.value))
+        return captured
+
+    def restore_template_footer(ws, captured):
+        """คืนข้อความส่วนท้ายลงเซลล์เดิม โดยคงฟอนต์/กรอบ/การจัดวางจากแม่แบบ"""
+        for coordinate, value in captured:
+            set_cell_value_safe(ws, coordinate, value)
+
     def validate_band_saw_template_layout(ws):
         """ล็อกโครงสร้างตามแม่แบบ BAND SAW ชุดล่าสุดที่ผู้ใช้กำหนด"""
         bottom_merges = {str(cell_range) for cell_range in ws.merged_cells.ranges}
@@ -625,6 +641,8 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
+        # QC แต่ละหมายเลขวางส่วนท้ายคนละแถว จึงยึดตำแหน่งจากแม่แบบของเครื่องนั้นโดยตรง
+        template_footer = capture_template_footer(ws)
         if m_type == "BAND SAW":
             validate_band_saw_template_layout(ws)
         if m_type == "VEHICLE":
@@ -730,8 +748,10 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
                 combined_notes = ", ".join(notes_accumulator)
                 set_cell_value_safe(ws, n_cell, combined_notes)
 
-        # ต้องเติมท้ายสุดหลังขั้นตอนล้างรอยติ๊ก เพราะแม่แบบบางชนิดวางข้อความไว้
-        # ในช่วงคอลัมน์วันที่/แถวลายเซ็น ซึ่งถูกล้างก่อนเขียนข้อมูลประจำเดือน
+        # คืนข้อความส่วนท้ายของทุกฟอร์มลงตำแหน่งเดิมจากแม่แบบ หลังล้างข้อมูลรายวันเสร็จ
+        restore_template_footer(ws, template_footer)
+
+        # BAND SAW แม่แบบเก่าบางรุ่นอาจเก็บข้อความเป็น Shape จึงมี fallback เฉพาะประเภทนี้
         # ใช้การคืนส่วนท้ายเฉพาะ BAND SAW ชุดที่ตรวจโครงสร้างแล้วเท่านั้น
         # ฟอร์มเครื่องประเภทอื่นอาจวางข้อความต่างตำแหน่ง จึงห้ามเติมข้อความแบบเหมารวม
         if m_type == "BAND SAW":
