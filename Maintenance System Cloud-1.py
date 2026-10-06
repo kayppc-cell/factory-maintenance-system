@@ -466,12 +466,7 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
     def ensure_maintenance_manager_footer(ws):
         """คืนข้อความท้ายแบบฟอร์มที่เดิมอาจเป็น Shape และหายเมื่อ openpyxl บันทึกไฟล์"""
         manager_label = "ผู้จัดการแผนกซ่อมบำรุง"
-
-        # ถ้าแม่แบบใหม่เก็บข้อความไว้ในเซลล์จริงอยู่แล้ว ให้คงต้นฉบับทุกอย่างไว้
-        for row in ws.iter_rows():
-            for cell in row:
-                if manager_label in str(cell.value or ""):
-                    return
+        document_revision = "FM-MN-07 Rev.00"
 
         # แม่แบบเก่าบางไฟล์ใช้ Text Box/Shape ซึ่ง openpyxl ไม่เก็บไว้
         # จึงเขียนข้อความลงเซลล์จริงบริเวณท้ายหน้ากระดาษก่อนบันทึก
@@ -516,6 +511,26 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
             footer_cell.alignment = Alignment(horizontal="left", vertical="center")
 
         footer_cell.value = manager_label
+
+        # รหัสเอกสารอยู่ใต้ชื่อผู้จัดการในฟอร์มต้นฉบับ BAND SAW
+        # และถูกขั้นตอนล้างข้อมูลรายวันล้างไปพร้อมกัน จึงต้องคืนค่าหลังสุดเช่นเดียวกัน
+        revision_row = footer_row + 1
+        revision_cell = None
+        for merged_range in ws.merged_cells.ranges:
+            if (
+                merged_range.min_row <= revision_row <= merged_range.max_row
+                and merged_range.min_col >= 27
+                and merged_range.max_col == 33
+            ):
+                revision_cell = ws.cell(merged_range.min_row, merged_range.min_col)
+                break
+
+        if revision_cell is None:
+            revision_cell = ws.cell(revision_row, 27)
+            revision_cell.font = Font(name="Tahoma", size=8)
+            revision_cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        revision_cell.value = document_revision
 
     def validate_band_saw_template_layout(ws):
         """ล็อกโครงสร้างตามแม่แบบ BAND SAW ชุดล่าสุดที่ผู้ใช้กำหนด"""
