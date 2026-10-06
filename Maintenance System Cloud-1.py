@@ -460,87 +460,32 @@ def fetch_machine_all_month_logs(machine_id, year_month, month_logs=None, strict
 
 def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_on_data_error=False):
     import openpyxl
-    from copy import copy
     from openpyxl.styles import Alignment
-    from openpyxl.utils import get_column_letter, range_boundaries
+    from openpyxl.utils import get_column_letter
 
-    def ensure_vehicle_checklist_layout(ws):
-        """เพิ่มข้อ 12 โดยคงระดับแนวตั้งของลายเซ็นและบันทึกเพิ่มเติมไว้เท่าเดิม"""
-        battery_item = (
-            "ตรวจสอบแบตเตอรี่ น้ำกลั่น ขั้วแบต และการยึดแน่น\n"
-            "หากมีช่องตาแมว ให้สีแสดงสถานะอยู่ในเกณฑ์ปกติ"
-        )
-        current_item = str(ws["B17"].value or "").strip()
-        already_has_battery_item = "แบตเตอรี่" in current_item
+    def validate_vehicle_template_layout(ws):
+        """ตรวจแม่แบบรถชุดหลัก โดยไม่แทรก ลบ หรือขยับแถวของเอกสาร"""
+        expected_item_numbers = list(range(1, 13))
+        actual_item_numbers = [ws.cell(row=row_no, column=1).value for row_no in range(6, 18)]
+        try:
+            actual_item_numbers = [int(value) for value in actual_item_numbers]
+        except (TypeError, ValueError):
+            actual_item_numbers = []
 
-        # เทมเพลตรุ่นเดิมมีรายการ 11 ข้อในแถว 6-16 และเริ่มส่วนลายเซ็นที่แถว 17
-        # เมื่อเพิ่มแถวใหม่ ต้องลดความสูงรวมของ 12 แถวให้เท่ากับพื้นที่เดิม
-        # มิฉะนั้นส่วนลายเซ็นและบันทึกเพิ่มเติมจะขยับลงบนหน้ากระดาษ
-        original_checklist_height = sum(
-            (ws.row_dimensions[row_no].height or 15.0)
-            for row_no in range(6, 18 if already_has_battery_item else 17)
-        )
+        battery_text = str(ws["B17"].value or "").strip()
+        note_label = str(ws["B22"].value or "").strip()
+        note_merge_exists = any(str(cell_range) == "B23:AG23" for cell_range in ws.merged_cells.ranges)
 
-        if not already_has_battery_item:
-            old_merges = [str(cell_range) for cell_range in ws.merged_cells.ranges]
-            for cell_range in old_merges:
-                ws.unmerge_cells(cell_range)
-
-            ws.insert_rows(17, 1)
-
-            for cell_range in old_merges:
-                min_col, min_row, max_col, max_row = range_boundaries(cell_range)
-                if min_row >= 17:
-                    min_row += 1
-                    max_row += 1
-                elif max_row >= 17:
-                    max_row += 1
-                ws.merge_cells(
-                    start_row=min_row,
-                    start_column=min_col,
-                    end_row=max_row,
-                    end_column=max_col,
-                )
-
-            # ใช้รูปแบบของข้อ 11 กับข้อใหม่ เพื่อให้เส้นตาราง/ฟอนต์เหมือนต้นฉบับ
-            ws.row_dimensions[17].height = ws.row_dimensions[16].height
-            for col_idx in range(1, ws.max_column + 1):
-                source = ws.cell(row=16, column=col_idx)
-                target = ws.cell(row=17, column=col_idx)
-                if source.has_style:
-                    target._style = copy(source._style)
-                target.number_format = source.number_format
-                target.protection = copy(source.protection)
-                target.alignment = copy(source.alignment)
-
-        ws["A17"] = 12
-        ws["B17"] = battery_item
-
-        # ให้ข้อแบตเตอรี่สูงพอสำหรับข้อความสองบรรทัด แล้วเฉลี่ยลดแถว 6-16
-        # เพื่อรักษาตำแหน่งจริงของส่วนลายเซ็น/บันทึกให้เท่าเทมเพลตเดิม
-        battery_row_height = min(30.0, original_checklist_height * 0.22)
-        normal_rows_target_height = max(
-            original_checklist_height - battery_row_height,
-            11 * 11.0,
-        )
-        existing_normal_height = sum(
-            (ws.row_dimensions[row_no].height or 15.0)
-            for row_no in range(6, 17)
-        ) or 1.0
-        height_scale = normal_rows_target_height / existing_normal_height
-        for row_no in range(6, 17):
-            current_height = ws.row_dimensions[row_no].height or 15.0
-            ws.row_dimensions[row_no].height = max(11.0, current_height * height_scale)
-        ws.row_dimensions[17].height = battery_row_height
-
-        ws["A17"].alignment = Alignment(horizontal="center", vertical="center")
-        ws["B17"].alignment = Alignment(
-            horizontal="left",
-            vertical="center",
-            wrap_text=True,
-        )
-        for col_idx in range(3, ws.max_column + 1):
-            ws.cell(row=17, column=col_idx).value = None
+        if (
+            actual_item_numbers != expected_item_numbers
+            or "แบตเตอรี่" not in battery_text
+            or "บันทึกเพิ่มเติม" not in note_label
+            or not note_merge_exists
+        ):
+            raise RuntimeError(
+                "แม่แบบรถยนต์ไม่ใช่เอกสารชุดหลักล่าสุด: "
+                "ต้องมีข้อ 1-12 ที่แถว 6-17, บันทึกเพิ่มเติม B22 และพื้นที่ B23:AG23"
+            )
 
     def sync_revised_checklist_layout(ws, machine_id, machine_type):
         """ปรับข้อความหัวข้อใน Excel เฉพาะเครื่องที่มีการยกเลิกหัวข้อตรวจ"""
@@ -589,8 +534,9 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
         if m_type == "VEHICLE":
-            ensure_vehicle_checklist_layout(ws)
-            # ปรับหัวแบบฟอร์มและหน้ากระดาษให้ตรงกับรถที่เลือกทุกครั้งที่ดาวน์โหลด
+            # เอกสารรถชุดที่ผู้ใช้ส่งล่าสุดเป็นแม่แบบหลัก ห้ามโค้ดเปลี่ยนโครงสร้าง
+            validate_vehicle_template_layout(ws)
+            # ปรับเฉพาะหัวแบบฟอร์มให้ตรงกับรหัสรถที่เลือก โดยไม่แตะตำแหน่งแถว/ลายเซ็น
             vehicle_plate = machine_id.split("-", 1)[1] if "-" in machine_id else machine_id
             ws["A1"] = f"ใบตรวจสอบสภาพรถยนต์ {vehicle_plate}"
             ws["AB1"] = machine_id
