@@ -498,10 +498,37 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
                 footer_row = candidate_row
                 break
 
-        footer_cell = ws.cell(footer_row, 27)  # คอลัมน์ AA
+        # ถ้าแม่แบบกำหนดช่องรวมท้ายฟอร์มไว้ ให้เขียนที่เซลล์ซ้ายบนของช่องนั้น
+        # เช่น BAND SAW ชุดหลักใช้ AB18:AG18 ซึ่งจะรักษาฟอนต์ Angsana New 16
+        footer_cell = None
+        for merged_range in ws.merged_cells.ranges:
+            if (
+                merged_range.min_row <= footer_row <= merged_range.max_row
+                and merged_range.min_col >= 27
+                and merged_range.max_col == 33
+            ):
+                footer_cell = ws.cell(merged_range.min_row, merged_range.min_col)
+                break
+
+        if footer_cell is None:
+            footer_cell = ws.cell(footer_row, 27)  # fallback คอลัมน์ AA
+            footer_cell.font = Font(name="Tahoma", size=8)
+            footer_cell.alignment = Alignment(horizontal="left", vertical="center")
+
         footer_cell.value = manager_label
-        footer_cell.font = Font(name="Tahoma", size=8)
-        footer_cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    def validate_band_saw_template_layout(ws):
+        """ล็อกโครงสร้างตามแม่แบบ BAND SAW ชุดล่าสุดที่ผู้ใช้กำหนด"""
+        bottom_merges = {str(cell_range) for cell_range in ws.merged_cells.ranges}
+        if (
+            "บันทึกเพิ่มเติม" not in str(ws["B15"].value or "")
+            or "AB18:AG18" not in bottom_merges
+            or "AB19:AG19" not in bottom_merges
+        ):
+            raise RuntimeError(
+                "แม่แบบ BAND SAW ไม่ใช่เอกสารชุดหลักล่าสุด: "
+                "ต้องมีบันทึกเพิ่มเติม B15, ผู้จัดการ AB18:AG18 และรหัสเอกสาร AB19:AG19"
+            )
 
     def validate_vehicle_template_layout(ws):
         """ตรวจแม่แบบรถชุดหลัก โดยไม่แทรก ลบ หรือขยับแถวของเอกสาร"""
@@ -573,6 +600,8 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
+        if m_type == "BAND SAW":
+            validate_band_saw_template_layout(ws)
         if m_type == "VEHICLE":
             # เอกสารรถชุดที่ผู้ใช้ส่งล่าสุดเป็นแม่แบบหลัก ห้ามโค้ดเปลี่ยนโครงสร้าง
             validate_vehicle_template_layout(ws)
