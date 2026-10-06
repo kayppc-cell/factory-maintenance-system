@@ -465,16 +465,23 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
     from openpyxl.utils import get_column_letter, range_boundaries
 
     def ensure_vehicle_checklist_layout(ws):
-        """เพิ่มข้อ 12 ลงในแบบฟอร์มรถรุ่นเก่า โดยรักษารูปแบบและช่องลงชื่อเดิม"""
+        """เพิ่มข้อ 12 โดยคงระดับแนวตั้งของลายเซ็นและบันทึกเพิ่มเติมไว้เท่าเดิม"""
         battery_item = (
             "ตรวจสอบแบตเตอรี่ น้ำกลั่น ขั้วแบต และการยึดแน่น\n"
             "หากมีช่องตาแมว ให้สีแสดงสถานะอยู่ในเกณฑ์ปกติ"
         )
         current_item = str(ws["B17"].value or "").strip()
+        already_has_battery_item = "แบตเตอรี่" in current_item
 
-        # เทมเพลตรุ่นเดิมใช้แถว 17-22 เป็นผู้ตรวจ/ผู้อนุมัติ/หมายเหตุ
-        # จึงแทรกหนึ่งแถวก่อน แล้วขยับ merged cells ช่วงล่างลงอย่างปลอดภัย
-        if "แบตเตอรี่" not in current_item:
+        # เทมเพลตรุ่นเดิมมีรายการ 11 ข้อในแถว 6-16 และเริ่มส่วนลายเซ็นที่แถว 17
+        # เมื่อเพิ่มแถวใหม่ ต้องลดความสูงรวมของ 12 แถวให้เท่ากับพื้นที่เดิม
+        # มิฉะนั้นส่วนลายเซ็นและบันทึกเพิ่มเติมจะขยับลงบนหน้ากระดาษ
+        original_checklist_height = sum(
+            (ws.row_dimensions[row_no].height or 15.0)
+            for row_no in range(6, 18 if already_has_battery_item else 17)
+        )
+
+        if not already_has_battery_item:
             old_merges = [str(cell_range) for cell_range in ws.merged_cells.ranges]
             for cell_range in old_merges:
                 ws.unmerge_cells(cell_range)
@@ -508,7 +515,24 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
 
         ws["A17"] = 12
         ws["B17"] = battery_item
-        ws.row_dimensions[17].height = max(ws.row_dimensions[17].height or 0, 36)
+
+        # ให้ข้อแบตเตอรี่สูงพอสำหรับข้อความสองบรรทัด แล้วเฉลี่ยลดแถว 6-16
+        # เพื่อรักษาตำแหน่งจริงของส่วนลายเซ็น/บันทึกให้เท่าเทมเพลตเดิม
+        battery_row_height = min(30.0, original_checklist_height * 0.22)
+        normal_rows_target_height = max(
+            original_checklist_height - battery_row_height,
+            11 * 11.0,
+        )
+        existing_normal_height = sum(
+            (ws.row_dimensions[row_no].height or 15.0)
+            for row_no in range(6, 17)
+        ) or 1.0
+        height_scale = normal_rows_target_height / existing_normal_height
+        for row_no in range(6, 17):
+            current_height = ws.row_dimensions[row_no].height or 15.0
+            ws.row_dimensions[row_no].height = max(11.0, current_height * height_scale)
+        ws.row_dimensions[17].height = battery_row_height
+
         ws["A17"].alignment = Alignment(horizontal="center", vertical="center")
         ws["B17"].alignment = Alignment(
             horizontal="left",
