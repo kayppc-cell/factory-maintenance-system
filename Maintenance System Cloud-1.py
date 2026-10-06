@@ -460,8 +460,48 @@ def fetch_machine_all_month_logs(machine_id, year_month, month_logs=None, strict
 
 def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_on_data_error=False):
     import openpyxl
-    from openpyxl.styles import Alignment
-    from openpyxl.utils import get_column_letter
+    from openpyxl.styles import Alignment, Font
+    from openpyxl.utils import get_column_letter, range_boundaries
+
+    def ensure_maintenance_manager_footer(ws):
+        """คืนข้อความท้ายแบบฟอร์มที่เดิมอาจเป็น Shape และหายเมื่อ openpyxl บันทึกไฟล์"""
+        manager_label = "ผู้จัดการแผนกซ่อมบำรุง"
+
+        # ถ้าแม่แบบใหม่เก็บข้อความไว้ในเซลล์จริงอยู่แล้ว ให้คงต้นฉบับทุกอย่างไว้
+        for row in ws.iter_rows():
+            for cell in row:
+                if manager_label in str(cell.value or ""):
+                    return
+
+        # แม่แบบเก่าบางไฟล์ใช้ Text Box/Shape ซึ่ง openpyxl ไม่เก็บไว้
+        # จึงเขียนข้อความลงเซลล์จริงบริเวณท้ายหน้ากระดาษก่อนบันทึก
+        print_max_row = ws.max_row
+        try:
+            print_ranges = list(ws.print_area.ranges)
+            if print_ranges:
+                print_max_row = max(cell_range.max_row for cell_range in print_ranges)
+        except Exception:
+            try:
+                print_area_text = str(ws.print_area).split("!")[-1].replace("'", "")
+                _, _, _, print_max_row = range_boundaries(print_area_text)
+            except Exception:
+                pass
+
+        preferred_rows = [
+            max(1, print_max_row - 2),
+            max(1, print_max_row - 3),
+            max(1, print_max_row - 1),
+        ]
+        footer_row = preferred_rows[0]
+        for candidate_row in preferred_rows:
+            if all(ws.cell(candidate_row, col_no).value in (None, "") for col_no in range(27, 34)):
+                footer_row = candidate_row
+                break
+
+        footer_cell = ws.cell(footer_row, 27)  # คอลัมน์ AA
+        footer_cell.value = manager_label
+        footer_cell.font = Font(name="Tahoma", size=8)
+        footer_cell.alignment = Alignment(horizontal="left", vertical="center")
 
     def validate_vehicle_template_layout(ws):
         """ตรวจแม่แบบรถชุดหลัก โดยไม่แทรก ลบ หรือขยับแถวของเอกสาร"""
@@ -533,6 +573,7 @@ def generate_excel_bytes(machine_id, year_month, m_type, target_day=None, raise_
     try:
         wb = openpyxl.load_workbook(target_excel_path, data_only=False)
         ws = wb.active
+        ensure_maintenance_manager_footer(ws)
         if m_type == "VEHICLE":
             # เอกสารรถชุดที่ผู้ใช้ส่งล่าสุดเป็นแม่แบบหลัก ห้ามโค้ดเปลี่ยนโครงสร้าง
             validate_vehicle_template_layout(ws)
