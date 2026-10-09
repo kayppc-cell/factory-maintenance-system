@@ -876,6 +876,28 @@ def normalize_uploaded_image(uploaded_file):
         raise RuntimeError(f"ย่อหรือบีบอัดรูปภาพไม่สำเร็จ ({uploaded_file.name}): {exc}")
 
 
+# Supabase Storage ใช้ชื่อโฟลเดอร์ ASCII สำหรับรถที่รหัสทะเบียนมีอักษรไทย
+# เพื่อป้องกันปัญหา URL/path encoding แต่ยังค้นโฟลเดอร์ชื่อเดิมเพื่อรองรับรูปย้อนหลัง
+VEHICLE_PHOTO_STORAGE_KEYS = {
+    "CAR-2ฒข-5050": "CAR-5050",
+    "CAR-2ฒฆ-5151": "CAR-5151",
+    "CAR-1ฒถ-5252": "CAR-5252",
+    "CAR-2ฒถ-5252": "CAR-5252",  # QR/รหัสเดิมก่อนเปลี่ยนทะเบียนในระบบ
+    "CAR-2ฒข-5353": "CAR-5353",
+}
+
+def photo_storage_machine_keys(machine_id):
+    """คืนชื่อโฟลเดอร์หลักแบบปลอดภัย และชื่อเดิมสำหรับค้นข้อมูลย้อนหลัง"""
+    raw_key = str(machine_id).strip()
+    primary_key = VEHICLE_PHOTO_STORAGE_KEYS.get(raw_key, raw_key)
+    keys = [primary_key]
+    if raw_key not in keys:
+        keys.append(raw_key)
+    if primary_key == "CAR-5252" and "CAR-2ฒถ-5252" not in keys:
+        keys.append("CAR-2ฒถ-5252")
+    return keys
+
+
 def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current_date_obj=None):
     if current_date_obj is None: current_date_obj = thailand_today()
     current_year_month = current_date_obj.strftime("%Y_%B")
@@ -895,6 +917,8 @@ def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current
     local_day_dir = os.path.join(BASE_FOLDER, "maintenance_photos", str(machine_id), current_year_month, f"Day_{day_num}")
     os.makedirs(local_day_dir, exist_ok=True)
 
+    upload_errors = []
+    storage_machine_key = photo_storage_machine_keys(machine_id)[0]
     for file_name, file_bytes, content_type in prepared_photos:
         full_local_path = os.path.join(local_day_dir, file_name)
         with open(full_local_path, "wb") as f_out:
@@ -902,13 +926,21 @@ def save_uploaded_photos_dict(machine_id, day_num, uploaded_photos_dict, current
 
         if supabase:
             try:
-                storage_path = f"{machine_id}/{current_year_month}/Day_{day_num}/{file_name}"
+                storage_path = f"{storage_machine_key}/{current_year_month}/Day_{day_num}/{file_name}"
                 supabase.storage.from_("maintenance-photos").upload(
                     storage_path, file_bytes,
                     {"content-type": content_type, "upsert": "true"}
                 )
             except Exception as e_up:
                 print(f"Photo Supabase Upload Error: {e_up}")
+                upload_errors.append(f"{file_name}: {e_up}")
+        else:
+            upload_errors.append("ไม่สามารถเชื่อมต่อ Supabase Storage ได้")
+
+    # ห้ามบันทึก Log ต่อและห้ามแจ้งว่าสำเร็จ หากรูปบังคับขึ้น Cloud ไม่ครบ
+    if upload_errors:
+        gc.collect()
+        return False, " | ".join(upload_errors[:3])
     gc.collect()
     return True, ""
 
@@ -916,17 +948,24 @@ def get_machine_photos(machine_id, year_month, day_num):
     photos = []
     # Cloud เป็นแหล่งข้อมูลหลัก เพราะ local disk ของ Streamlit Cloud ไม่ถาวร
     if supabase:
-        try:
-            folder_path = f"{machine_id}/{year_month}/Day_{day_num}"
-            files = supabase.storage.from_("maintenance-photos").list(folder_path)
-            if files:
-                for f in sorted(files, key=lambda x: x.get("name", "")):
-                    f_name = f.get("name")
-                    if f_name and f_name.lower().endswith(('.png', '.jpg', '.jpeg')):
-                        file_data = supabase.storage.from_("maintenance-photos").download(f"{folder_path}/{f_name}")
-                        photos.append((f_name, file_data))
-        except Exception as e_sb:
-            print(f"Supabase fetch photo error: {e_sb}")
+        seen_photo_names = set()
+        for storage_machine_key in photo_storage_machine_keys(machine_id):
+            try:
+                folder_path = f"{storage_machine_key}/{year_month}/Day_{day_num}"
+                files = supabase.storage.from_("maintenance-photos").list(folder_path)
+                if files:
+                    for f in sorted(files, key=lambda x: x.get("name", "")):
+                        f_name = f.get("name")
+                        if (
+                            f_name
+                            and f_name not in seen_photo_names
+                            and f_name.lower().endswith(('.png', '.jpg', '.jpeg'))
+                        ):
+                            file_data = supabase.storage.from_("maintenance-photos").download(f"{folder_path}/{f_name}")
+                            photos.append((f_name, file_data))
+                            seen_photo_names.add(f_name)
+            except Exception as e_sb:
+                print(f"Supabase fetch photo error [{storage_machine_key}]: {e_sb}")
 
     # ใช้ local เป็น fallback เมื่อ Cloud ไม่มีข้อมูลหรือเชื่อมต่อไม่ได้
     if not photos:
@@ -1050,17 +1089,21 @@ def delete_photos_by_department_and_period(filter_type, target_date_obj, period_
 
     for machine_code in machine_codes:
         if period_scope == "เฉพาะวันที่เลือก":
-            prefix = f"{machine_code}/{year_month}/Day_{day_num}"
             local_target = os.path.join(BASE_FOLDER, "maintenance_photos", machine_code, year_month, f"Day_{day_num}")
         elif period_scope == "ทั้งเดือนที่เลือก":
-            prefix = f"{machine_code}/{year_month}"
             local_target = os.path.join(BASE_FOLDER, "maintenance_photos", machine_code, year_month)
         else:  # ทั้งหมดของแผนก
-            prefix = machine_code
             local_target = os.path.join(BASE_FOLDER, "maintenance_photos", machine_code)
 
         if supabase:
-            cloud_paths.extend(list_storage_files_recursive(prefix))
+            for storage_machine_key in photo_storage_machine_keys(machine_code):
+                if period_scope == "เฉพาะวันที่เลือก":
+                    prefix = f"{storage_machine_key}/{year_month}/Day_{day_num}"
+                elif period_scope == "ทั้งเดือนที่เลือก":
+                    prefix = f"{storage_machine_key}/{year_month}"
+                else:
+                    prefix = storage_machine_key
+                cloud_paths.extend(list_storage_files_recursive(prefix))
         if os.path.exists(local_target):
             shutil.rmtree(local_target)
 
