@@ -1201,7 +1201,7 @@ def build_factory_issue_print_html(month_logs, year_month_key):
                     )
                 checklist_issue_rows.append(
                     f"<tr>{date_cell}<td>{safe(item_no)}</td>"
-                    f"<td>{safe(row.get('Checklist_Item', ''))}</td><td>{safe(row.get('Status', ''))}</td>"
+                    f"<td class='checklist-item'>{safe(row.get('Checklist_Item', ''))}</td><td>{safe(row.get('Status', ''))}</td>"
                     f"<td>{safe(row.get('Note', ''))}</td><td>{safe(row.get('Tech_Name', ''))}</td></tr>"
                 )
 
@@ -1245,6 +1245,7 @@ table {{ width:100%; border-collapse:collapse; table-layout:fixed; }}
 th,td {{ border:1px solid #aeb7c2; padding:5px; vertical-align:top; overflow-wrap:anywhere; }}
 th {{ background:#e9edf2; text-align:center; }}
 .merged-date {{ vertical-align:middle !important; text-align:center; font-weight:bold; background:#f7f9fb; }}
+.checklist-table td.checklist-item {{ text-align:left !important; }}
 .checklist-table th:nth-child(1),.checklist-table td:nth-child(1) {{ width:6%; text-align:center; }}
 .checklist-table th:nth-child(2),.checklist-table td:nth-child(2) {{ width:5%; text-align:center; }}
 .checklist-table th:nth-child(3),.checklist-table td:nth-child(3) {{ width:27%; }}
