@@ -1156,19 +1156,51 @@ def build_factory_issue_print_html(month_logs, year_month_key):
     for machine_code, rows in notes.groupby("Machine_ID", sort=False):
         machine_code = str(machine_code).strip()
         checklist_issue_rows, additional_issue_rows = [], []
+
+        # นับจำนวนรายการของแต่ละวันแยกตามชนิดตาราง เพื่อรวมช่องวันที่ด้วย rowspan
+        checklist_day_counts, additional_day_counts = {}, {}
+        for _, count_row in rows.iterrows():
+            day_key = str(count_row.get("Day_Num", ""))
+            try:
+                count_item_no = int(count_row.get("Item_No", 0))
+            except (TypeError, ValueError):
+                count_item_no = 0
+            target_counts = (
+                additional_day_counts
+                if count_item_no == ADDITIONAL_ISSUE_ITEM_NO
+                else checklist_day_counts
+            )
+            target_counts[day_key] = target_counts.get(day_key, 0) + 1
+
+        checklist_seen_days, additional_seen_days = set(), set()
         for _, row in rows.iterrows():
             total_issues += 1
             safe = lambda value: html.escape(str(value if pd.notna(value) else ""))
             item_no = int(row.get("Item_No", 0))
+            day_key = str(row.get("Day_Num", ""))
             if item_no == ADDITIONAL_ISSUE_ITEM_NO:
+                date_cell = ""
+                if day_key not in additional_seen_days:
+                    additional_seen_days.add(day_key)
+                    date_cell = (
+                        f"<td class='merged-date' rowspan='{additional_day_counts.get(day_key, 1)}'>"
+                        f"{safe(row.get('Day_Num', ''))}</td>"
+                    )
                 additional_issue_rows.append(
-                    f"<tr><td>{safe(row.get('Day_Num', ''))}</td>"
+                    f"<tr>{date_cell}"
                     f"<td>{safe(row.get('Note', ''))}</td><td>{safe(row.get('Status', ''))}</td>"
                     f"<td>{safe(row.get('Tech_Name', ''))}</td></tr>"
                 )
             else:
+                date_cell = ""
+                if day_key not in checklist_seen_days:
+                    checklist_seen_days.add(day_key)
+                    date_cell = (
+                        f"<td class='merged-date' rowspan='{checklist_day_counts.get(day_key, 1)}'>"
+                        f"{safe(row.get('Day_Num', ''))}</td>"
+                    )
                 checklist_issue_rows.append(
-                    f"<tr><td>{safe(row.get('Day_Num', ''))}</td><td>{safe(item_no)}</td>"
+                    f"<tr>{date_cell}<td>{safe(item_no)}</td>"
                     f"<td>{safe(row.get('Checklist_Item', ''))}</td><td>{safe(row.get('Status', ''))}</td>"
                     f"<td>{safe(row.get('Note', ''))}</td><td>{safe(row.get('Tech_Name', ''))}</td></tr>"
                 )
@@ -1212,6 +1244,7 @@ h2 {{ color:white; background:#8b1e2d; padding:7px 10px; margin:0; font-size:13p
 table {{ width:100%; border-collapse:collapse; table-layout:fixed; }}
 th,td {{ border:1px solid #aeb7c2; padding:5px; vertical-align:top; overflow-wrap:anywhere; }}
 th {{ background:#e9edf2; text-align:center; }}
+.merged-date {{ vertical-align:middle !important; text-align:center; font-weight:bold; background:#f7f9fb; }}
 .checklist-table th:nth-child(1),.checklist-table td:nth-child(1) {{ width:6%; text-align:center; }}
 .checklist-table th:nth-child(2),.checklist-table td:nth-child(2) {{ width:5%; text-align:center; }}
 .checklist-table th:nth-child(3),.checklist-table td:nth-child(3) {{ width:27%; }}
