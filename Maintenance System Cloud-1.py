@@ -1186,11 +1186,12 @@ def build_factory_issue_print_html(month_logs, year_month_key):
                         f"<td class='merged-date' rowspan='{additional_day_counts.get(day_key, 1)}'>"
                         f"{safe(row.get('Day_Num', ''))}</td>"
                     )
-                additional_issue_rows.append(
+                additional_issue_rows.append((
+                    day_key,
                     f"<tr>{date_cell}"
                     f"<td>{safe(row.get('Note', ''))}</td><td>{safe(row.get('Status', ''))}</td>"
                     f"<td>{safe(row.get('Tech_Name', ''))}</td></tr>"
-                )
+                ))
             else:
                 date_cell = ""
                 if day_key not in checklist_seen_days:
@@ -1199,11 +1200,22 @@ def build_factory_issue_print_html(month_logs, year_month_key):
                         f"<td class='merged-date' rowspan='{checklist_day_counts.get(day_key, 1)}'>"
                         f"{safe(row.get('Day_Num', ''))}</td>"
                     )
-                checklist_issue_rows.append(
+                checklist_issue_rows.append((
+                    day_key,
                     f"<tr>{date_cell}<td>{safe(item_no)}</td>"
                     f"<td class='checklist-item'>{safe(row.get('Checklist_Item', ''))}</td><td>{safe(row.get('Status', ''))}</td>"
                     f"<td>{safe(row.get('Note', ''))}</td><td>{safe(row.get('Tech_Name', ''))}</td></tr>"
-                )
+                ))
+
+        def render_day_groups(row_items):
+            """สร้าง tbody แยกตามวัน เพื่อไม่ให้รายการวันเดียวกันถูกตัดข้ามหน้า"""
+            grouped_rows = {}
+            for grouped_day, row_html in row_items:
+                grouped_rows.setdefault(grouped_day, []).append(row_html)
+            return "".join(
+                f"<tbody class='day-group'>{''.join(day_rows)}</tbody>"
+                for day_rows in grouped_rows.values()
+            )
 
         checklist_table = ""
         if checklist_issue_rows:
@@ -1211,7 +1223,7 @@ def build_factory_issue_print_html(month_logs, year_month_key):
                 "<div class='sub-title'>ปัญหาที่พบตามหัวข้อ Checklist</div>"
                 "<table class='checklist-table'><thead><tr><th>วันที่</th><th>ข้อ</th><th>หัวข้อตรวจ</th><th>ผลตรวจ</th>"
                 "<th>รายละเอียดปัญหา/การแก้ไข</th><th>ผู้ตรวจ</th></tr></thead>"
-                f"<tbody>{''.join(checklist_issue_rows)}</tbody></table>"
+                f"{render_day_groups(checklist_issue_rows)}</table>"
             )
         additional_table = ""
         if additional_issue_rows:
@@ -1219,7 +1231,7 @@ def build_factory_issue_print_html(month_logs, year_month_key):
                 "<div class='additional-title'>รายงานปัญหาเพิ่มเติม (นอกเหนือจาก Checklist)</div>"
                 "<table class='additional-table'><thead><tr><th>วันที่</th><th>รายละเอียดปัญหา/การแก้ไข</th>"
                 "<th>สถานะ</th><th>ผู้ตรวจ</th></tr></thead>"
-                f"<tbody>{''.join(additional_issue_rows)}</tbody></table>"
+                f"{render_day_groups(additional_issue_rows)}</table>"
             )
         machine_issue_count = len(checklist_issue_rows) + len(additional_issue_rows)
         sections.append(
@@ -1236,12 +1248,16 @@ def build_factory_issue_print_html(month_logs, year_month_key):
 body {{ font-family:Tahoma,'Noto Sans Thai',Arial,sans-serif; color:#172033; margin:0; font-size:10pt; }}
 h1 {{ margin:0 0 4px; color:#8b1e2d; font-size:20pt; }} .meta {{ color:#526070; margin-bottom:14px; }}
 .summary {{ background:#f7ecee; border-left:5px solid #8b1e2d; padding:8px 12px; margin-bottom:14px; }}
-.machine {{ break-inside:avoid; page-break-inside:avoid; margin:0 0 15px; }}
+.machine {{ break-inside:auto; page-break-inside:auto; margin:0 0 15px; }}
 h2 {{ color:white; background:#8b1e2d; padding:7px 10px; margin:0; font-size:13pt; }}
 .count {{ border:1px solid #ccd2da; border-bottom:0; padding:5px 8px; font-weight:bold; }}
 .sub-title {{ background:#e9edf2; border:1px solid #aeb7c2; border-bottom:0; padding:5px 8px; font-weight:bold; }}
 .additional-title {{ background:#fff2cc; border:1px solid #d6b656; border-bottom:0; padding:6px 8px; font-weight:bold; color:#7a4b00; margin-top:8px; }}
 table {{ width:100%; border-collapse:collapse; table-layout:fixed; }}
+thead {{ display:table-header-group; }}
+tr {{ break-inside:avoid; page-break-inside:avoid; }}
+.day-group {{ break-inside:avoid; page-break-inside:avoid; }}
+h2,.count,.sub-title,.additional-title {{ break-after:avoid; page-break-after:avoid; }}
 th,td {{ border:1px solid #aeb7c2; padding:5px; vertical-align:top; overflow-wrap:anywhere; }}
 th {{ background:#e9edf2; text-align:center; }}
 .merged-date {{ vertical-align:middle !important; text-align:center; font-weight:bold; background:#f7f9fb; }}
